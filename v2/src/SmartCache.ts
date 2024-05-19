@@ -14,7 +14,7 @@ function clock() {
 	return Math.ceil(performance.now());
 }
 
-export class SmartCache<K=any,V=any> {
+export class SmartCache<K = any, V = any> {
 	private cached: Map<K,[exp: number, promise: Promise<V>]> = new Map();
 	private pending: Map<K,Promise<V>> = new Map();
 	private timer: NodeJS.Timeout | undefined;
