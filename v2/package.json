@@ -2,5 +2,11 @@
   "type": "module",
   "scripts": {
     "lint": "eslint . --ext .ts"
+  },
+  "dependencies": {
+    "@resolverworks/ezccip": "^0.0.11"
+  },
+  "devDependencies": {
+    "@adraffy/blocksmith": "^0.0.20"
   }
 }

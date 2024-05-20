@@ -1,9 +1,6 @@
-import type {BytesLike, BigNumberish, JsonRpcApiProvider} from 'ethers';
-
+import type {BytesLike, BigNumberish, Proof, Provider, Resolvable} from './types.js';
 import {ethers} from 'ethers';
 import {SmartCache} from './SmartCache.js';
-
-// this should mimic GatewayRequest.sol + EVMProofHelper.sol
 
 const MAX_OUTPUTS = 255;
 const MAX_INPUTS = 255;
@@ -40,23 +37,58 @@ function address_from_bytes(hex: string) {
 	return '0x' + (hex.length >= 66 ? hex.slice(26, 66) : hex.slice(2).padStart(40, '0').slice(-40)).toLowerCase();
 }
 
-export class GatewayRequest {
+export class EVMRequest {
 	static create(n = 1024) {
-		return new this(new Uint8Array(n), []);
+		return new this(new Uint8Array(n));
 	} 
+	static from_v1(target: string, commands: string[], constants: string[]) {
+		let req = this.create();
+		req.push(target);
+		req.target();
+		for (let cmd of commands) {
+			try {
+				let v = ethers.getBytes(cmd);
+				req.push(constants[v[1]]); // first op is initial slot offset
+				req.add();
+				for (let i = 2; i < v.length; i++) {
+					let op = v[i];
+					if (op === 0xFF) break;
+					let operand = op & 0x1F;
+					switch (op >> 5) {
+						case 0: { // OP_CONSTANT
+							req.push_bytes(constants[operand]);
+							req.follow();
+							continue;
+						}
+						case 1: { // OP_BACKREF
+							req.push_output(operand);
+							req.follow();
+							continue;
+						}
+						default: throw new Error(`unknown op: ${op}`);
+					}
+				}
+				req.collect(v[0] & 1);
+			} catch (err) {
+				Object.assign(err!, {cmd});
+			}
+		}
+		return req;
+	}
 	static decode(data: BytesLike) {
 		let [context, [ops, inputs]] = GATEWAY_ABI.decodeFunctionData('fetch', data);
-		let r = new this(ethers.getBytes(ops), inputs);
-		r.pos = r.buf.length;
+		ops = ethers.getBytes(ops);
+		let r = new this(ops, inputs, ops.length);
 		r.context = context;
 		return r;
 	}
 	private buf: Uint8Array;
-	private pos: number = 1;
+	private pos: number;
 	readonly inputs: string[];
 	public context?: string;
-	constructor(buf: Uint8Array, inputs: string[]) {
+	constructor(buf: Uint8Array, inputs: string[] = [], pos: number = 1) {
 		this.buf = buf;
+		this.pos = pos;
 		this.inputs = inputs;
 	}
 	encode(context?: string) {
@@ -112,35 +144,36 @@ export class GatewayRequest {
 		this.add_op(x);
 		this.add_op(n);
 	}
+	concat(n: number) { 
+		this.add_op(OP_STACK_CONCAT); 
+		this.add_op(n);
+	}
 	follow() { this.add_op(OP_SLOT_FOLLOW); }
 	add()    { this.add_op(OP_SLOT_ADD); }
 	set()    { this.add_op(OP_SLOT_SET); }
 	keccak() { this.add_op(OP_STACK_KECCAK); }
-	concat() { this.add_op(OP_STACK_CONCAT); }
 	first()  { this.add_op(OP_STACK_FIRST); }
 }
 
-type VMOutputHeader = {
+type OutputHeader = {
 	target: string;
 	slots: bigint[];
 };
-type VMOutput = VMOutputHeader & {
+export type Output = OutputHeader & {
 	size?: number;
-	parent?: VirtualMachine;
+	parent?: EVMProver;
 	value(): Promise<string>;
 };
-type VMResolvedOutput = VMOutputHeader & {value: string};
+export type ResolvedOutput = OutputHeader & {value: string};
 
-type Provider = JsonRpcApiProvider;
-type Resolvable<T> = T | Promise<T>;
-type Proof = string[][];
 
-export class VirtualMachine {
+
+export class EVMProver {
 	static async latest(provider: Provider) {
 		let block = await provider.getBlockNumber();
 		return new this(provider, ethers.toBeHex(block));
 	}
-	static async resolved(outputs: VMOutput[]): Promise<VMResolvedOutput[]> {
+	static async resolved(outputs: Output[]): Promise<ResolvedOutput[]> {
 		// fully resolve and unwrap the values
 		return Promise.all(outputs.map(async x => {
 			return {...x, value: await x.value()};
@@ -155,12 +188,12 @@ export class VirtualMachine {
 		this.block = block;
 		this.cache = cache ?? new SmartCache();
 	}
-	async getExists(target: string) {
+	async getExists(target: string): Promise<boolean> {
 		// assuming this is cheaper than eth_getProof with 0 slots
 		// why isn't there eth_getCodehash?
 		return this.cache.get(target, t => this.provider.getCode(t, this.block).then(x => x.length > 2));
 	}
-	async getStorage(target: string, slot: BigNumberish) {
+	async getStorage(target: string, slot: BigNumberish): Promise<string> {
 		slot = ethers.toBeHex(slot);
 		return this.cache.get(`${target}:${slot}`, async () => {
 			let value = await this.provider.getStorage(target, slot, this.block)
@@ -171,7 +204,7 @@ export class VirtualMachine {
 			return value;
 		});
 	}
-	async prove(outputs: VMOutput[]): Promise<[accountProofs: Proof, stateProofs: [accountIndex: number, storageProof: Proof[]][]]> {
+	async prove(outputs: Output[]): Promise<[accountProofs: Proof, stateProofs: [accountIndex: number, storageProof: Proof[]][]]> {
 		type Bucket = Map<bigint, string[][] | null> & {index: number, proof: string[]};
 		let targets = new Map<string, Bucket>();
 		let buckets = outputs.map(output => {
@@ -201,15 +234,15 @@ export class VirtualMachine {
 			})
 		];
 	}
-	async execute(req: GatewayRequest) {
-		return VirtualMachine.resolved(await this.eval(req.ops, req.inputs));
+	async execute(req: EVMRequest) {
+		return EVMProver.resolved(await this.eval(req.ops, req.inputs));
 	}
 	async eval(ops: Uint8Array, inputs: string[]) {
 		console.log({ops, inputs});
 		let pos = 1; // skip # outputs
 		let slot = 0n;
 		let target: string = '0x';
-		let outputs: Resolvable<VMOutput>[] = [];
+		let outputs: Resolvable<Output>[] = [];
 		let stack: Resolvable<string>[] = [];
 		const read_byte = () => {
 			let op = ops[pos++];
@@ -222,7 +255,7 @@ export class VirtualMachine {
 		};
 		//const expected = read_byte();
 		outer: while (pos < ops.length) {
-			let op = ops[pos++];
+			let op = read_byte();
 			try {
 				switch (op) {
 					case OP_TARGET: {
@@ -291,9 +324,8 @@ export class VirtualMachine {
 						break;
 					}
 					case OP_STACK_CONCAT: {
-						const n = 2;
-						if (stack.length < n) throw new Error('concat underflow');
-						stack.splice(stack.length-n, n, ethers.concat(await Promise.all(stack.slice(-n))));
+						let n = read_byte();
+						stack.splice(Math.max(0, stack.length-n), n, n ? ethers.concat(await Promise.all(stack.slice(-n))) : '0x');
 						break;
 					}
 					case OP_STACK_SLICE: {
@@ -322,14 +354,9 @@ export class VirtualMachine {
 				throw err;
 			}
 		}
-		// this is no longer true with _FIRST ops
-		// nor is this true if we allow early termination 
-		// if (outputs.length != expected) {
-		// 	throw Object.assign(new Error('output mismatch', {outputs, expected}));
-		// }
 		return Promise.all(outputs);
 	}
-	async createOutput(target: string, slot: bigint, step: number): Promise<VMOutput> {
+	async createOutput(target: string, slot: bigint, step: number): Promise<Output> {
 		//console.log({target, slot, step});
 		let first = await this.getStorage(target, slot);
 		let size = parseInt(first.slice(64), 16); // last byte

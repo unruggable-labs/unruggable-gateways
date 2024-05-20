@@ -1,7 +1,7 @@
-import {VirtualMachine, GatewayRequest} from './vm.js';
+import {EVMProver as EVMProver, EVMRequest} from './vm.js';
 import {ethers} from 'ethers';
 
-let vm = await VirtualMachine.latest(new ethers.InfuraProvider());
+let vm = await EVMProver.latest(new ethers.InfuraProvider());
 
 const ENS_REGISTRY = '0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e';
 
@@ -11,9 +11,9 @@ const ENS_REGISTRY = '0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e';
 
 let output = await vm.createOutput(ENS_REGISTRY, 2n, 0);
 console.log(output);
-console.log(await VirtualMachine.resolved([output])); // 0x314159265dD8dbb310642f98f50C066173C1259b
+console.log(await EVMProver.resolved([output])); // 0x314159265dD8dbb310642f98f50C066173C1259b
 
-let r = GatewayRequest.create();
+let r = EVMRequest.create();
 r.push(ENS_REGISTRY);
 r.target();
 r.push(0);

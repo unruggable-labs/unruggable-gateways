@@ -117,11 +117,12 @@ library EVMFetcher {
 		addOp(req, a);
 		addOp(req, n);
 	}
+	function concat(GatewayRequest memory req, uint8 n) internal pure {
+		addOp(req, OP_STACK_CONCAT);
+		addOp(req, n);
+	}
  	function keccak(GatewayRequest memory req) internal pure {
 		addOp(req, OP_STACK_KECCAK);
-	}
-	function concat(GatewayRequest memory req) internal pure {
-		addOp(req, OP_STACK_CONCAT);
 	}
 	function first(GatewayRequest memory req) internal pure {
 		addOp(req, OP_STACK_FIRST);
