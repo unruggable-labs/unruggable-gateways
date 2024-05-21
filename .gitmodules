@@ -7,3 +7,6 @@
 [submodule "v2/lib/ens-contracts"]
 	path = v2/lib/ens-contracts
 	url = https://github.com/ensdomains/ens-contracts
+[submodule "v2/lib/buffer"]
+	path = v2/lib/buffer
+	url = https://github.com/ensdomains/buffer
