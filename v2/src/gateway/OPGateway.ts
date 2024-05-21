@@ -69,7 +69,7 @@ export class OPGateway extends EZCCIP {
 				let values = await expander.eval(req.ops, req.inputs);
 				let [[accountProof], [_, storageProofs]] = await expander.prove(values);
 				let witness = ABI_CODER.encode(
-					[`tuple(uint256 l2OutputIndex, ${OutputRootProof} outputRootProof)`, 'tuple(bytes[] stateTrieWitness, bytes[][] storageProofs)'],
+					[`tuple(uint256 outputIndex, ${OutputRootProof})`, 'tuple(bytes[], bytes[][])'],
 					[[output.index, outputRootProof(output)], [accountProof, storageProofs]]
 				);
 				return ABI_CODER.encode(['bytes'], [witness]);
