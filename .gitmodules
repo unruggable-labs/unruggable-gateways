@@ -10,3 +10,6 @@
 [submodule "v2/lib/buffer"]
 	path = v2/lib/buffer
 	url = https://github.com/ensdomains/buffer
+[submodule "v2/lib/optimism"]
+	path = v2/lib/optimism
+	url = https://github.com/ethereum-optimism/optimism
