@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {GatewayRequest} from "./GatewayRequest.sol";
-import {IEVMVerifier} from "./IEVMVerifier.sol";
-import {EVMProofHelper, StateProof} from "./EVMProofHelper.sol";
+import {EVMRequest} from "../EVMRequest.sol";
+import {IEVMVerifier} from "../IEVMVerifier.sol";
+import {EVMProofHelper, StateProof} from "../EVMProofHelper.sol";
 
 import {RLPReader} from "@eth-optimism/contracts-bedrock/src/libraries/rlp/RLPReader.sol";
 import {Hashing, Types} from "@eth-optimism/contracts-bedrock/src/libraries/Hashing.sol";
@@ -30,17 +30,13 @@ contract OPVerifier is IEVMVerifier {
 		context = abi.encode(oracle.latestOutputIndex() - delay);
 	}
 
-	function getStorageValues(bytes memory context, GatewayRequest memory req, bytes memory proof) external view returns (bytes[] memory) {
+	function getStorageValues(bytes memory context, EVMRequest memory req, bytes memory proof) external view returns (bytes[] memory) {
 		uint256 outputIndex = abi.decode(context, (uint256));
 		(
 			Types.OutputRootProof memory outputRootProof, 
 			bytes[][] memory accountProofs,
 			StateProof[] memory stateProofs
 		) = abi.decode(proof, (Types.OutputRootProof, bytes[][], StateProof[]));
-		//uint256 outputCount = uint8(req.ops[0]);
-		// if (outputCount != stateProofs.length) {
-		// 	revert OutputValuesMismatch(outputCount, stateProofs.length);
-		// }
 		Types.OutputProposal memory output = oracle.getL2Output(outputIndex);
 		bytes32 expectedRoot = Hashing.hashOutputRootProof(outputRootProof);
 		if (output.outputRoot != expectedRoot) {

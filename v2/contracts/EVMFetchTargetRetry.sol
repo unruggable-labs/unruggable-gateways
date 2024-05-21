@@ -22,8 +22,8 @@ abstract contract EVMFetchTargetRetry {
 
 	function _nextPair(string[] memory urls) internal view returns (string[] memory rest, string[] memory pair) {
 		if (urls.length == 0) revert OffchainLookupUnanswered();
-		//uint256 index = block.number % urls.length; // FIX ME
-		uint256 index = 0;
+		//uint256 index = 0;
+		uint256 index = block.number % urls.length;
 		rest = new string[](urls.length - 1);
 		for (uint256 i; i < index; i += 1) rest[i] = urls[i];
 		for (uint256 i = index + 1; i < urls.length; i += 1) rest[i-1] = urls[i];

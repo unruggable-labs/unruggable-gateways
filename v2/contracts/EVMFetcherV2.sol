@@ -3,38 +3,38 @@ pragma solidity ^0.8.23;
 
 import "./EVMFetcher.sol";
 
-library EVMFetcherAssembly {
+library EVMFetcherV2 {
 
 	using EVMFetcher for EVMRequest;
 
 	// path operations
 	function target(EVMRequest memory req) internal pure {
-		addOp(req, OP_TARGET);
+		req.addOp(OP_TARGET);
 	}
 	function target_first(EVMRequest memory req) internal pure {
-		addOp(req, OP_TARGET_FIRST);
+		req.addOp(OP_TARGET_FIRST);
 	}
 
 	function collect(EVMRequest memory req, uint8 step) internal pure returns (uint8) {
-		addOp(req, OP_COLLECT);
-		addOp(req, step);
-		return addOutput(req);
+		req.addOp(OP_COLLECT);
+		req.addOp(step);
+		return req.addOutput();
 	}
 	function collect_first(EVMRequest memory req, uint8 step) internal pure returns (uint8) {
-		addOp(req, OP_COLLECT_FIRST);
-		addOp(req, step);
-		return addOutput(req);
+		req.addOp(OP_COLLECT_FIRST);
+		req.addOp(step);
+		return req.addOutput();
 	}
 	
 	// slot operations
 	function follow(EVMRequest memory req) internal pure {
-		addOp(req, OP_SLOT_FOLLOW);
+		req.addOp(OP_SLOT_FOLLOW);
 	}
 	function add(EVMRequest memory req) internal pure {
-		addOp(req, OP_SLOT_ADD);
+		req.addOp(OP_SLOT_ADD);
 	}
 	function set(EVMRequest memory req) internal pure {
-		addOp(req, OP_SLOT_SET);
+		req.addOp(OP_SLOT_SET);
 	}
 
 	// stack operations
@@ -44,36 +44,36 @@ library EVMFetcherAssembly {
 	function push(EVMRequest memory req, address x) internal pure { push(req, abi.encode(x)); }
 	function push(EVMRequest memory req, bytes32 x) internal pure { push(req, abi.encode(x)); }
 	function push(EVMRequest memory req, bytes memory v) internal pure {
-		addOp(req, OP_PUSH);
-		addOp(req, addInput(req, v));
+		req.addOp(OP_PUSH);
+		req.addOp(req.addInput(v));
 	}
 	// this is only useful for very large inputs
 	// input size on average is dwarfed by proof size
 	function push_input(EVMRequest memory req, uint8 ci) internal pure {
-		addOp(req, OP_PUSH);
-		addOp(req, ci);
+		req.addOp(OP_PUSH);
+		req.addOp(ci);
 	}
 	function push_output(EVMRequest memory req, uint8 oi) internal pure {
-		addOp(req, OP_PUSH_OUTPUT);
-		addOp(req, oi);
+		req.addOp(OP_PUSH_OUTPUT);
+		req.addOp(oi);
 	}
 	function push_slot(EVMRequest memory req) internal pure {
-		addOp(req, OP_PUSH_SLOT);
+		req.addOp(OP_PUSH_SLOT);
 	}
 	function slice(EVMRequest memory req, uint8 a, uint8 n) internal pure {
-		addOp(req, OP_STACK_SLICE);
-		addOp(req, a);
-		addOp(req, n);
+		req.addOp(OP_STACK_SLICE);
+		req.addOp(a);
+		req.addOp(n);
 	}
 	function concat(EVMRequest memory req, uint8 n) internal pure {
-		addOp(req, OP_STACK_CONCAT);
-		addOp(req, n);
+		req.addOp(OP_STACK_CONCAT);
+		req.addOp(n);
 	}
  	function keccak(EVMRequest memory req) internal pure {
-		addOp(req, OP_STACK_KECCAK);
+		req.addOp(OP_STACK_KECCAK);
 	}
 	function first(EVMRequest memory req) internal pure {
-		addOp(req, OP_STACK_FIRST);
+		req.addOp(OP_STACK_FIRST);
 	}
 
 }

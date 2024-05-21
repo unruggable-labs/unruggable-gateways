@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {GatewayRequest} from "./GatewayRequest.sol";
-import {IEVMVerifier} from "./IEVMVerifier.sol";
-import {EVMProofHelper, StateProof} from "./EVMProofHelper.sol";
+import {EVMRequest} from "../EVMRequest.sol";
+import {IEVMVerifier} from "../IEVMVerifier.sol";
+import {EVMProofHelper, StateProof} from "../EVMProofHelper.sol";
 
 import {RLPReader} from "@eth-optimism/contracts-bedrock/src/libraries/rlp/RLPReader.sol";
 import {Node, IRollupCore} from "@arbitrum/nitro-contracts/src/rollup/IRollupCore.sol";
@@ -23,7 +23,7 @@ contract Arb1Verifier is IEVMVerifier {
 		context = abi.encode(rollup.latestNodeCreated());
 	}
 
-	function getStorageValues(bytes memory context, GatewayRequest memory req, bytes memory proof) external view returns (bytes[] memory) {
+	function getStorageValues(bytes memory context, EVMRequest memory req, bytes memory proof) external view returns (bytes[] memory) {
 		uint64 nodeNum = abi.decode(context, (uint64));
 		(
 			bytes32 sendRoot,

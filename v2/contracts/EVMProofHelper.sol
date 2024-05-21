@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import "./GatewayRequest.sol";
+import "./EVMRequest.sol";
 import {RLPReader} from "@eth-optimism/contracts-bedrock/src/libraries/rlp/RLPReader.sol";
 import {Bytes} from "@eth-optimism/contracts-bedrock/src/libraries/Bytes.sol";
-import {SecureMerkleTrie} from "../trie-with-nonexistance/SecureMerkleTrie.sol";
+import {SecureMerkleTrie} from "./trie-with-nonexistance/SecureMerkleTrie.sol";
 
 import "forge-std/console2.sol"; // DEBUG
 
@@ -18,7 +18,7 @@ struct StateProof {
 
 struct VMState {
 	uint256 pos;
-	GatewayRequest req;
+	EVMRequest req;
 	uint256 slot;
 	uint256 stackIndex;
 	uint256 proofIndex;
@@ -120,7 +120,7 @@ library EVMProofHelper {
 		}
 	}
 
-	function getStorageValues(GatewayRequest memory req, bytes32 stateRoot, bytes[][] memory accountProofs, StateProof[] memory stateProofs) internal pure returns(bytes[] memory) {
+	function getStorageValues(EVMRequest memory req, bytes32 stateRoot, bytes[][] memory accountProofs, StateProof[] memory stateProofs) internal pure returns(bytes[] memory) {
 		//console2.log("[accounts=%s states=%s]", accountProofs.length, stateProofs.length);
 		VMState memory state;
 		state.req = req;
@@ -183,7 +183,7 @@ library EVMProofHelper {
 				state.stackIndex = 0;
 				state.push(v);
 			} else {
-				revert InvalidGatewayRequest();
+				revert RequestInvalid();
 			}
 		}
 		return state.outputs;
