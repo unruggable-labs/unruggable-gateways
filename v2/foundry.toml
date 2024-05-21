@@ -1,13 +1,13 @@
 [profile.default]
 src = "contracts"
 
-# remappings = [
-# 	'@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/',
-# 	'@ensdomains/ens-contracts/=lib/ens-contracts/',
-# 	'@ensdomains/buffer=lib/buffer',
-# 	'@eth-optimism/=lib/optimism/packages/',
-# 	'@arbitrum/nitro-contracts/=lib/nitro-contracts/'
-# ]
+remappings = [
+	'@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/',
+	'@ensdomains/ens-contracts/=lib/ens-contracts/',
+	'@ensdomains/buffer=lib/buffer',
+	'@eth-optimism/=lib/optimism/packages/',
+	'@arbitrum/nitro-contracts/=lib/nitro-contracts/'
+]
 
 optimizer = true
 optimizer_runs = 200

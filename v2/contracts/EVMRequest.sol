@@ -25,13 +25,13 @@ uint8 constant OP_STACK_CONCAT	= 31;
 uint8 constant OP_STACK_SLICE	= 32;
 uint8 constant OP_STACK_FIRST	= 33;
 
-struct GatewayRequest {
+struct EVMRequest {
 	bytes ops;
 	bytes[] inputs;
 }
 
 interface GatewayAPI {
-	function fetch(bytes memory context, GatewayRequest memory req) external pure returns (bytes memory witness);
+	function fetch(bytes memory context, EVMRequest memory req) external pure returns (bytes memory witness);
 }
 
 error InvalidGatewayRequest();
