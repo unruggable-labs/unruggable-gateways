@@ -13,3 +13,6 @@
 [submodule "v2/lib/optimism"]
 	path = v2/lib/optimism
 	url = https://github.com/ethereum-optimism/optimism
+[submodule "v2/lib/nitro-contracts"]
+	path = v2/lib/nitro-contracts
+	url = https://github.com/offchainlabs/nitro-contracts
