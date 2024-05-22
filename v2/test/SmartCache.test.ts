@@ -1,5 +1,6 @@
-import {SmartCache} from './SmartCache.js';
+import {SmartCache} from '../src/SmartCache.js';
 
+// TODO: fix me
 
 let cache = new SmartCache<string,number>();
 

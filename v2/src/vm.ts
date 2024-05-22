@@ -1,19 +1,32 @@
-import type {BytesLike, BigNumberish, Proof, Provider, Resolvable} from './types.js';
-import {ethers} from 'ethers';
+import type {Proof, Provider, Resolvable} from './types.js';
+import type {BytesLike, BigNumberish, Block/*ParamType*/} from 'ethers';
+import {Interface/*, AbiCoder*/} from 'ethers/abi';
+import {hexlify, toBeHex, toUtf8Bytes, getBytes, concat, dataSlice} from 'ethers/utils';
+import {solidityPackedKeccak256} from 'ethers/hash';
+import {keccak256} from 'ethers/crypto';
+import {ZeroAddress} from 'ethers/constants';
 import {SmartCache} from './SmartCache.js';
+
+type RPCEthGetProof = {
+	accountProof: Proof;
+	storageProof: {proof: Proof}[];
+};
 
 const MAX_OUTPUTS = 255;
 const MAX_INPUTS = 255;
+//const MAX_STACK = 32;
 
 const OP_TARGET			= 1;
 const OP_TARGET_FIRST	= 2;
 
 const OP_COLLECT		= 5;
 const OP_COLLECT_FIRST  = 6;
+const OP_COLLECT_RANGE	= 7;
 
 const OP_PUSH			= 10;
 const OP_PUSH_OUTPUT	= 11;
 const OP_PUSH_SLOT		= 12;
+const OP_PUSH_TARGET	= 13;
 
 const OP_SLOT_ADD		= 20;
 const OP_SLOT_FOLLOW	= 21;
@@ -24,45 +37,91 @@ const OP_STACK_CONCAT   = 31;
 const OP_STACK_SLICE	= 32;
 const OP_STACK_FIRST	= 33;
 
-export const GATEWAY_ABI = new ethers.Interface([
-	`function fetch(bytes context, tuple(bytes, bytes[]) request) returns (bytes memory)`
+export const GATEWAY_ABI = new Interface([
+	// v1
+	`function getStorageSlots(address addr, bytes32[] memory commands, bytes[] memory constants) external pure returns(bytes memory witness)`,
+	// v2
+	`function fetch(bytes context, tuple(bytes ops, bytes[] inputs) request) returns (bytes memory)`
 ]);
 
-function uint256_from_bytes(hex: string) {
+function uint256FromHex(hex: string) {
 	// the following should be equivalent to EVMProofHelper._toUint256()
 	return hex === '0x' ? 0n : BigInt(hex.slice(0, 66));
 }
-function address_from_bytes(hex: string) {
+function addressFromHex(hex: string) {
 	// the following should be equivalent to: address(uint160(_toUint256(x)))
 	return '0x' + (hex.length >= 66 ? hex.slice(26, 66) : hex.slice(2).padStart(40, '0').slice(-40)).toLowerCase();
 }
+function isNonzeroHex(hex: string) {
+	return !/^0x0*$/.test(hex);
+}
 
-export class EVMRequest {
-	static create(n = 1024) {
-		return new this(new Uint8Array(n));
-	} 
-	static from_v1(target: string, commands: string[], constants: string[]) {
-		let req = this.create();
-		req.push(target);
+export class EVMRequestV1 {
+	target: string;
+	readonly commands: string[];
+	readonly constants: string[];
+	private readonly buf: number[];
+	constructor(target = ZeroAddress, commands: string[] = [], constants: string[] = []) {
+		this.target = target;
+		this.commands = commands;
+		this.constants = constants;
+		this.buf = [];
+	}
+	private addConst(x: BytesLike) {
+		if (this.constants.length >= 32) throw new Error('constants overflow');
+		this.constants.push(hexlify(x));
+		return this.constants.length-1;
+	}
+	private start(flags: number, slot: BigNumberish) {
+		this.end();
+		this.buf.push(flags, this.addConst(toBeHex(slot, 32)));
+		return this;
+	}
+	end() {
+		let {buf} = this;
+		if (!buf.length) return;
+		if (buf.length < 32 && buf[buf.length-1] != 0xFF) buf.push(0xFF);
+		let word = new Uint8Array(32);
+		word.set(buf);
+		this.commands.push(hexlify(word));
+		buf.length = 0;
+	}
+	getStatic(slot: BigNumberish)  { return this.start(0, slot); }
+	getDynamic(slot: BigNumberish) { return this.start(1, slot); }
+	ref(i: number) {
+		this.buf.push((1 << 5) | i);
+		return this;
+	}
+	element(x: BigNumberish) { return this.elementBytes(toBeHex(x, 32)); }
+	elementStr(s: string) { return this.elementBytes(toUtf8Bytes(s)); }
+	elementBytes(x: BytesLike) {
+		this.buf.push(this.addConst(x));
+		return this;
+	}
+	encode() {
+		this.end();
+		return GATEWAY_ABI.encodeFunctionData('getStorageSlots', [this.target, this.commands, this.constants]);
+	}
+	v2() {
+		this.end();
+		let req = new EVMRequest();
+		req.push(this.target);
 		req.target();
-		for (let cmd of commands) {
+		for (let cmd of this.commands) {
 			try {
-				let v = ethers.getBytes(cmd);
-				req.push(constants[v[1]]); // first op is initial slot offset
-				req.add();
+				let v = getBytes(cmd);
+				req.setSlot(this.constants[v[1]]); // first op is initial slot offset
 				for (let i = 2; i < v.length; i++) {
 					let op = v[i];
 					if (op === 0xFF) break;
 					let operand = op & 0x1F;
 					switch (op >> 5) {
 						case 0: { // OP_CONSTANT
-							req.push_bytes(constants[operand]);
-							req.follow();
+							req.pushBytes(this.constants[operand]).follow();
 							continue;
 						}
 						case 1: { // OP_BACKREF
-							req.push_output(operand);
-							req.follow();
+							req.pushOutput(operand).follow();
 							continue;
 						}
 						default: throw new Error(`unknown op: ${op}`);
@@ -71,13 +130,17 @@ export class EVMRequest {
 				req.collect(v[0] & 1);
 			} catch (err) {
 				Object.assign(err!, {cmd});
+				throw err;
 			}
 		}
 		return req;
 	}
+}
+
+export class EVMRequest {
 	static decode(data: BytesLike) {
 		let [context, [ops, inputs]] = GATEWAY_ABI.decodeFunctionData('fetch', data);
-		ops = ethers.getBytes(ops);
+		ops = getBytes(ops);
 		let r = new this(ops, inputs, ops.length);
 		r.context = context;
 		return r;
@@ -85,8 +148,8 @@ export class EVMRequest {
 	private buf: Uint8Array;
 	private pos: number;
 	readonly inputs: string[];
-	public context?: string;
-	constructor(buf: Uint8Array, inputs: string[] = [], pos: number = 1) {
+	context?: string;
+	constructor(buf = new Uint8Array(1024), inputs: string[] = [], pos: number = 1) {
 		this.buf = buf;
 		this.pos = pos;
 		this.inputs = inputs;
@@ -97,62 +160,78 @@ export class EVMRequest {
 	get ops(): Uint8Array {
 		return this.buf.slice(0, this.pos);
 	}
-	private add_op(op: number) {
-		if ((op & 255) !== op) throw Object.assign(new Error('expected byte'), {op});
-		let i = this.pos;
-		if (i === this.buf.length) throw new Error('op overflow');
-		this.buf[i] = op;
-		this.pos = i + 1;
+	private addOp(op: number) {
+		// if (Number.isSafeInteger(op) || op < 0) throw Object.assign(new Error('invalid op'), {op});
+		// while (op > 127) {
+		// 	this.buf[this.pos++] = (op & 127) | 128;
+		// 	op >>= 7;
+		// }
+		// this.buf[this.pos++] = op;
+		if ((op & 0xFF) !== op) throw Object.assign(new Error('expected uint8'), {op});
+		if (this.pos >= this.buf.length) throw new Error('op overflow');
+		this.buf[this.pos++] = op;
+		return this;
 	}
-	private add_input(v: BytesLike) {
+	// private addBigOp(arg: number) {
+	// 	if ((arg & 0xFFFFFF) !== arg) throw Object.assign(new Error('expected uint24'), {arg});
+	// 	if (this.pos + 3 >= this.buf.length) throw new Error('op overflow');
+	// 	this.buf[this.pos++] = arg >> 16;
+	// 	this.buf[this.pos++] = arg >> 8;
+	// 	this.buf[this.pos++] = arg;
+	// 	return this;
+	// }
+	private addInput(v: BytesLike) {
 		if (this.inputs.length == MAX_INPUTS) throw new Error('inputs overflow');
-		this.inputs.push(ethers.hexlify(v));
+		this.inputs.push(hexlify(v));
 		return this.inputs.length-1;
 	}
-	private add_output() {
+	private addOutput() {
 		let oi = this.buf[0];
 		if (oi == MAX_OUTPUTS) throw new Error('outputs overflow');
 		this.buf[0] = oi + 1;
 		return oi;
 	}
-	target() { this.add_op(OP_TARGET); }
-	target_first() { this.add_op(OP_TARGET_FIRST); }
-	collect(step: number) {
-		this.add_op(OP_COLLECT);
-		this.add_op(step);
-		return this.add_output();
-	}
-	collect_first(step: number) {
-		this.add_op(OP_COLLECT_FIRST);
-		this.add_op(step);
-		return this.add_output();
-	}
-	//push_abi(type, x) { return this.push_bytes(ethers.AbiCoder.defaultAbiCoder().encode([type], [x])); }
-	push(x: BigNumberish) { this.push_bytes(ethers.toBeHex(x, 32)); }
-	push_str(x: string) { this.push_bytes(ethers.toUtf8Bytes(x)); }
-	push_bytes(x: BytesLike) {
-		this.add_op(OP_PUSH);
-		this.add_op(this.add_input(x));
-	}
-	push_slot() { this.add_op(OP_PUSH_SLOT); }
-	push_output(oi: number) {
-		this.add_op(OP_PUSH_OUTPUT);
-		this.add_op(oi);
-	}
-	slice(x: number, n: number) {
-		this.add_op(OP_STACK_SLICE);
-		this.add_op(x);
-		this.add_op(n);
-	}
-	concat(n: number) { 
-		this.add_op(OP_STACK_CONCAT); 
-		this.add_op(n);
-	}
-	follow() { this.add_op(OP_SLOT_FOLLOW); }
-	add()    { this.add_op(OP_SLOT_ADD); }
-	set()    { this.add_op(OP_SLOT_SET); }
-	keccak() { this.add_op(OP_STACK_KECCAK); }
-	first()  { this.add_op(OP_STACK_FIRST); }
+
+	target() { return this.addOp(OP_TARGET); }
+	firstTarget() { return this.addOp(OP_TARGET_FIRST); }
+	setTarget(address: string) { return this.push(address).target(); }
+	
+	collect(step: number) { return this.addOp(OP_COLLECT).addOp(step).addOutput(); }
+	getValue() { this.collect(0); return this; }
+	getBytes() { this.collect(1); return this; }
+
+	collectFirstNonzero(step: number) { return this.addOp(OP_COLLECT_FIRST).addOp(step).addOutput(); }
+	firstNonzeroValue() { this.collectFirstNonzero(0); return this; }
+	firstNonzeroBytes() { this.collectFirstNonzero(1); return this; }
+
+	collectRange(len: number) { return this.addOp(OP_COLLECT_RANGE).addOp(len).addOutput(); } // bigOp
+	getValues(len: number) { this.collectRange(len); return this; }
+
+	//pushTyped(type: string | ParamType, value: any) { return this.pushBytes(AbiCoder.defaultAbiCoder().encode([type], [value])); }
+	push(x: BigNumberish) { return this.pushBytes(toBeHex(x, 32)); }
+	pushStr(s: string) { return this.pushBytes(toUtf8Bytes(s)); }
+	pushBytes(x: BytesLike) { return this.addOp(OP_PUSH).addOp(this.addInput(x)); }
+	pushOutput(oi: number) { return this.addOp(OP_PUSH_OUTPUT).addOp(oi); }
+
+	pushTargetRegister() { return this.addOp(OP_PUSH_TARGET); }
+	pushSlotRegister() { return this.addOp(OP_PUSH_SLOT); }
+
+	add() { return this.addOp(OP_SLOT_ADD); }
+	set() { return this.addOp(OP_SLOT_SET); }
+	setSlot(slot: BigNumberish) { return this.push(slot).set(); }
+	addSlot(slot: BigNumberish) { return this.push(slot).add(); }
+
+	follow() { return this.addOp(OP_SLOT_FOLLOW); }
+	element(slot: BigNumberish) { return this.push(slot).follow(); }
+	elementStr(s: string) { return this.pushStr(s).follow(); }
+	elementBytes(x: BytesLike) { return this.pushBytes(x).follow(); }
+	elementOutput(oi: number) { return this.pushOutput(oi).follow(); }
+
+	concat(n: number) { return this.addOp(OP_STACK_CONCAT).addOp(n); }
+	keccak() { return this.addOp(OP_STACK_KECCAK); }
+	replaceWithFirstNonzero() { return this.addOp(OP_STACK_FIRST); }
+	
+	slice(pos: number, len: number) { return this.addOp(OP_STACK_SLICE).addOp(pos).addOp(len); } // bigOp
 }
 
 type OutputHeader = {
@@ -162,31 +241,38 @@ type OutputHeader = {
 export type Output = OutputHeader & {
 	size?: number;
 	parent?: EVMProver;
+	hidden?: boolean;
 	value(): Promise<string>;
 };
 export type ResolvedOutput = OutputHeader & {value: string};
 
-
-
 export class EVMProver {
 	static async latest(provider: Provider) {
 		let block = await provider.getBlockNumber();
-		return new this(provider, ethers.toBeHex(block));
+		return new this(provider, toBeHex(block));
 	}
 	static async resolved(outputs: Output[]): Promise<ResolvedOutput[]> {
 		// fully resolve and unwrap the values
-		return Promise.all(outputs.map(async x => {
+		return Promise.all(outputs.filter(x => !x.hidden).map(async x => {
 			return {...x, value: await x.value()};
 		}));
 	}
+	static async executed(provider: Provider, req: EVMRequest) {
+		// get resolved outputs from request at latest block of provider
+		let p = await this.latest(provider);
+		return p.execute(req);
+	}
 	readonly provider: Provider;
 	readonly block: string;
-	readonly max_bytes: number = 1 << 13; // 8KB;
+	readonly maxBytes: number = 1 << 13; // 8KB;
 	private cache: SmartCache;
 	constructor(provider: Provider, block: string, cache?: SmartCache) {
 		this.provider = provider;
 		this.block = block;
 		this.cache = cache ?? new SmartCache();
+	}
+	async getBlock(): Promise<Block> {
+		return this.cache.get('BLOCK', () => this.provider.getBlock(this.block));
 	}
 	async getExists(target: string): Promise<boolean> {
 		// assuming this is cheaper than eth_getProof with 0 slots
@@ -194,18 +280,19 @@ export class EVMProver {
 		return this.cache.get(target, t => this.provider.getCode(t, this.block).then(x => x.length > 2));
 	}
 	async getStorage(target: string, slot: BigNumberish): Promise<string> {
-		slot = ethers.toBeHex(slot);
+		// note: target should be lowercase
+		slot = toBeHex(slot); // canonicalize slot since RPC is picky
 		return this.cache.get(`${target}:${slot}`, async () => {
-			let value = await this.provider.getStorage(target, slot, this.block)
-			if (value !== ethers.ZeroHash) {
-				// any nonzero slot => code exists => contract => non-null storage trie
+			let value = await this.provider.getStorage(target, slot, this.block);
+			if (isNonzeroHex(value)) { // => code exists => is contract => non-null storage trie
 				this.cache.add(target, true);
 			}
 			return value;
 		});
 	}
-	async prove(outputs: Output[]): Promise<[accountProofs: Proof, stateProofs: [accountIndex: number, storageProof: Proof[]][]]> {
-		type Bucket = Map<bigint, string[][] | null> & {index: number, proof: string[]};
+	async prove(outputs: Output[]): Promise<[accountProofs: Proof[], stateProofs: [accountIndex: number, storageProofs: Proof[]][]]> {
+		// deduplicate accounts: [account, slot[]][] into {account => Set<slots>}
+		type Bucket = Map<bigint, string[][] | null> & {index: number, proof: Proof};
 		let targets = new Map<string, Bucket>();
 		let buckets = outputs.map(output => {
 			let bucket = targets.get(output.target);
@@ -214,23 +301,27 @@ export class EVMProver {
 				bucket.index = targets.size;
 				targets.set(output.target, bucket);
 			}
-			output.slots.forEach(x => bucket.set(x, null));
+			output.slots.forEach(slot => bucket.set(slot, null)); // placeholder
 			return bucket;
 		});
+		// prove all slots for a specific account in one RPC
 		// TODO: check eth_getProof limits
 		// https://github.com/ethereum/go-ethereum/blob/9f96e07c1cf87fdd4d044f95de9c1b5e0b85b47f/internal/ethapi/api.go#L707 
 		// 20240501: no limit, just response size
 		await Promise.all(Array.from(targets, async ([target, bucket]) => {
-			let slots = [...bucket.keys()];
-			let proof = await this.provider.send('eth_getProof', [target, slots.map(x => ethers.toBeHex(x, 32)), this.block]);
+			let slots = [...bucket.keys()]; // order doesn't matter
+			let proof = await this.provider.send('eth_getProof', [target, slots.map(x => toBeHex(x, 32)), this.block]) as RPCEthGetProof;
 			bucket.proof = proof.accountProof;
-			slots.forEach((key, i) => bucket.set(key, proof.storageProof[i].proof));
+			slots.forEach((slot, i) => bucket.set(slot, proof.storageProof[i].proof)); // replace placeholder
 		}));
+		// note: duplicate [account, slot]-pairs not not deduplicated but unlikely in practice
 		return [
+			// ordered account proofs
 			Array.from(targets.values(), x => x.proof),
+			// ordered storage proofs, where index into account proofs
 			outputs.map((output, i) => {
 				let bucket = buckets[i];
-				return [bucket.index, output.slots.map(x => bucket.get(x) as Proof)];
+				return [bucket.index, output.slots.map(x => bucket.get(x) as Proof)]; // ordered storage proofs per account
 			})
 		];
 	}
@@ -238,38 +329,37 @@ export class EVMProver {
 		return EVMProver.resolved(await this.eval(req.ops, req.inputs));
 	}
 	async eval(ops: Uint8Array, inputs: string[]) {
-		console.log({ops, inputs});
 		let pos = 1; // skip # outputs
 		let slot = 0n;
-		let target: string = '0x';
+		let target: string = ZeroAddress;
 		let outputs: Resolvable<Output>[] = [];
 		let stack: Resolvable<string>[] = [];
-		const read_byte = () => {
+		const readByte = () => {
 			let op = ops[pos++];
 			if (pos > ops.length) throw new Error('op overflow');
 			return op;
 		};
-		const pop_stack = () => {
+		const popStack = () => {
 			if (!stack.length) throw new Error('stack underflow');
 			return stack.pop()!;
 		};
-		//const expected = read_byte();
 		outer: while (pos < ops.length) {
-			let op = read_byte();
+			let op = readByte();
 			try {
 				switch (op) {
 					case OP_TARGET: {
-						target = address_from_bytes(await pop_stack());
+						target = addressFromHex(await popStack());
 						slot = 0n;
 						break;
 					}
 					case OP_TARGET_FIRST: {
 						let exists;
 						while (stack.length && !exists) {
-							target = address_from_bytes(await pop_stack());
+							target = addressFromHex(await popStack());
 							outputs.push({
-								target, 
-								slots: [], 
+								target,
+								slots: [],
+								hidden: true,
 								async value() { return ''; }
 							});
 							exists = await this.getExists(target);
@@ -280,66 +370,89 @@ export class EVMProver {
 						break;
 					}
 					case OP_COLLECT: {
-						outputs.push(this.createOutput(target, slot, read_byte()));
+						outputs.push(this.createOutput(target, slot, readByte()));
+						slot = 0n;
+						break;
+					}
+					case OP_COLLECT_RANGE: {
+						let n = readByte();
+						let output = {
+							parent: this,
+							target,
+							size: n << 5,
+							slots: Array.from({length: n}, (_, i) => slot + BigInt(i)),
+							value() {
+								let p = Promise.all(this.slots.map(x => this.parent.getStorage(this.target, x))).then(concat);
+								this.value = () => p;
+								return p;
+							}
+						};
+						outputs.push(output);
 						slot = 0n;
 						break;
 					}
 					case OP_COLLECT_FIRST: {
-						let step = read_byte();
+						let step = readByte();
 						while (stack.length) { // TODO: make this parallel or batched?
-							let output = await this.createOutput(target, uint256_from_bytes(await pop_stack()), step);
+							let output = await this.createOutput(target, uint256FromHex(await popStack()), step);
 							outputs.push(output);
-							if (step == 0 ? uint256_from_bytes(await output.value()) : output.size) break;
+							if (output.size && isNonzeroHex(await output.value())) break;
+							output.hidden = stack.length > 0;
 						}
 						stack.length = 0;
 						slot = 0n;
 						break;
 					}
 					case OP_PUSH: { 
-						stack.push(inputs[read_byte()]);
+						stack.push(inputs[readByte()]);
 						break;
 					}
 					case OP_PUSH_OUTPUT: {
-						stack.push(Promise.resolve(outputs[read_byte()]).then(x => x.value()));
+						stack.push(Promise.resolve(outputs[readByte()]).then(x => x.value()));
 						break;
 					}
 					case OP_PUSH_SLOT: {
-						stack.push(ethers.toBeHex(slot, 32));
+						stack.push(toBeHex(slot, 32));
+						// TODO: should this reset slot?
+						break;
+					}
+					case OP_PUSH_TARGET: {
+						stack.push(target);
 						break;
 					}
 					case OP_SLOT_ADD: {
-						slot += uint256_from_bytes(await pop_stack());
+						slot += uint256FromHex(await popStack());
 						break;
 					}
 					case OP_SLOT_SET: {
-						slot = uint256_from_bytes(await pop_stack());
+						slot = uint256FromHex(await popStack());
 						break;
 					}
 					case OP_SLOT_FOLLOW: {
-						slot = BigInt(ethers.keccak256(ethers.concat([await pop_stack(), ethers.toBeHex(slot, 32)])));
+						slot = BigInt(keccak256(concat([await popStack(), toBeHex(slot, 32)])));
 						break;
 					}
 					case OP_STACK_KECCAK: {
-						stack.push(ethers.keccak256(await pop_stack()));
+						stack.push(keccak256(await popStack()));
 						break;
 					}
 					case OP_STACK_CONCAT: {
-						let n = read_byte();
-						stack.splice(Math.max(0, stack.length-n), n, n ? ethers.concat(await Promise.all(stack.slice(-n))) : '0x');
+						let n = readByte();
+						stack.splice(Math.max(0, stack.length-n), n, n ? concat(await Promise.all(stack.slice(-n))) : '0x');
 						break;
 					}
 					case OP_STACK_SLICE: {
-						let x = read_byte();
-						let n = read_byte();
-						stack.push(ethers.dataSlice(await pop_stack(), x, x + n));
+						let x = readByte();
+						let n = readByte();
+						stack.push(dataSlice(await popStack(), x, x + n));
 						break;
 					}
 					case OP_STACK_FIRST: {
 						let first = '0x';
 						while (stack.length) {
-							let v = await pop_stack();
-							if (!/^0x0*$/.test(v)) {
-								first = v;
+							let value = await popStack();
+							if (isNonzeroHex(value)) {
+								first = value;
 								break;
 							}
 						}
@@ -364,13 +477,13 @@ export class EVMProver {
 			let p = Promise.resolve(first);
 			return {
 				target,
-				size: size > 0 ? 32 : 0, // size is falsy on zero 
+				size: size ? 32 : 0, // size is falsy on zero 
 				slots: [slot],
 				value: () => p
 			};
 		} else if (step == 1 && !(size & 1)) { // small bytes
 			size >>= 1;
-			let p = Promise.resolve(ethers.dataSlice(first, 0, size));
+			let p = Promise.resolve(dataSlice(first, 0, size));
 			return {
 				target,
 				size,
@@ -379,9 +492,9 @@ export class EVMProver {
 			};
 		}
 		let big = (BigInt(first) >> 1n) * BigInt(step); // this could be done with Number()
-		if (big > this.max_bytes) throw Object.assign(new Error('dynamic overflow'), {size: big, max: this.max_bytes});
+		if (big > this.maxBytes) throw Object.assign(new Error('dynamic overflow'), {size: big, max: this.maxBytes});
 		size = Number(big);
-		let offset = BigInt(ethers.solidityPackedKeccak256(['uint256'], [slot]));
+		let offset = BigInt(solidityPackedKeccak256(['uint256'], [slot]));
 		let slots = [slot, ...Array.from({length: (size + 31) >> 5}, (_, i) => offset + BigInt(i))];
 		let output = {
 			parent: this,
@@ -390,7 +503,7 @@ export class EVMProver {
 			size,
 			value() {
 				let p = Promise.all(this.slots.slice(1).map(x => this.parent.getStorage(this.target, x))).then(v => {
-					return ethers.dataSlice(ethers.concat(v), 0, size);
+					return dataSlice(concat(v), 0, this.size);
 				});
 				this.value = () => p;
 				return p;

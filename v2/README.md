@@ -14,8 +14,9 @@
 
 ## Test
 
-* `bun src/SmartCache.test.ts`
-* `bun src/vm.test.ts`
+* `bun test test/EVMRequestV1vsV2.test.ts`
+* `bun test test/MultiTarget.test.ts`
+* `bun test test/vm.test.ts`
 
 ---
 

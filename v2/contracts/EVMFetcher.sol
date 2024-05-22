@@ -30,6 +30,11 @@ library EVMFetcher {
 			}
 		}
 	}
+	// function addBigOp(EVMRequest memory req, uint24 i) internal pure {
+	// 	addOp(req, uint8(i >> 16));
+	// 	addOp(req, uint8(i >> 8));
+	// 	addOp(req, uint8(i));
+	// }
 
 	function addInput(EVMRequest memory req, bytes memory v) internal pure returns (uint8 ci) {
 		unchecked {

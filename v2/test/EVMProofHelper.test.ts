@@ -1,0 +1,72 @@
+import {ethers} from 'ethers';
+import {Foundry, type DeployedContract} from '@adraffy/blocksmith';
+import {EVMProver, EVMRequest} from '../src/vm.js';
+import {CHAIN_BASE, createProvider, providerURL} from './providers.js';
+import {decodeType} from './utils.js';
+import assert from 'node:assert/strict';
+
+//describe('EVMProofHelper', () => {
+let foundry: Foundry;
+let verifier: DeployedContract;
+let prover: EVMProver;
+let block: ethers.Block;
+beforeAll(async () => {
+	foundry = await Foundry.launch({fork: providerURL(1)});
+	verifier = await foundry.deploy({sol: `
+		import "@src/EVMProofHelper.sol";
+		contract Verifier {
+			function getStorageValues(
+				EVMRequest memory req, 
+				bytes32 stateRoot, 
+				bytes[][] memory accountProofs, 
+				StateProof[] memory stateProofs
+			) external pure returns(bytes[] memory) {
+				return EVMProofHelper.getStorageValues(req, stateRoot, accountProofs, stateProofs);
+			}
+		}
+	`});
+	prover = await EVMProver.latest(createProvider(CHAIN_BASE));
+	block = await prover.getBlock();
+});
+afterAll(async () => {
+	await foundry?.shutdown();
+});
+
+async function prove(r: EVMRequest): Promise<string[]> {
+	let outputs = await prover.eval(r.ops, r.inputs);
+	let [accountProofs, stateProofs] = await prover.prove(outputs);
+	return verifier.getStorageValues([r.ops, r.inputs], block.stateRoot, accountProofs, stateProofs);
+}
+
+test('TeamNickPointer', async () => {
+	// https://basescan.org/address/0x0f1449C980253b576aba379B11D453Ac20832a89	
+	let values = await prove(new EVMRequest().setTarget('0x0f1449C980253b576aba379B11D453Ac20832a89').getValue());
+	assert.equal(decodeType('address', values[0]), '0x7C6EfCb602BC88794390A0d74c75ad2f1249A17f');
+});
+
+test('TeamNickPointer => TeamNick.baseURI()', async () => {
+	// https://basescan.org/address/0x7C6EfCb602BC88794390A0d74c75ad2f1249A17f
+	let values = await prove(new EVMRequest()
+		.setTarget('0x0f1449C980253b576aba379B11D453Ac20832a89').getValue()
+		.pushOutput(0).target()
+		.setSlot(9).getBytes());
+	assert.equal(ethers.toUtf8String(values[1]), 'https://teamnick.xyz/nft/');
+});
+
+test('firstTarget()', async () => {
+	let r = new EVMRequest();
+	r.push('0x0f1449C980253b576aba379B11D453Ac20832a89'); // TeamNickPointer
+	r.push('0x51050ec063d393217B436747617aD1C2285Aeeee'); // EOA
+	r.push('0x0000000000000000000000000000000000000000'); // doesn't exist
+	r.firstTarget();
+	r.getValue();
+	let values = await prove(r);
+	assert.equal(decodeType('address', values[0]), '0x7C6EfCb602BC88794390A0d74c75ad2f1249A17f');
+});
+
+test('collectRange()', async () => {
+	let values = await prove(new EVMRequest()
+		.setTarget('0x7C6EfCb602BC88794390A0d74c75ad2f1249A17f')
+		.getValues(20));
+	assert.equal(ethers.getBytes(values[0]).length, 20 << 5);
+});

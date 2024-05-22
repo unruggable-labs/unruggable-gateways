@@ -86,6 +86,14 @@ library EVMProofHelper {
 			}
 		}
 	}
+	function proveOutputRange(bytes32 storageRoot, bytes[][] memory storageProofs, uint256 slot, uint256 count) internal pure returns (bytes memory v) {
+		v = new bytes(count << 5);
+		for (uint256 i; i < count; ) {
+			uint256 value = getStorage(storageRoot, slot + i, storageProofs[i]);
+			i += 1;
+			assembly { mstore(add(v, shl(5, i)), value) }
+		}
+	}
 
 	using EVMProofHelper for VMState;
 
@@ -124,7 +132,7 @@ library EVMProofHelper {
 		//console2.log("[accounts=%s states=%s]", accountProofs.length, stateProofs.length);
 		VMState memory state;
 		state.req = req;
-		state.stack = new bytes[](16);
+		state.stack = new bytes[](MAX_STACK);
 		state.outputs = new bytes[](state.next_op());
 		while (state.has_ops()) {
 			uint256 op = state.next_op();
@@ -152,6 +160,9 @@ library EVMProofHelper {
 				state.add_output(v);
 				state.stackIndex = 0;
 				state.slot = 0;
+			} else if (op == OP_COLLECT_RANGE) {
+				state.add_output(proveOutputRange(state.storageRoot, stateProofs[state.proofIndex++].storageProofs, state.slot, state.next_op()));
+				state.slot = 0;
 			} else if (op == OP_COLLECT) {
 				state.add_output(proveOutput(state.storageRoot, stateProofs[state.proofIndex++].storageProofs, state.slot, state.next_op()));
 				state.slot = 0;
@@ -161,6 +172,8 @@ library EVMProofHelper {
 				state.push(abi.encodePacked(state.outputs[state.next_op()]));
 			} else if (op == OP_PUSH_SLOT) {
 				state.push(abi.encode(state.slot));
+			} else if (op == OP_PUSH_TARGET) {
+				state.push(abi.encode(state.target));
 			} else if (op == OP_SLOT_ADD) {
 				state.slot += state.pop_uint256();
 			} else if (op == OP_SLOT_SET) {

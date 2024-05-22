@@ -1,4 +1,4 @@
-import {EVMProver as EVMProver, EVMRequest} from './vm.js';
+import {EVMProver, EVMRequest} from '../src/vm.js';
 import {ethers} from 'ethers';
 
 let vm = await EVMProver.latest(new ethers.InfuraProvider());
@@ -13,10 +13,17 @@ let output = await vm.createOutput(ENS_REGISTRY, 2n, 0);
 console.log(output);
 console.log(await EVMProver.resolved([output])); // 0x314159265dD8dbb310642f98f50C066173C1259b
 
-let r = EVMRequest.create();
-r.push(ENS_REGISTRY);
-r.target();
-r.push(0);
-r.follow();
-r.collect(0); // owner of root: 0xaB528d626EC275E3faD363fF1393A41F581c5897
-console.log(await vm.execute(r)); 
+{
+	let r = new EVMRequest();
+	r.push(ENS_REGISTRY);
+	r.target();
+	r.push(0);
+	r.follow();
+	r.collect(0); // owner of root: 0xaB528d626EC275E3faD363fF1393A41F581c5897
+	console.log(await vm.execute(r)); 
+}
+
+console.log(await vm.execute(new EVMRequest().setTarget(ENS_REGISTRY).element(0).getValue()));
+
+
+console.log(await vm.execute(new EVMRequest().setTarget('0xE68d1aEeE2C17E43A955103DaB5E341eE439f55c').collectRange(20)));

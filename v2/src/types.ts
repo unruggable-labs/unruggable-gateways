@@ -1,6 +1,4 @@
-import type {BytesLike, BigNumberish, JsonRpcApiProvider} from 'ethers';
-
-export type {BytesLike, BigNumberish};
+import type {JsonRpcApiProvider} from 'ethers';
 
 export type Resolvable<T> = T | Promise<T>;
 export type Proof = string[][];
