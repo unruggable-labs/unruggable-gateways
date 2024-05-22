@@ -141,18 +141,20 @@ export class EVMRequest {
 	static decode(data: BytesLike) {
 		let [context, [ops, inputs]] = GATEWAY_ABI.decodeFunctionData('fetch', data);
 		ops = getBytes(ops);
-		let r = new this(ops, inputs, ops.length);
-		r.context = context;
-		return r;
+		return new this(ops, inputs, ops.length, context);
 	}
 	private buf: Uint8Array;
 	private pos: number;
 	readonly inputs: string[];
-	context?: string;
-	constructor(buf = new Uint8Array(1024), inputs: string[] = [], pos: number = 1) {
+	context: string | undefined;
+	constructor(buf = new Uint8Array(1024), inputs: string[] = [], pos: number = 1, context?: string) {
 		this.buf = buf;
 		this.pos = pos;
 		this.inputs = inputs;
+		this.context = context;
+	}
+	clone() {
+		return new EVMRequest(this.buf.slice(), this.inputs.slice(), this.pos, this.context);
 	}
 	encode(context?: string) {
 		return GATEWAY_ABI.encodeFunctionData('fetch', [context ?? this.context ?? '0x', [this.ops, this.inputs]]);
@@ -375,19 +377,7 @@ export class EVMProver {
 						break;
 					}
 					case OP_COLLECT_RANGE: {
-						let n = readByte();
-						let output = {
-							parent: this,
-							target,
-							size: n << 5,
-							slots: Array.from({length: n}, (_, i) => slot + BigInt(i)),
-							value() {
-								let p = Promise.all(this.slots.map(x => this.parent.getStorage(this.target, x))).then(concat);
-								this.value = () => p;
-								return p;
-							}
-						};
-						outputs.push(output);
+						outputs.push(this.createOutputRange(target, slot, readByte()));
 						slot = 0n;
 						break;
 					}
@@ -468,6 +458,20 @@ export class EVMProver {
 			}
 		}
 		return Promise.all(outputs);
+	}
+	createOutputRange(target: string, slot: bigint, length: number): Output {
+		let output = {
+			parent: this,
+			target,
+			size: length << 5,
+			slots: Array.from({length}, (_, i) => slot + BigInt(i)),
+			value() {
+				let p = Promise.all(this.slots.map(x => this.parent.getStorage(this.target, x))).then(concat);
+				this.value = () => p;
+				return p;
+			}
+		};
+		return output;
 	}
 	async createOutput(target: string, slot: bigint, step: number): Promise<Output> {
 		//console.log({target, slot, step});
