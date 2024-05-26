@@ -1,7 +1,7 @@
-import {EVMRequest, EVMProver} from '../src/vm.js';
-import {createProvider} from './providers.js';
+import {EVMRequest, EVMProver} from '../../src/vm.js';
+import {createProvider} from '../providers.js';
+import {decodeType} from '../utils.js';
 import {ethers} from 'ethers';
-import {decodeType} from './utils.js';
 import assert from 'node:assert/strict';
 
 test('NFTResolver("chonk") => ChonkNFT.ownerOf(239) = "raffy"', async () => {
@@ -33,7 +33,7 @@ function testENSIP10(name: string, resolver: string) {
 		for (let name of names) {
 			r.setSlot(0).element(ethers.namehash(name)).addSlot(1).pushSlotRegister();
 		}
-		r.firstNonzeroValue();
+		r.getFirstNonzeroValue();
 		let v = await EVMProver.executed(createProvider(1), r);
 		assert.equal(decodeType('address', v[0].value), resolver);
 	});

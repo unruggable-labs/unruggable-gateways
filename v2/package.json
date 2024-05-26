@@ -1,12 +1,19 @@
 {
   "type": "module",
   "scripts": {
-    "lint": "eslint . --ext .ts"
+    "build": "forge build --force",
+    "test": "bun test test/components/*"
+  },
+  "devDependencies": {
+    "@adraffy/blocksmith": "^0.0.22",
+    "@types/bun": "latest"
   },
   "dependencies": {
     "@resolverworks/ezccip": "^0.0.11"
   },
-  "devDependencies": {
-    "@adraffy/blocksmith": "^0.0.22"
+  "name": "v2",
+  "module": "index.ts",
+  "peerDependencies": {
+    "typescript": "^5.0.0"
   }
 }

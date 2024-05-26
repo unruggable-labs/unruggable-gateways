@@ -3,7 +3,7 @@ import type {Provider, ProviderPair} from '../types.js';
 import {ethers} from 'ethers';
 import {EZCCIP} from '@resolverworks/ezccip';
 import {SmartCache} from '../SmartCache.js';
-import {EVMProver, EVMRequest} from '../vm.js';
+import {EVMProver, EVMRequestV1} from '../vm.js';
 
 const ABI_CODER = ethers.AbiCoder.defaultAbiCoder();
 
@@ -65,7 +65,7 @@ export class OPGateway extends EZCCIP {
 				let latest = await this.latestOutputIndex();
 				let output = await this.outputCache.get(latest, x => this.fetchOutput(x));
 				let expander = new EVMProver(this.provider2, output.block, output.slot_cache);
-				let req = EVMRequest.from_v1(target, commands, constants);
+				let req = new EVMRequestV1(target, commands, constants).v2();
 				let values = await expander.eval(req.ops, req.inputs);
 				let [[accountProof], [_, storageProofs]] = await expander.prove(values);
 				let witness = ABI_CODER.encode(

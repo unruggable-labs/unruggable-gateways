@@ -1,7 +1,7 @@
-import {EVMProver, EVMRequest} from '../src/vm.js';
+import {EVMProver, EVMRequest} from '../../src/vm.js';
 //import {Foundry} from '@adraffy/blocksmith';
 //import {ethers} from 'ethers';
-import {createProvider} from './providers.js';
+import {createProvider} from '../providers.js';
 
 // this is just a worksheet
 

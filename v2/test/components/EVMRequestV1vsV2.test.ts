@@ -1,4 +1,4 @@
-import {EVMRequest, EVMRequestV1} from '../src/vm.js';
+import {EVMRequest, EVMRequestV1} from '../../src/vm.js';
 import {ethers} from 'ethers';
 import assert from 'node:assert/strict';
 

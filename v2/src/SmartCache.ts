@@ -15,8 +15,8 @@ function clock() {
 }
 
 export class SmartCache<K = any, V = any> {
-	private cached: Map<K,[exp: number, promise: Promise<V>]> = new Map();
-	private pending: Map<K,Promise<V>> = new Map();
+	private readonly cached: Map<K,[exp: number, promise: Promise<V>]> = new Map();
+	private readonly pending: Map<K,Promise<V>> = new Map();
 	private timer: NodeJS.Timeout | undefined;
 	private timer_t: number = Infinity;
 	readonly ms_success: number;
@@ -95,8 +95,9 @@ export class SmartCache<K = any, V = any> {
 		if (p) return p; // already in-flight
 		let q = fn(key); // begin
 		p = q.catch(() => ERR).then(x => { // we got an answer
-			pending.delete(key); // remove from pending
-			this.add(key, q, x && x !== ERR ? ms : this.ms_error); // add original to cache
+			if (pending.delete(key)) { // remove from pending
+				this.add(key, q, x && x !== ERR ? ms : this.ms_error); // add original to cache if existed
+			}
 			return q; // resolve to original
 		});
 		pending.set(key, p); // remember in-flight

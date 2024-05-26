@@ -2,46 +2,11 @@
 
 ## Setup
 
-1. `git clone --recurse-submodules $REPO`
-1. `foundryup`
-1. `npm i`
+1. `git submodule update --init`
+1. [`foundryup`](https://book.getfoundry.sh/getting-started/installation)
+1. `bun i`
 1. create [`.env`](./.env.example)
-
-## Notes
-
-* You can run any `.test.ts` file with `bun file.test.ts`
-
 
 ## Test
 
-* `bun test test/EVMRequestV1vsV2.test.ts`
-* `bun test test/MultiTarget.test.ts`
-* `bun test test/vm.test.ts`
-
----
-
-### Todo
-
-* GatewayRequest (ts, sol) need camelCase API with overloads
-* Gateway (ts) convert from EZCCIP to Chainlink
-* Contracts (sol) need camelCase API
-* Test framework
-	* blocksmith?
-
-
-### Components
-
-* `ts`
-	* GatewayRequest
-	* VirtualMachine
-	* Gateway	
-		* SmartCache
-	* Gateway Implementations
-		* arb
-		* op
-* `sol`
-	* Verifiers (IEVMVerifier)
-		* arb 
-		* op
-	* Builder (Fetcher + Request)
-	* Target (Helper + Request)
+* `bun run test`

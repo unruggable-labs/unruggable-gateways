@@ -1,17 +1,20 @@
 import {ethers} from 'ethers';
 import {Foundry, type DeployedContract} from '@adraffy/blocksmith';
-import {EVMProver, EVMRequest} from '../src/vm.js';
-import {CHAIN_BASE, createProvider, providerURL} from './providers.js';
-import {decodeType} from './utils.js';
+import {EVMProver, EVMRequest} from '../../src/vm.js';
+import {CHAIN_BASE, createProvider, providerURL} from '../providers.js';
+import {decodeType} from '../utils.js';
+import {beforeAll, afterAll, test} from 'bun:test';
 import assert from 'node:assert/strict';
 
-//describe('EVMProofHelper', () => {
 let foundry: Foundry;
 let verifier: DeployedContract;
 let prover: EVMProver;
 let block: ethers.Block;
 beforeAll(async () => {
-	foundry = await Foundry.launch({fork: providerURL(1)});
+	foundry = await Foundry.launch({
+		fork: providerURL(1),
+		infoLog: false,
+	});
 	verifier = await foundry.deploy({sol: `
 		import "@src/EVMProofHelper.sol";
 		contract Verifier {
@@ -62,6 +65,18 @@ test('firstTarget()', async () => {
 	r.getValue();
 	let values = await prove(r);
 	assert.equal(decodeType('address', values[0]), '0x7C6EfCb602BC88794390A0d74c75ad2f1249A17f');
+});
+
+test('replaceWithFirstNonzero()', async () => {
+	let r = new EVMRequest();
+	r.setTarget('0x0C49361E151BC79899A9DD31B8B0CCdE4F6fd2f6'); // TeamNick
+	r.push(1);
+	r.push('0x0000');
+	r.pushBytes('0x'.padEnd(88, '0'));
+	r.pushStr('');
+	r.replaceWithFirstNonzero().add().getBytes();
+	let values = await prove(r);
+	assert.equal(ethers.toUtf8String(values[0]), 'Satoshi');
 });
 
 test('collectRange()', async () => {
