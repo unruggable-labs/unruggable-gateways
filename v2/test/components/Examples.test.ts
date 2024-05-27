@@ -1,13 +1,12 @@
 import {EVMRequest, EVMProver} from '../../src/vm.js';
 import {Foundry, type DeployedContract} from '@adraffy/blocksmith';
-import assert from 'node:assert/strict';
 import {ethers} from 'ethers';
-import {test, beforeAll, expect} from 'bun:test';
+import {test, afterAll, expect} from 'bun:test';
 
 test('ClowesConcatSlice', async () => {
 
 	let foundry = await Foundry.launch({infoLog: false});
-	beforeAll(() => foundry.shutdown());
+	afterAll(() => foundry.shutdown());
 
 	const SIZE  = 73;
 	const FIRST = 8;
@@ -52,9 +51,9 @@ test('ClowesConcatSlice', async () => {
 
 test('PremmRegistryOfRegistries', async () => {
 	let foundry = await Foundry.launch({infoLog: false});
-	beforeAll(() => foundry.shutdown());
+	afterAll(() => foundry.shutdown());
 
-	let nodes = 'a.b.c.d'.split('.').map((label, i, v) => {
+	let nodes = Array.from({length: 10}, (_, i) => `${i}`).map((label, i, v) => {
 		return {
 			label: label,
 			name: v.slice(i).join('.'),
@@ -98,14 +97,36 @@ test('PremmRegistryOfRegistries', async () => {
 	r.setSlot(1).getBytes();
 
 	let prover = await EVMProver.latest(foundry.provider);
+	
+	console.time('Prove');
 	let outputs = await prover.eval(r.ops, r.inputs);
 	let [accountProofs, stateProofs] = await prover.prove(outputs);
-	let response = ethers.AbiCoder.defaultAbiCoder().encode(['bytes[][]', 'tuple(uint256, bytes[][])[]'], [accountProofs, stateProofs]);
-	let values = await EVMProver.resolved(outputs);
+	console.timeEnd('Prove');
 
+	let values = await EVMProver.resolved(outputs);
 	console.log(values);
-	console.log(response.length);
-	
 	expect(ethers.toUtf8String(values[values.length-1].value)).toStrictEqual(nodes[nodes.length-1].name); 
+
+	let verifier = await foundry.deploy({sol: `
+		import "@src/EVMProofHelper.sol";
+		contract Verifier {
+			function getStorageValues(
+				EVMRequest memory req, 
+				bytes32 stateRoot, 
+				bytes[][] memory accountProofs, 
+				StateProof[] memory stateProofs
+			) external pure returns(bytes[] memory) {
+				return EVMProofHelper.getStorageValues(req, stateRoot, accountProofs, stateProofs);
+			}
+		}
+	`});
+
+	console.time('Verify');
+	console.log(await verifier.getStorageValues.estimateGas([r.ops, r.inputs], await prover.getStateRoot(), accountProofs, stateProofs));
+	console.timeEnd('Verify');
+
+	let response = ethers.AbiCoder.defaultAbiCoder().encode(['bytes[][]', 'tuple(uint256, bytes[][])[]'], [accountProofs, stateProofs]);
+	console.log(`Bytes: ${response.length}`);
+
 
 });
