@@ -1,5 +1,5 @@
-import type {HexString, BigNumberish, Proof, Provider, Resolvable} from './types.js';
-import type {BytesLike, Block} from 'ethers';
+import type {HexString, BigNumberish, BytesLike, Proof, Provider, Resolvable} from './types.js';
+import type {Block} from 'ethers';
 import {Interface} from 'ethers/abi';
 import {hexlify, toBeHex, toUtf8Bytes, getBytes, concat, dataSlice} from 'ethers/utils';
 import {solidityPackedKeccak256} from 'ethers/hash';
@@ -23,26 +23,29 @@ const MAX_OUTPUTS = 255;
 const MAX_INPUTS = 255;
 //const MAX_STACK = 32;
 
-const OP_TARGET			= 1;
-const OP_TARGET_FIRST	= 2;
+const STEP_BYTES = 255;
 
-const OP_COLLECT		= 5;
+const OP_TARGET         = 1;
+const OP_TARGET_FIRST   = 2;
+
+const OP_COLLECT        = 5;
 const OP_COLLECT_FIRST  = 6;
-const OP_COLLECT_RANGE	= 7;
+const OP_COLLECT_RANGE  = 7;
 
-const OP_PUSH			= 10;
-const OP_PUSH_OUTPUT	= 11;
-const OP_PUSH_SLOT		= 12;
-const OP_PUSH_TARGET	= 13;
+const OP_PUSH_INPUT     = 10;
+const OP_PUSH_OUTPUT    = 11;
+const OP_PUSH_SLOT      = 12;
+const OP_PUSH_TARGET    = 13;
+const OP_PUSH_STACK     = 14;
 
-const OP_SLOT_ADD		= 20;
-const OP_SLOT_FOLLOW	= 21;
-const OP_SLOT_SET		= 22;
+const OP_SLOT_ADD       = 20;
+const OP_SLOT_FOLLOW    = 21;
+const OP_SLOT_SET       = 22;
 
-const OP_STACK_KECCAK	= 30;
+const OP_STACK_KECCAK   = 30;
 const OP_STACK_CONCAT   = 31;
-const OP_STACK_SLICE	= 32;
-const OP_STACK_FIRST	= 33;
+const OP_STACK_SLICE    = 32;
+const OP_STACK_FIRST    = 33;
 
 export const GATEWAY_ABI = new Interface([
 	// v1
@@ -137,7 +140,7 @@ export class EVMRequestV1 {
 						default: throw new Error(`unknown op: ${op}`);
 					}
 				}
-				req.collect(v[0] & 1);
+				req.collect((v[0] & 1) ? STEP_BYTES : 0);
 			} catch (err) {
 				Object.assign(err!, {cmd});
 				throw err;
@@ -180,7 +183,7 @@ export class EVMRequest {
 		// }
 		// this.buf[this.pos++] = op;
 		if ((op & 0xFF) !== op) throw Object.assign(new Error('expected uint8'), {op});
-		if (this.pos >= this.buf.length) throw new Error('op overflow');
+		if (this.pos >= this.buf.length) throw new Error('overflow: ops');
 		this.buf[this.pos++] = op;
 		return this;
 	}
@@ -193,45 +196,48 @@ export class EVMRequest {
 	// 	return this;
 	// }
 	private addInput(v: BytesLike) {
-		if (this.inputs.length == MAX_INPUTS) throw new Error('inputs overflow');
+		if (this.inputs.length == MAX_INPUTS) throw new Error('overflow: inputs');
 		this.inputs.push(hexlify(v));
 		return this.inputs.length-1;
 	}
 	private addOutput() {
 		let oi = this.buf[0];
-		if (oi == MAX_OUTPUTS) throw new Error('outputs overflow');
+		if (oi == MAX_OUTPUTS) throw new Error('overflow: outputs');
 		this.buf[0] = oi + 1;
 		return oi;
 	}
+
+	get outputCount() { return this.buf[0]; }
 
 	target() { return this.addOp(OP_TARGET); }
 	firstTarget() { return this.addOp(OP_TARGET_FIRST); }
 	setTarget(address: HexString) { return this.push(address).target(); }
 	
-	collect(step: number) { return this.addOp(OP_COLLECT).addOp(step).addOutput(); }
-	getValue() { this.collect(0); return this; }
-	getBytes() { this.collect(1); return this; }
+	collect(step: number) { this.addOp(OP_COLLECT).addOp(step).addOutput(); return this; }
+	getValue() { return this.collect(0); }
+	getBytes() { return this.collect(STEP_BYTES); }
 
-	collectFirstNonzero(step: number) { return this.addOp(OP_COLLECT_FIRST).addOp(step).addOutput(); }
-	getFirstNonzeroValue() { this.collectFirstNonzero(0); return this; }
-	getFirstNonzeroBytes() { this.collectFirstNonzero(1); return this; }
+	collectFirstNonzero(step: number) { this.addOp(OP_COLLECT_FIRST).addOp(step).addOutput(); return this; }
+	getFirstNonzeroValue() { return this.collectFirstNonzero(0); }
+	getFirstNonzeroBytes() { return this.collectFirstNonzero(STEP_BYTES);}
 
-	collectRange(len: number) { return this.addOp(OP_COLLECT_RANGE).addOp(len).addOutput(); } // bigOp
-	getValues(len: number) { this.collectRange(len); return this; }
+	getValues(n: number) { this.addOp(OP_COLLECT_RANGE).addOp(n).addOutput(); return this; }
 
-	//pushTyped(type: string | ParamType, value: any) { return this.pushBytes(AbiCoder.defaultAbiCoder().encode([type], [value])); }
 	push(x: BigNumberish) { return this.pushBytes(toBeHex(x, 32)); }
 	pushStr(s: string) { return this.pushBytes(toUtf8Bytes(s)); }
-	pushBytes(x: BytesLike) { return this.addOp(OP_PUSH).addOp(this.addInput(x)); }
+	pushBytes(x: BytesLike) { return this.addOp(OP_PUSH_INPUT).addOp(this.addInput(x)); }
+
+	pushInput(ii: number) { return this.addOp(OP_PUSH_INPUT).addOp(ii); }
 	pushOutput(oi: number) { return this.addOp(OP_PUSH_OUTPUT).addOp(oi); }
-
+	pushStack(si: number) { return this.addOp(OP_PUSH_STACK).addOp(si); }
+	pushSlotRegister() { return this.addOp(OP_PUSH_SLOT); }	
 	pushTargetRegister() { return this.addOp(OP_PUSH_TARGET); }
-	pushSlotRegister() { return this.addOp(OP_PUSH_SLOT); }
-
+	
 	add() { return this.addOp(OP_SLOT_ADD); }
+	addSlot(slot: BigNumberish) { return this.push(slot).add(); }
+
 	set() { return this.addOp(OP_SLOT_SET); }
 	setSlot(slot: BigNumberish) { return this.push(slot).set(); }
-	addSlot(slot: BigNumberish) { return this.push(slot).add(); }
 
 	follow() { return this.addOp(OP_SLOT_FOLLOW); }
 	element(key: BigNumberish) { return this.push(key).follow(); }
@@ -241,9 +247,8 @@ export class EVMRequest {
 
 	concat(n: number) { return this.addOp(OP_STACK_CONCAT).addOp(n); }
 	keccak() { return this.addOp(OP_STACK_KECCAK); }
-	replaceWithFirstNonzero() { return this.addOp(OP_STACK_FIRST); }
-	
 	slice(pos: number, len: number) { return this.addOp(OP_STACK_SLICE).addOp(pos).addOp(len); } // bigOp
+	replaceWithFirstNonzero() { return this.addOp(OP_STACK_FIRST); }
 }
 
 type OutputHeader = {
@@ -412,12 +417,22 @@ export class EVMProver {
 						slot = 0n;
 						break;
 					}
-					case OP_PUSH: { 
-						stack.push(inputs[readByte()]);
+					case OP_PUSH_INPUT: {
+						let i = readByte();
+						if (i >= inputs.length) throw new Error(`invalid input index: ${i}`);
+						stack.push(inputs[i]);
 						break;
 					}
 					case OP_PUSH_OUTPUT: {
-						stack.push(Promise.resolve(outputs[readByte()]).then(x => x.value()));
+						let i = readByte();
+						if (i >= outputs.length) throw new Error(`invalid output index: ${i}`);
+						stack.push(Promise.resolve(outputs[i]).then(x => x.value()));
+						break;
+					}
+					case OP_PUSH_STACK: {
+						let i = readByte();
+						if (i >= stack.length) throw new Error(`invalid stack index: ${i}`);
+						stack.push(stack[stack.length-1-i]);
 						break;
 					}
 					case OP_PUSH_SLOT: {
@@ -492,46 +507,75 @@ export class EVMProver {
 		};
 		return output;
 	}
+	checkSize(size: bigint | number) {
+		if (size > this.maxBytes) throw Object.assign(new Error('dynamic overflow'), {size, max: this.maxBytes});
+		return Number(size);
+	}
 	async createOutput(target: HexString, slot: bigint, step: number): Promise<Output> {
 		//console.log({target, slot, step});
 		let first = await this.getStorage(target, slot);
-		let size = parseInt(first.slice(64), 16); // last byte
 		if (step == 0) { // bytes32
 			let p = Promise.resolve(first);
 			return {
 				target,
-				size: size ? 32 : 0, // size is falsy on zero 
+				size: first ? 32 : 0, // size is falsy on zero 
 				slots: [slot],
 				value: () => p
 			};
-		} else if (step == 1 && !(size & 1)) { // small bytes
-			size >>= 1;
-			let p = Promise.resolve(dataSlice(first, 0, size));
-			return {
-				target,
-				size,
-				slots: [slot],
-				value: () => p
-			};
-		}
-		let big = (BigInt(first) >> 1n) * BigInt(step); // this could be done with Number()
-		if (big > this.maxBytes) throw Object.assign(new Error('dynamic overflow'), {size: big, max: this.maxBytes});
-		size = Number(big);
-		let offset = BigInt(solidityPackedKeccak256(['uint256'], [slot]));
-		let slots = [slot, ...Array.from({length: (size + 31) >> 5}, (_, i) => offset + BigInt(i))];
-		let output = {
-			parent: this,
-			target,
-			slots,
-			size,
-			value() {
-				let p = Promise.all(this.slots.slice(1).map(x => this.parent.getStorage(this.target, x))).then(v => {
-					return dataSlice(concat(v), 0, this.size);
-				});
-				this.value = () => p;
-				return p;
+		} else if (step == STEP_BYTES) {
+			let size = parseInt(first.slice(64), 16); // last byte
+			if ((size & 1) == 0) { // small
+				size >>= 1;
+				let p = Promise.resolve(dataSlice(first, 0, size));
+				return {
+					target,
+					size,
+					slots: [slot],
+					value: () => p
+				};
+			} else {
+				size = this.checkSize(BigInt(first) >> 1n);
+				let offset = BigInt(solidityPackedKeccak256(['uint256'], [slot]));
+				let slots = [slot, ...Array.from({length: (size + 31) >> 5}, (_, i) => offset + BigInt(i))];
+				let output = {
+					parent: this,
+					target,
+					slots,
+					size,
+					value() {
+						let p = Promise.all(this.slots.slice(1).map(x => this.parent.getStorage(this.target, x))).then(v => {
+							return dataSlice(concat(v), 0, this.size);
+						});
+						this.value = () => p;
+						return p;
+					}
+				};
+				return output;
 			}
-		};
-		return output;
+		} else {
+			let length = this.checkSize(BigInt(first));
+			if (step < 32) {
+				let per = 32 / step|0;
+				length = (length + per - 1) / per|0;
+			} else {
+				length = length * ((step + 31) >> 5);
+			}
+			let size = length << 5;
+			this.checkSize(size);
+			let offset = BigInt(solidityPackedKeccak256(['uint256'], [slot]));
+			let slots = [slot, ...Array.from({length}, (_, i) => offset + BigInt(i))];
+			let output = {
+				parent: this,
+				target,
+				slots,
+				size,
+				value() {
+					let p = Promise.all(this.slots.map(x => this.parent.getStorage(this.target, x))).then(concat);
+					this.value = () => p;
+					return p;
+				}
+			};
+			return output;
+		}
 	}
 }

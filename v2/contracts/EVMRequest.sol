@@ -7,6 +7,8 @@ uint256 constant MAX_STACK = 32;
 uint8 constant MAX_INPUTS = 255;
 uint8 constant MAX_OUTPUTS = 255;
 
+uint8 constant STEP_BYTES = 255;
+
 uint8 constant OP_TARGET		= 1;
 uint8 constant OP_TARGET_FIRST	= 2;
 
@@ -14,10 +16,11 @@ uint8 constant OP_COLLECT		= 5;
 uint8 constant OP_COLLECT_FIRST	= 6;
 uint8 constant OP_COLLECT_RANGE = 7;
 
-uint8 constant OP_PUSH			= 10;
+uint8 constant OP_PUSH_INPUT	= 10;
 uint8 constant OP_PUSH_OUTPUT	= 11;
 uint8 constant OP_PUSH_SLOT		= 12;
 uint8 constant OP_PUSH_TARGET   = 13;
+uint8 constant OP_PUSH_STACK    = 14;
 
 uint8 constant OP_SLOT_ADD		= 20;
 uint8 constant OP_SLOT_FOLLOW	= 21;

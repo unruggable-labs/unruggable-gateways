@@ -1,3 +1,4 @@
+import type {HexString} from '../../src/types.js';
 import {ethers} from 'ethers';
 import {Foundry, type DeployedContract} from '@adraffy/blocksmith';
 import {EVMProver, EVMRequest} from '../../src/vm.js';
@@ -9,7 +10,7 @@ import assert from 'node:assert/strict';
 let foundry: Foundry;
 let verifier: DeployedContract;
 let prover: EVMProver;
-let block: ethers.Block;
+let stateRoot: HexString;
 beforeAll(async () => {
 	foundry = await Foundry.launch({
 		fork: providerURL(1),
@@ -29,16 +30,16 @@ beforeAll(async () => {
 		}
 	`});
 	prover = await EVMProver.latest(createProvider(CHAIN_BASE));
-	block = await prover.getBlock();
+	stateRoot = await prover.getStateRoot();
 });
 afterAll(async () => {
 	await foundry?.shutdown();
 });
 
-async function prove(r: EVMRequest): Promise<string[]> {
+async function prove(r: EVMRequest): Promise<HexString[]> {
 	let outputs = await prover.eval(r.ops, r.inputs);
 	let [accountProofs, stateProofs] = await prover.prove(outputs);
-	return verifier.getStorageValues([r.ops, r.inputs], block.stateRoot, accountProofs, stateProofs);
+	return verifier.getStorageValues([r.ops, r.inputs], stateRoot, accountProofs, stateProofs);
 }
 
 test('TeamNickPointer', async () => {

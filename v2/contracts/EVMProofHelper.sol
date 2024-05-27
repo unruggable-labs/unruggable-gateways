@@ -20,7 +20,7 @@ struct VMState {
 	uint256 pos;
 	EVMRequest req;
 	uint256 slot;
-	uint256 stackIndex;
+	uint256 stackSize;
 	uint256 proofIndex;
 	uint256 outputIndex;
 	address target;
@@ -68,21 +68,36 @@ library EVMProofHelper {
 		uint256 first = getStorage(storageRoot, slot, storageProofs[0]);
 		if (step == 0) return abi.encode(first);
 		uint256 size;
-		if (step == 1 && (first & 1) == 0) {
-			size = (first & 0xFF) >> 1;
-			v = new bytes(size);
-			assembly { mstore(add(v, 32), first) }
-		} else {
-			size = (first >> 1) * step; // number of bytes
-			first = (size + 31) >> 5; // rename: number of slots
+		if (step == STEP_BYTES) {
+			if ((first & 1) == 0) { // small
+				size = (first & 0xFF) >> 1;
+				v = new bytes(size);
+				assembly { mstore(add(v, 32), first) }
+			} else { // large
+				size = first >> 1; // number of bytes
+				first = (size + 31) >> 5; // number of slots
+				v = new bytes(size);
+				slot = uint256(keccak256(abi.encode(slot))); // array start
+				for (uint256 i; i < first; slot += 1) {
+					i += 1;
+					uint256 value = getStorage(storageRoot, slot, storageProofs[i]);
+					assembly { mstore(add(v, shl(5, i)), value) }
+				}
+			}
+		} else { // first = number of elements
+			if (step < 32) {
+				uint256 per = 32 / step;
+				size = (first + per - 1) / per;
+			} else {
+				size = first * ((step + 31) >> 5);
+			}
+			v = new bytes((1 + size) << 5); // +1 for length
+			assembly { mstore(add(v, 32), first) } // store length
 			slot = uint256(keccak256(abi.encode(slot))); // array start
-			v = new bytes(size);
-			uint256 i;
-			while (i < first) {
+			for (uint256 i; i < size; ) {
+				uint256 value = getStorage(storageRoot, slot + i, storageProofs[i + 1]);
 				i += 1;
-				uint256 value = getStorage(storageRoot, slot, storageProofs[i]);
-				assembly { mstore(add(v, shl(5, i)), value) }
-				slot += 1;
+				assembly { mstore(add(v, shl(5, add(i, 1))), value) }
 			}
 		}
 	}
@@ -99,10 +114,10 @@ library EVMProofHelper {
 
 	// VMState
 	function push(VMState memory state, bytes memory v) internal pure {
-		state.stack[state.stackIndex++] = v;
+		state.stack[state.stackSize++] = v;
 	}
 	function pop(VMState memory state) internal pure returns (bytes memory) {
-		return state.stack[--state.stackIndex];
+		return state.stack[--state.stackSize];
 	}
 	function pop_uint256(VMState memory state) internal pure returns (uint256) {
 		return uint256_from_bytes(pop(state));
@@ -122,7 +137,7 @@ library EVMProofHelper {
 	function dump(VMState memory state) internal pure {
 		console2.log("[pos=%s root=%s slot=%s proof=%s]", state.pos, state.slot, state.proofIndex);
 		console2.logBytes(state.req.ops);
-		for (uint256 i; i < state.stackIndex; i++) {
+		for (uint256 i; i < state.stackSize; i++) {
 			console2.log("[stack=%s size=%s]", i, state.stack[i].length);
 			console2.logBytes(state.stack[i]);
 		}
@@ -143,22 +158,22 @@ library EVMProofHelper {
 				state.slot = 0;
 			} else if (op == OP_TARGET_FIRST) {
 				state.storageRoot = NULL_TRIE_ROOT;
-				while (state.stackIndex != 0 && state.storageRoot == NULL_TRIE_ROOT) {
+				while (state.stackSize != 0 && state.storageRoot == NULL_TRIE_ROOT) {
 					state.target = state.pop_address();
 					state.storageRoot = getStorageRoot(stateRoot, state.target, accountProofs[stateProofs[state.proofIndex++].accountIndex]);
 				}
 				if (state.storageRoot == NULL_TRIE_ROOT) revert AccountNotFound();
-				state.stackIndex = 0;
+				state.stackSize = 0;
 				state.slot = 0;
 			} else if (op == OP_COLLECT_FIRST) {
 				uint8 step = state.next_op();
 				bytes memory v;
-				while (state.stackIndex != 0 && v.length == 0) {
+				while (state.stackSize != 0 && v.length == 0) {
 					v = proveOutput(state.storageRoot, stateProofs[state.proofIndex++].storageProofs, state.pop_uint256(), step);
 					if (is_zero(v)) v = '';
 				}
 				state.add_output(v);
-				state.stackIndex = 0;
+				state.stackSize = 0;
 				state.slot = 0;
 			} else if (op == OP_COLLECT_RANGE) {
 				state.add_output(proveOutputRange(state.storageRoot, stateProofs[state.proofIndex++].storageProofs, state.slot, state.next_op()));
@@ -166,10 +181,12 @@ library EVMProofHelper {
 			} else if (op == OP_COLLECT) {
 				state.add_output(proveOutput(state.storageRoot, stateProofs[state.proofIndex++].storageProofs, state.slot, state.next_op()));
 				state.slot = 0;
-			} else if (op == OP_PUSH) {
+			} else if (op == OP_PUSH_INPUT) {
 				state.push(abi.encodePacked(req.inputs[state.next_op()]));
 			} else if (op == OP_PUSH_OUTPUT) {
 				state.push(abi.encodePacked(state.outputs[state.next_op()]));
+			} else if (op == OP_PUSH_STACK) {
+				state.push(abi.encodePacked(state.stack[state.stackSize-1-state.next_op()]));
 			} else if (op == OP_PUSH_SLOT) {
 				state.push(abi.encode(state.slot));
 			} else if (op == OP_PUSH_TARGET) {
@@ -189,11 +206,11 @@ library EVMProofHelper {
 				state.push(abi.encodePacked(state.pop(), v));
 			} else if (op == OP_STACK_FIRST) {
 				bytes memory v;
-				while (state.stackIndex != 0 && v.length == 0) {
+				while (state.stackSize != 0 && v.length == 0) {
 					v = state.pop();
 					if (is_zero(v)) v = '';
 				}
-				state.stackIndex = 0;
+				state.stackSize = 0;
 				state.push(v);
 			} else {
 				revert RequestInvalid();
