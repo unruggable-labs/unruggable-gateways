@@ -15,19 +15,19 @@ interface IL2OutputOracle {
 
 contract OPVerifier is IEVMVerifier {
 
-	string[] public gatewayURLs;
-	IL2OutputOracle immutable oracle;
-	uint256 delay;
+	IL2OutputOracle immutable _oracle;
+	string[] public _urls;
+	uint256 public _delay;
 
-	constructor(string[] memory _urls, IL2OutputOracle _oracle, uint256 _delay) {
-		gatewayURLs = _urls;
-		oracle = _oracle;
-		delay = _delay;
+	constructor(string[] memory urls, IL2OutputOracle oracle, uint256 delay) {
+		_urls = urls;
+		_oracle = oracle;
+		_delay = delay;
 	}
 
 	function getStorageContext() external view returns(string[] memory urls, bytes memory context) {
-		urls = gatewayURLs;
-		context = abi.encode(oracle.latestOutputIndex() - delay);
+		urls = _urls;
+		context = abi.encode(_oracle.latestOutputIndex() - _delay);
 	}
 
 	function getStorageValues(bytes memory context, EVMRequest memory req, bytes memory proof) external view returns (bytes[] memory) {
@@ -37,7 +37,7 @@ contract OPVerifier is IEVMVerifier {
 			bytes[][] memory accountProofs,
 			StateProof[] memory stateProofs
 		) = abi.decode(proof, (Types.OutputRootProof, bytes[][], StateProof[]));
-		Types.OutputProposal memory output = oracle.getL2Output(outputIndex);
+		Types.OutputProposal memory output = _oracle.getL2Output(outputIndex);
 		bytes32 expectedRoot = Hashing.hashOutputRootProof(outputRootProof);
 		if (output.outputRoot != expectedRoot) {
 			revert OutputRootMismatch(context, expectedRoot, output.outputRoot);

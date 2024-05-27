@@ -1,4 +1,4 @@
-import type {Provider, ProviderPair} from '../types.js';
+import type {HexString, Provider, ProviderPair} from '../types.js';
 
 import {ethers} from 'ethers';
 import {EZCCIP} from '@resolverworks/ezccip';
@@ -8,17 +8,17 @@ import {EVMProver, EVMRequestV1} from '../vm.js';
 const ABI_CODER = ethers.AbiCoder.defaultAbiCoder();
 
 type GatewayConfig = {
-	L2OutputOracle: string;
-	L2ToL1MessagePasser?: string;
+	L2OutputOracle: HexString;
+	L2ToL1MessagePasser?: HexString;
 };
 
 type Output = Readonly<{
 	index: number;
-	block: string;
-	outputRoot: string;
-	passerRoot: string;
-	stateRoot: string;
-	blockHash: string;
+	block: HexString;
+	outputRoot: HexString;
+	passerRoot: HexString;
+	stateRoot: HexString;
+	blockHash: HexString;
 	slotCache: SmartCache;
 }>;
 
@@ -84,12 +84,12 @@ export class OPGateway extends EZCCIP {
 				if (index < latest - this.outputCache.max_cached) throw new Error('stale');
 				if (index > latest + 1) throw new Error('future');
 				let output = await this.outputCache.get(index, x => this.fetchOutput(x));
-				let expander = new EVMProver(this.provider2, output.block, output.slot_cache);
-				let values = await expander.eval(ethers.getBytes(ops), inputs);
-				let [account_proofs, state_proofs] = await expander.prove(values);
+				let prover = new EVMProver(this.provider2, output.block, output.slot_cache);
+				let values = await prover.eval(ethers.getBytes(ops), inputs);
+				let [accountProofs, stateProofs] = await prover.prove(values);
 				return ABI_CODER.encode(
 					[OutputRootProof, 'bytes[][]', 'tuple(uint256, bytes[][])[]'],
-					[outputRootProof(output), account_proofs, state_proofs]
+					[outputRootProof(output), accountProofs, stateProofs]
 				);
 			});
 		});
