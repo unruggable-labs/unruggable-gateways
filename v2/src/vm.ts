@@ -265,7 +265,12 @@ export type ResolvedOutput = OutputHeader & {value: HexString}; // none of which
 
 export class EVMProver {
 	static async latest(provider: Provider) {
-		let block = await provider.getBlockNumber();
+		// TODO: should this use finalized blocktag?
+		// unclear if eth_blockNumber is finalized
+		// let block = await provider.getBlock('finalized');
+		// if (!block) throw new Error(`expected finalized block`);
+		// return new this(provider, toBeHex(block.number));
+		let block = await provider.getBlockNumber(); 
 		return new this(provider, toBeHex(block));
 	}
 	static async resolved(outputs: Output[]): Promise<ResolvedOutput[]> {
@@ -401,7 +406,8 @@ export class EVMProver {
 						break;
 					}
 					case OP_COLLECT_RANGE: {
-						outputs.push(this.createOutputRange(target, slot, readByte()));
+						let length = readByte();
+						outputs.push(this.createOutputFromSlots(target, Array.from({length}, (_, i) => slot + BigInt(i))));
 						slot = 0n;
 						break;
 					}
@@ -493,22 +499,8 @@ export class EVMProver {
 		}
 		return Promise.all(outputs);
 	}
-	createOutputRange(target: HexString, slot: bigint, length: number): Output {
-		let output = {
-			parent: this,
-			target,
-			size: length << 5,
-			slots: Array.from({length}, (_, i) => slot + BigInt(i)),
-			value() {
-				let p = Promise.all(this.slots.map(x => this.parent.getStorage(this.target, x))).then(concat);
-				this.value = () => p;
-				return p;
-			}
-		};
-		return output;
-	}
 	checkSize(size: bigint | number) {
-		if (size > this.maxBytes) throw Object.assign(new Error('dynamic overflow'), {size, max: this.maxBytes});
+		if (size > this.maxBytes) throw Object.assign(new Error('overflow: size'), {size, max: this.maxBytes});
 		return Number(size);
 	}
 	async createOutput(target: HexString, slot: bigint, step: number): Promise<Output> {
@@ -560,22 +552,37 @@ export class EVMProver {
 			} else {
 				length = length * ((step + 31) >> 5);
 			}
-			let size = length << 5;
-			this.checkSize(size);
 			let offset = BigInt(solidityPackedKeccak256(['uint256'], [slot]));
 			let slots = [slot, ...Array.from({length}, (_, i) => offset + BigInt(i))];
-			let output = {
-				parent: this,
-				target,
-				slots,
-				size,
-				value() {
-					let p = Promise.all(this.slots.map(x => this.parent.getStorage(this.target, x))).then(concat);
-					this.value = () => p;
-					return p;
-				}
-			};
-			return output;
+			// let output = {
+			// 	parent: this,
+			// 	target,
+			// 	slots,
+			// 	size,
+			// 	value() {
+			// 		let p = Promise.all(this.slots.map(x => this.parent.getStorage(this.target, x))).then(concat);
+			// 		this.value = () => p;
+			// 		return p;
+			// 	}
+			// };
+			// return output;
+			return this.createOutputFromSlots(target, slots);
 		}
 	}
+	createOutputFromSlots(target: HexString, slots: bigint[]): Output {
+		let size = this.checkSize(slots.length << 5);
+		let output = {
+			parent: this,
+			target,
+			slots,
+			size,
+			value() {
+				let p = Promise.all(this.slots.map(x => this.parent.getStorage(this.target, x))).then(concat);
+				this.value = () => p;
+				return p;
+			}
+		};
+		return output;
+	}
 }
+
