@@ -2,7 +2,8 @@
   "type": "module",
   "scripts": {
     "build": "forge build --force",
-    "test": "bun test test/components/*"
+    "test": "bun test test/components/*",
+    "lint": "eslint . --ext .ts"
   },
   "devDependencies": {
     "@adraffy/blocksmith": "^0.0.22",
