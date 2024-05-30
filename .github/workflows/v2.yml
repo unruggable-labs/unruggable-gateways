@@ -1,4 +1,4 @@
-name: CI
+name: v2 CI
 on: [push]
 defaults:
  run:
@@ -13,7 +13,7 @@ jobs:
         os: [ubuntu-latest, macOS-latest]
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Use Bun 1.1.2
         uses: oven-sh/setup-bun@v1
@@ -21,7 +21,7 @@ jobs:
           bun-version: 1.1.2
 
       - name: Use Node ${{ matrix.node }}
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
 
@@ -37,3 +37,20 @@ jobs:
 
       - name: Test (uses node internally)
         run: bun run test
+  lint:
+    name: Lint v2
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Use Bun 1.1.2
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: 1.1.2
+
+      - name: Install Dependencies
+        run: bun install
+
+      - name: Lint
+        run: bun run lint
