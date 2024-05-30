@@ -1,13 +1,13 @@
 import {EVMProver, EVMRequest} from '../../src/vm.js';
 //import {Foundry} from '@adraffy/blocksmith';
 //import {ethers} from 'ethers';
-import {createProvider} from '../providers.js';
+import {CHAIN_MAINNET, createProvider} from '../providers.js';
 
 // this is just a worksheet
 
 //let foundry = await Foundry.launch({infoLog: false});
 
-let prover = await EVMProver.latest(createProvider(1));
+let prover = await EVMProver.latest(createProvider(CHAIN_MAINNET));
 
 const ENS_REGISTRY = '0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e';
 

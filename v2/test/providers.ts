@@ -3,6 +3,7 @@ import {Network, AlchemyProvider, InfuraProvider, JsonRpcProvider} from 'ethers/
 
 export const CHAIN_ARB1 = 42161;
 export const CHAIN_BASE = 8453;
+export const CHAIN_MAINNET = 1;
 
 export function providerURL(chain: number): string {
 	let key = process.env.INFURA_KEY;

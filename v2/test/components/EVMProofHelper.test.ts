@@ -2,7 +2,7 @@ import type {HexString} from '../../src/types.js';
 import {ethers} from 'ethers';
 import {Foundry, type DeployedContract} from '@adraffy/blocksmith';
 import {EVMProver, EVMRequest} from '../../src/vm.js';
-import {CHAIN_BASE, createProvider, providerURL} from '../providers.js';
+import {CHAIN_MAINNET, CHAIN_BASE, createProvider, providerURL} from '../providers.js';
 import {decodeType} from '../utils.js';
 import {beforeAll, afterAll, test} from 'bun:test';
 import assert from 'node:assert/strict';
@@ -13,7 +13,7 @@ let prover: EVMProver;
 let stateRoot: HexString;
 beforeAll(async () => {
 	foundry = await Foundry.launch({
-		fork: providerURL(1),
+		fork: providerURL(CHAIN_MAINNET),
 		infoLog: false,
 	});
 	verifier = await foundry.deploy({sol: `
