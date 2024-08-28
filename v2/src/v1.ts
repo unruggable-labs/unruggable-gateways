@@ -1,5 +1,5 @@
-import type { HexString, BigNumberish, BytesLike } from './types.js';
-import { ethers } from 'ethers';
+import { hexToBytes, toHex, zeroAddress, type Address } from 'viem';
+import type { HexString } from './types.js';
 import { EVMRequest } from './vm.js';
 
 // export const GATEWAY_ABI = new ethers.Interface([
@@ -17,7 +17,7 @@ const OP_END = 0xff;
 
 export class EVMRequestV1 {
   constructor(
-    public target: HexString = ethers.ZeroAddress,
+    public target: Address = zeroAddress,
     readonly commands: HexString[] = [],
     readonly constants: HexString[] = [],
     private readonly buf: number[] = []
@@ -30,13 +30,13 @@ export class EVMRequestV1 {
       this.buf.slice()
     );
   }
-  private addConst(x: BytesLike) {
+  private addConst(x: HexString) {
     if (this.constants.length >= MAX_CONSTS)
       throw new Error('constants overflow');
-    this.constants.push(ethers.hexlify(x));
+    this.constants.push(x);
     return this.constants.length - 1;
   }
-  private start(flags: number, slot: BigNumberish) {
+  private start(flags: number, slot: bigint | number) {
     this.end();
     this.buf.push(flags);
     return this.offset(slot);
@@ -47,13 +47,13 @@ export class EVMRequestV1 {
     if (buf.length < 32 && buf[buf.length - 1] != OP_END) buf.push(OP_END);
     const bytes32 = new Uint8Array(32);
     bytes32.set(buf);
-    this.commands.push(ethers.hexlify(bytes32));
+    this.commands.push(toHex(bytes32));
     buf.length = 0;
   }
-  getStatic(slot: BigNumberish) {
+  getStatic(slot: bigint | number) {
     return this.start(0, slot);
   }
-  getDynamic(slot: BigNumberish) {
+  getDynamic(slot: bigint | number) {
     return this.start(FLAG_DYNAMIC, slot);
   }
   ref(i: number) {
@@ -62,18 +62,18 @@ export class EVMRequestV1 {
     this.buf.push(OP_FOLLOW_REF | i);
     return this;
   }
-  element(x: BigNumberish) {
-    return this.elementBytes(ethers.toBeHex(x, 32));
+  element(x: bigint | number) {
+    return this.elementBytes(toHex(x, { size: 32 }));
   }
   elementStr(s: string) {
-    return this.elementBytes(ethers.toUtf8Bytes(s));
+    return this.elementBytes(toHex(s));
   }
-  elementBytes(x: BytesLike) {
+  elementBytes(x: HexString) {
     this.buf.push(OP_FOLLOW_CONST | this.addConst(x));
     return this;
   }
-  offset(x: BigNumberish) {
-    this.buf.push(OP_ADD_CONST | this.addConst(ethers.toBeHex(x, 32)));
+  offset(x: bigint | number) {
+    this.buf.push(OP_ADD_CONST | this.addConst(toHex(x, { size: 32 })));
     return this;
   }
   // encodeCall() {
@@ -86,7 +86,7 @@ export class EVMRequestV1 {
     req.setTarget(this.target);
     for (const cmd of this.commands) {
       try {
-        const v = ethers.getBytes(cmd);
+        const v = hexToBytes(cmd);
         req.zeroSlot();
         for (let i = 1; i < v.length; i++) {
           const op = v[i];

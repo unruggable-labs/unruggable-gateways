@@ -1,9 +1,9 @@
-import { Foundry } from '@adraffy/blocksmith';
-import { createProviderPair, providerURL } from '../providers.js';
+import { afterAll, describe, expect, test } from 'bun:test';
+import { ethers } from 'ethers';
 import { CHAIN_MAINNET } from '../../src/chains.js';
 import { LineaRollup } from '../../src/linea/LineaRollup.js';
-import { ethers } from 'ethers';
-import { describe, test, expect, afterAll } from 'bun:test';
+import { Foundry } from '../foundry.js';
+import { createProviderPair, providerURL } from '../providers.js';
 
 describe('LineaProver', async () => {
   const config = LineaRollup.mainnetConfig;

@@ -37,6 +37,7 @@
   ],
   "devDependencies": {
     "@adraffy/blocksmith": "^0.0.27",
+    "@ensdomains/ccip-read-router": "^0.0.5",
     "@types/bun": "latest",
     "@typescript-eslint/eslint-plugin": "^6.7.4",
     "@typescript-eslint/parser": "^6.7.4",
@@ -47,7 +48,8 @@
   },
   "dependencies": {
     "@resolverworks/ezccip": "^0.0.14",
-    "ethers": "^6.13.1"
+    "ethers": "^6.13.1",
+    "viem": "^2.20.0"
   },
   "peerDependencies": {
     "typescript": "^5.5.2"

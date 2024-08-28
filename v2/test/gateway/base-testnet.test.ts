@@ -1,10 +1,10 @@
-import { OPFaultRollup } from '../../src/op/OPFaultRollup.js';
-import { Gateway } from '../../src/gateway.js';
 import { serve } from '@resolverworks/ezccip';
-import { Foundry } from '@adraffy/blocksmith';
+import { afterAll, describe } from 'bun:test';
+import { Gateway } from '../../src/gateway.js';
+import { OPFaultRollup } from '../../src/op/OPFaultRollup.js';
+import { Foundry } from '../foundry.js';
 import { createProviderPair, providerURL } from '../providers.js';
 import { runSlotDataTests } from './tests.js';
-import { describe, afterAll } from 'bun:test';
 
 describe('base testnet', async () => {
   const config = OPFaultRollup.baseTestnetConfig;

@@ -1,9 +1,10 @@
+import type { Client } from 'viem';
+
 import type {
   ChainPair,
+  ClientPair,
   EncodedProof,
   HexString,
-  Provider,
-  ProviderPair,
 } from './types.js';
 import type { AbstractProver } from './vm.js';
 
@@ -16,26 +17,30 @@ export type RollupCommit<P extends AbstractProver> = {
 
 export type Rollup = AbstractRollup<RollupCommit<AbstractProver>>;
 
-export abstract class AbstractRollup<C extends RollupCommit<AbstractProver>> {
+export abstract class AbstractRollup<
+  commit extends RollupCommit<AbstractProver>,
+  client2 extends Client = Client,
+  client1 extends Client = Client,
+> {
   commitCacheSize = 10000;
-  readonly provider1: Provider;
-  readonly provider2: Provider;
-  constructor(providers: ProviderPair) {
-    this.provider1 = providers.provider1;
-    this.provider2 = providers.provider2;
+  readonly client1: client1;
+  readonly client2: client2;
+  constructor({ client1, client2 }: ClientPair<client2, client1>) {
+    this.client1 = client1;
+    this.client2 = client2;
   }
   abstract fetchLatestCommitIndex(): Promise<bigint>;
-  abstract fetchParentCommitIndex(commit: C): Promise<bigint>;
-  abstract fetchCommit(index: bigint): Promise<C>;
+  abstract fetchParentCommitIndex(commit: commit): Promise<bigint>;
+  abstract fetchCommit(index: bigint): Promise<commit>;
   abstract encodeWitness(
-    commit: C,
+    commit: commit,
     proofs: EncodedProof[],
     order: Uint8Array
   ): HexString;
   async fetchLatestCommit() {
     return this.fetchCommit(await this.fetchLatestCommitIndex());
   }
-  async fetchRecentCommits(count: number): Promise<C[]> {
+  async fetchRecentCommits(count: number): Promise<commit[]> {
     if (count < 1) return [];
     let commit = await this.fetchLatestCommit();
     const v = [commit];

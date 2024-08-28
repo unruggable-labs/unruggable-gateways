@@ -1,5 +1,5 @@
-import { Foundry } from '@adraffy/blocksmith';
 import { ethers } from 'ethers';
+import { Foundry } from '../foundry.js';
 
 const foundry = await Foundry.launch({
   infoLog: true,

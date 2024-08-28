@@ -1,6 +1,6 @@
-import type { HexString, BigNumberish } from '../types.js';
+import { fromRlp, keccak256, padHex, toHex, zeroHash } from 'viem';
+import type { HexString } from '../types.js';
 import type { EthProof } from './types.js';
-import { keccak256, decodeRlp, toBeHex, zeroPadValue, ZeroHash } from 'ethers';
 
 const BRANCH_NODE_SIZE = 17;
 const LEAF_NODE_SIZE = 2;
@@ -33,20 +33,20 @@ export function proveAccountState(
   return { nonce, balance, storageRoot, codeHash };
 }
 export function proveStorageValue(
-  slot: BigNumberish,
+  slot: bigint | number,
   storageProof: EthProof,
   storageRoot: HexString
 ) {
   const rlp = proveMerkleTrieValue(
-    toBeHex(slot, 32),
+    toHex(slot, { size: 32 }),
     storageProof,
     storageRoot,
     true
   );
-  if (!rlp) return ZeroHash;
-  const decoded = decodeRlp(rlp);
+  if (!rlp) return zeroHash;
+  const decoded = fromRlp(rlp);
   if (typeof decoded !== 'string') throw new Error('invalid storage value');
-  return zeroPadValue(decoded, 32);
+  return padHex(decoded, { size: 32 });
 }
 
 // same arg order as MerkleTrie.get()
@@ -151,7 +151,7 @@ function walk(nodes: TrieNode[], key: HexString, root: HexString) {
 }
 
 function assertRlpVector(rlp: HexString) {
-  const v = decodeRlp(rlp);
+  const v = fromRlp(rlp);
   if (!Array.isArray(v) || !v.every((x) => typeof x === 'string'))
     throw new Error('expected rlp vector');
   return v as HexString[];

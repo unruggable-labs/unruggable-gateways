@@ -1,13 +1,15 @@
-import type { HexString, BigNumberish } from '../../src/types.js';
+import { afterAll, expect, test } from 'bun:test';
+import { ethers } from 'ethers';
+import { toHex } from 'viem';
+import { getStorageAt } from 'viem/actions';
 import { EthProver } from '../../src/eth/EthProver.js';
 import {
+  NULL_TRIE_HASH,
   proveAccountState,
   proveStorageValue,
-  NULL_TRIE_HASH,
 } from '../../src/eth/merkle.js';
-import { Foundry } from '@adraffy/blocksmith';
-import { ethers } from 'ethers';
-import { afterAll, test, expect } from 'bun:test';
+import type { HexString } from '../../src/types.js';
+import { Foundry } from '../foundry.js';
 
 async function setup() {
   const foundry = await Foundry.launch({ infoLog: false });
@@ -16,7 +18,7 @@ async function setup() {
   return {
     foundry,
     async prover() {
-      const prover = await EthProver.latest(foundry.provider);
+      const prover = await EthProver.latest(foundry.client);
       const stateRoot = await prover.fetchStateRoot();
       return {
         async assertDoesNotExist(target: HexString) {
@@ -30,8 +32,8 @@ async function setup() {
         },
         async assertValue(
           target: HexString,
-          slot: BigNumberish,
-          expected: BigNumberish
+          slot: number | bigint,
+          expected: number | bigint
         ) {
           slot = ethers.getUint(slot);
           const {
@@ -48,7 +50,10 @@ async function setup() {
           const slotValue = proveStorageValue(slot, proof, storageHash);
           expect(slotValue).toBe(ethers.toBeHex(value, 32));
           expect(slotValue).toBe(ethers.toBeHex(expected, 32));
-          const liveValue = await prover.provider.getStorage(target, slot);
+          const liveValue = await getStorageAt(prover.client, {
+            address: target,
+            slot: toHex(slot),
+          });
           return {
             nullRoot: storageHash === NULL_TRIE_HASH,
             liveValue,

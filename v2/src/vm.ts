@@ -1,14 +1,22 @@
-import type {
-  HexString,
-  BytesLike,
-  BigNumberish,
-  EncodedProof,
-  HexAddress,
-} from './types.js';
-import { ethers } from 'ethers';
-import { unwrap, Wrapped, type Unwrappable } from './wrap.js';
-import { ABI_CODER } from './utils.js';
+import {
+  bytesToHex,
+  concatHex,
+  decodeAbiParameters,
+  encodeAbiParameters,
+  encodePacked,
+  hexToBytes,
+  hexToString,
+  keccak256,
+  sliceHex,
+  stringToHex,
+  toHex,
+  zeroAddress,
+  type Address,
+  type Hex,
+} from 'viem';
 import type { CachedMap } from './cached.js';
+import type { EncodedProof, HexAddress, HexString } from './types.js';
+import { unwrap, Wrapped, type Unwrappable } from './wrap.js';
 
 // all addresses are lowercase
 // all values are hex-strings
@@ -57,36 +65,25 @@ const OP_KECCAK = 60;
 const OP_CONCAT = 61;
 const OP_SLICE = 62;
 
-function uint256FromHex(hex: string) {
-  // the following should be equivalent to ProofUtils.uint256FromBytes(hex)
-  return hex === '0x' ? 0n : BigInt(hex.slice(0, 66));
-}
-function addressFromHex(hex: string) {
+function addressFromHex(hex: HexString): Address {
   // the following should be equivalent to: address(uint160(ProofUtils.uint256FromBytes(hex)))
-  return (
-    '0x' +
+  return ('0x' +
     (hex.length >= 66
       ? hex.slice(26, 66)
       : hex.slice(2).padStart(40, '0').slice(-40)
-    ).toLowerCase()
-  );
+    ).toLowerCase()) as Address;
 }
 function bigintRange(start: bigint, length: number) {
   return Array.from({ length }, (_, i) => start + BigInt(i));
 }
-function solidityArraySlots(slot: BigNumberish, length: number) {
+function solidityArraySlots(slot: bigint, length: number) {
   return length
-    ? bigintRange(
-        BigInt(ethers.solidityPackedKeccak256(['uint256'], [slot])),
-        length
-      )
+    ? bigintRange(BigInt(keccak256(encodePacked(['uint256'], [slot]))), length)
     : [];
 }
-export function solidityFollowSlot(slot: BigNumberish, key: BytesLike) {
+export function solidityFollowSlot(slot: bigint | number, key: Hex) {
   // https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html#mappings-and-dynamic-arrays
-  return BigInt(
-    ethers.keccak256(ethers.concat([key, ethers.toBeHex(slot, 32)]))
-  );
+  return BigInt(keccak256(concatHex([key, toHex(slot, { size: 32 })])));
 }
 
 type ProgramAction = {
@@ -102,13 +99,16 @@ export class ProgramReader {
     return new this(Uint8Array.from(program.ops), program.inputs.slice());
   }
   static fromEncoded(hex: HexString) {
-    const [ops, inputs] = ABI_CODER.decode(['bytes', 'bytes[]'], hex);
-    return new this(ethers.getBytes(ops), [...inputs]);
+    const [ops, inputs] = decodeAbiParameters(
+      [{ type: 'bytes' }, { type: 'bytes[]' }],
+      hex
+    );
+    return new this(hexToBytes(ops), [...inputs]);
   }
   pos: number = 0;
   constructor(
     readonly ops: Uint8Array,
-    readonly inputs: HexString[]
+    readonly inputs: readonly HexString[]
   ) {}
   get remaining() {
     return this.ops.length - this.pos;
@@ -126,7 +126,7 @@ export class ProgramReader {
   readBytes() {
     const n = this.readShort();
     this.checkRead(n);
-    return ethers.hexlify(this.ops.subarray(this.pos, (this.pos += n)));
+    return bytesToHex(this.ops.subarray(this.pos, (this.pos += n)));
   }
   readInput() {
     const i = this.readByte();
@@ -134,7 +134,7 @@ export class ProgramReader {
     return this.inputs[i];
   }
   readInputStr() {
-    return ethers.toUtf8String(this.readInput());
+    return hexToString(this.readInput());
   }
   readAction(): ProgramAction {
     const { pos } = this;
@@ -214,7 +214,7 @@ export class EVMProgram {
   constructor(
     private parent: EVMProgram | undefined = undefined,
     readonly ops: number[] = [],
-    readonly inputs: string[] = []
+    readonly inputs: HexString[] = []
   ) {}
   clone() {
     return new EVMProgram(this.parent, this.ops.slice(), this.inputs.slice());
@@ -230,22 +230,21 @@ export class EVMProgram {
     this.ops.push(x >> 8, x & 0xff);
     return this;
   }
-  addInput(x: BigNumberish) {
-    return this.addInputBytes(ethers.toBeHex(x, 32));
+  addInput(x: bigint | number) {
+    return this.addInputBytes(toHex(x, { size: 32 }));
   }
   addInputStr(s: string) {
-    return this.addInputBytes(ethers.toUtf8Bytes(s));
+    return this.addInputBytes(stringToHex(s));
   }
-  addInputBytes(v: BytesLike) {
-    const hex = ethers.hexlify(v);
+  addInputBytes(v: HexString) {
     const i = this.inputs.length;
-    this.inputs.push(hex); // note: no check, but blows up at 256
+    this.inputs.push(v); // note: no check, but blows up at 256
     return i;
   }
   encode() {
-    return ABI_CODER.encode(
-      ['bytes', 'bytes[]'],
-      [Uint8Array.from(this.ops), this.inputs]
+    return encodeAbiParameters(
+      [{ type: 'bytes' }, { type: 'bytes[]' }],
+      [bytesToHex(Uint8Array.from(this.ops)), this.inputs]
     );
   }
   debug(label = '') {
@@ -318,13 +317,13 @@ export class EVMProgram {
   pushInput(i: number) {
     return this.addByte(OP_PUSH_INPUT).addByte(i);
   }
-  push(x: BigNumberish) {
+  push(x: bigint | number) {
     return this.addByte(OP_PUSH_INPUT).addByte(this.addInput(x));
   }
   pushStr(s: string) {
     return this.addByte(OP_PUSH_INPUT).addByte(this.addInputStr(s));
   }
-  pushBytes(v: BytesLike) {
+  pushBytes(v: HexString) {
     return this.addByte(OP_PUSH_INPUT).addByte(this.addInputBytes(v));
   }
   pushProgram(program: EVMProgram) {
@@ -361,13 +360,13 @@ export class EVMProgram {
   }
 
   // shorthands?
-  offset(x: BigNumberish) {
+  offset(x: bigint | number) {
     return this.push(x).addSlot();
   }
   setTarget(x: HexString) {
-    return this.push(x).target();
+    return this.pushBytes(x).target();
   }
-  setSlot(x: BigNumberish) {
+  setSlot(x: bigint | number) {
     return this.zeroSlot().offset(x);
   }
 }
@@ -407,7 +406,7 @@ export class MachineState {
   static create(outputCount: number) {
     return new this(Array(outputCount).fill('0x'));
   }
-  target = ethers.ZeroAddress;
+  target: Address = zeroAddress;
   slot = 0n;
   stack: HexFuture[] = [];
   exitCode = 0;
@@ -485,8 +484,8 @@ export abstract class AbstractProver {
   abstract isContract(target: HexString): Promise<boolean>;
   abstract getStorage(target: HexString, slot: bigint): Promise<HexString>;
   abstract prove(needs: Need[]): Promise<ProofSequence>;
-  async evalDecoded(ops: HexString, inputs: HexString[]) {
-    return this.evalReader(new ProgramReader(ethers.getBytes(ops), inputs));
+  async evalDecoded(ops: HexString, inputs: readonly HexString[]) {
+    return this.evalReader(new ProgramReader(hexToBytes(ops), inputs));
   }
   async evalRequest(req: EVMRequest) {
     return this.evalReader(ProgramReader.fromProgram(req));
@@ -521,7 +520,7 @@ export abstract class AbstractProver {
         }
         case OP_SLOT_ADD: {
           // args: [] / stack: -1
-          vm.slot += uint256FromHex(await unwrap(vm.pop()));
+          vm.slot += BigInt(await unwrap(vm.pop()));
           continue;
         }
         case OP_SLOT_ZERO: {
@@ -546,7 +545,7 @@ export abstract class AbstractProver {
         }
         case OP_PUSH_SLOT: {
           // args: [] / stack: +1
-          vm.push(ethers.toBeHex(vm.slot, 32)); // current slot register
+          vm.push(toHex(vm.slot, { size: 32 })); // current slot register
           continue;
         }
         case OP_PUSH_TARGET: {
@@ -574,11 +573,9 @@ export abstract class AbstractProver {
           vm.push(
             slots.length
               ? new Wrapped(async () =>
-                  ethers.concat(
-                    await Promise.all(
-                      slots.map((x) => this.getStorage(target, x))
-                    )
-                  )
+                  Promise.all(
+                    slots.map((x) => this.getStorage(target, x))
+                  ).then((x) => concatHex(x))
                 )
               : '0x'
           );
@@ -593,22 +590,16 @@ export abstract class AbstractProver {
           let size = parseInt(first.slice(64), 16); // last byte
           if ((size & 1) == 0) {
             // small
-            vm.push(ethers.dataSlice(first, 0, size >> 1));
+            vm.push(sliceHex(first, 0, size >> 1));
           } else {
             size = this.checkSize(BigInt(first) >> 1n);
             const slots = solidityArraySlots(slot, (size + 31) >> 5);
             vm.traceSlots(target, slots);
             vm.push(
               new Wrapped(async () =>
-                ethers.dataSlice(
-                  ethers.concat(
-                    await Promise.all(
-                      slots.map((x) => this.getStorage(target, x))
-                    )
-                  ),
-                  0,
-                  size
-                )
+                Promise.all(slots.map((x) => this.getStorage(target, x)))
+                  .then((x) => concatHex(x))
+                  .then((x) => sliceHex(x, 0, size))
               )
             );
           }
@@ -621,7 +612,7 @@ export abstract class AbstractProver {
           const { target, slot } = vm;
           vm.traceSlot(target, slot);
           let length = this.checkSize(
-            uint256FromHex(await this.getStorage(target, slot))
+            BigInt(await this.getStorage(target, slot))
           );
           if (step < 32) {
             const per = (32 / step) | 0;
@@ -634,8 +625,8 @@ export abstract class AbstractProver {
           slots.unshift(slot);
           vm.push(
             new Wrapped(async () =>
-              ethers.concat(
-                await Promise.all(slots.map((x) => this.getStorage(target, x)))
+              Promise.all(slots.map((x) => this.getStorage(target, x))).then(
+                (x) => concatHex(x)
               )
             )
           );
@@ -701,7 +692,7 @@ export abstract class AbstractProver {
         }
         case OP_KECCAK: {
           // args: [] / stack: 0
-          vm.push(ethers.keccak256(await unwrap(vm.pop())));
+          vm.push(keccak256(await unwrap(vm.pop())));
           continue;
         }
         case OP_CONCAT: {
@@ -710,7 +701,7 @@ export abstract class AbstractProver {
           const v = [vm.pop(), last];
           vm.push(
             new Wrapped(async () =>
-              ethers.concat(await Promise.all(v.map(unwrap)))
+              Promise.all(v.map(unwrap)).then((x) => concatHex(x))
             )
           );
           continue;
@@ -721,7 +712,7 @@ export abstract class AbstractProver {
           const n = reader.readShort();
           const v = await unwrap(vm.pop());
           if (x + n > (v.length - 2) >> 1) throw new Error('slice overflow');
-          vm.push(ethers.dataSlice(v, x, x + n));
+          vm.push(sliceHex(v, x, x + n));
           continue;
         }
         default: {
@@ -743,7 +734,7 @@ export function makeStorageKey(target: HexAddress, slot: bigint) {
 export function storageMapFromCache(cache: CachedMap<string, any>) {
   const map = new Map<HexString, bigint[]>();
   for (const key of cache.cachedKeys()) {
-    const target = key.slice(0, 42);
+    const target = key.slice(0, 42) as Hex;
     let bucket = map.get(target);
     if (!bucket) {
       bucket = [];

@@ -1,10 +1,10 @@
-import { NitroRollup } from '../../src/nitro/NitroRollup.js';
-import { Gateway } from '../../src/gateway.js';
 import { serve } from '@resolverworks/ezccip';
-import { Foundry } from '@adraffy/blocksmith';
-import { providerURL, createProviderPair } from '../providers.js';
+import { afterAll, describe } from 'bun:test';
+import { Gateway } from '../../src/gateway.js';
+import { NitroRollup } from '../../src/nitro/NitroRollup.js';
+import { Foundry } from '../foundry.js';
+import { createProviderPair, providerURL } from '../providers.js';
 import { runSlotDataTests } from './tests.js';
-import { describe, afterAll } from 'bun:test';
 
 describe('arb1', async () => {
   const config = NitroRollup.arb1MainnetConfig;

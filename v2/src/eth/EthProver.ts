@@ -1,20 +1,22 @@
-import type { EncodedProof, HexString, Provider } from '../types.js';
-import type {
-  EthAccountProof,
-  EthProof,
-  EthStorageProof,
-  RPCEthGetBlock,
-  RPCEthGetProof,
-} from './types.js';
+import {
+  encodeAbiParameters,
+  toHex,
+  zeroHash,
+  type Address,
+  type Client,
+  type GetProofReturnType,
+} from 'viem';
+import { getBlock, getBlockNumber, getProof, getStorageAt } from 'viem/actions';
+import { CachedMap } from '../cached.js';
+import type { EncodedProof, HexString } from '../types.js';
+import { NULL_CODE_HASH } from '../utils.js';
 import {
   AbstractProver,
   makeStorageKey,
   storageMapFromCache,
   type Need,
 } from '../vm.js';
-import { CachedMap } from '../cached.js';
-import { ethers } from 'ethers';
-import { ABI_CODER, NULL_CODE_HASH } from '../utils.js';
+import type { EthAccountProof, EthProof, EthStorageProof } from './types.js';
 
 function isContract(proof: EthAccountProof) {
   return (
@@ -23,18 +25,18 @@ function isContract(proof: EthAccountProof) {
 }
 
 function encodeProof(proof: EthProof): EncodedProof {
-  return ABI_CODER.encode(['bytes[]'], [proof]);
+  return encodeAbiParameters([{ type: 'bytes[]' }], [proof]);
 }
 
 export class EthProver extends AbstractProver {
-  static async latest(provider: Provider) {
-    const block = await provider.getBlockNumber();
-    return new this(provider, '0x' + block.toString(16));
+  static async latest(client: Client) {
+    const blockNumber = await getBlockNumber(client);
+    return new this(client, blockNumber);
   }
   constructor(
-    readonly provider: Provider,
-    readonly block: HexString,
-    readonly cache: CachedMap<string, any> = new CachedMap()
+    readonly client: Client,
+    readonly blockNumber: bigint,
+    readonly cache: CachedMap<string, unknown> = new CachedMap()
   ) {
     super();
   }
@@ -43,26 +45,26 @@ export class EthProver extends AbstractProver {
   }
   async fetchStateRoot() {
     // this is just a convenience
-    const blockInfo: RPCEthGetBlock = await this.provider.send(
-      'eth_getBlockByNumber',
-      [this.block, false]
-    );
+    const blockInfo = await getBlock(this.client, {
+      blockNumber: this.blockNumber,
+      includeTransactions: false,
+    });
     return blockInfo.stateRoot;
   }
   async fetchProofs(
     target: HexString,
     slots: bigint[] = []
-  ): Promise<RPCEthGetProof> {
-    const ps: Promise<RPCEthGetProof>[] = [];
+  ): Promise<GetProofReturnType> {
+    const ps: Promise<GetProofReturnType>[] = [];
     for (let i = 0; ; ) {
       ps.push(
-        this.provider.send('eth_getProof', [
-          target,
-          slots
+        getProof(this.client, {
+          address: target,
+          storageKeys: slots
             .slice(i, (i += this.proofBatchSize))
-            .map((slot) => ethers.toBeHex(slot, 32)),
-          this.block,
-        ])
+            .map((slot) => toHex(slot, { size: 32 })),
+          blockNumber: this.blockNumber,
+        })
       );
       if (i >= slots.length) break;
     }
@@ -75,13 +77,13 @@ export class EthProver extends AbstractProver {
   async getProofs(
     target: HexString,
     slots: bigint[] = []
-  ): Promise<RPCEthGetProof> {
-    target = target.toLowerCase();
+  ): Promise<GetProofReturnType> {
+    target = target.toLowerCase() as Address;
     const missing: number[] = []; // indices of slots we dont have proofs for
     const { promise, resolve, reject } = Promise.withResolvers(); // create a blocker
     // 20240708: must setup blocks before await
     let accountProof: Promise<EthAccountProof> | EthAccountProof | undefined =
-      this.cache.peek(target);
+      this.cache.peek<EthAccountProof>(target);
     if (!accountProof) {
       // missing account proof, so block it
       this.cache.set(
@@ -96,7 +98,7 @@ export class EthProver extends AbstractProver {
       | undefined
     )[] = slots.map((slot, i) => {
       const key = makeStorageKey(target, slot);
-      const p = this.cache.peek(key);
+      const p = this.cache.peek<EthStorageProof>(key);
       if (!p) {
         // missing storage proof, so block it
         this.cache.set(
@@ -137,27 +139,30 @@ export class EthProver extends AbstractProver {
   ): Promise<HexString> {
     // check to see if we know this target isn't a contract without invoking provider
     // this is almost equivalent to: await isContract(target)
-    const accountProof: EthAccountProof | undefined =
-      await this.cache.peek(target);
+    const accountProof = await this.cache.peek<EthAccountProof>(target);
     if (accountProof && !isContract(accountProof)) {
-      return ethers.ZeroHash;
+      return zeroHash;
     }
     // check to see if we've already have a proof for this value
     const storageKey = makeStorageKey(target, slot);
-    const storageProof: EthStorageProof | undefined = await (this.useFastCalls
-      ? this.cache.peek(storageKey)
+    const storageProof = await (this.useFastCalls
+      ? this.cache.peek<EthStorageProof>(storageKey)
       : this.cache.get(storageKey, async () => {
           const proofs = await this.getProofs(target, [slot]);
           return proofs.storageProof[0];
         }));
     if (storageProof) {
-      return ethers.toBeHex(storageProof.value, 32);
+      return toHex(storageProof.value, { size: 32 });
     }
     // we didn't have the proof
     // lets just get the value for now and prove it later
-    return this.cache.get(
+    return this.cache.get<HexString>(
       storageKey + '!',
-      () => this.provider.getStorage(target, slot),
+      () =>
+        getStorageAt(this.client, {
+          address: target,
+          slot: toHex(slot),
+        }) as Promise<HexString>,
       this.fastCallCacheMs
     );
   }

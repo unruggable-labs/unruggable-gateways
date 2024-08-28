@@ -1,10 +1,10 @@
-import { TaikoRollup } from '../../src/taiko/TaikoRollup.js';
-import { Gateway } from '../../src/gateway.js';
 import { serve } from '@resolverworks/ezccip';
-import { Foundry } from '@adraffy/blocksmith';
-import { providerURL, createProviderPair } from '../providers.js';
+import { afterAll, describe } from 'bun:test';
+import { Gateway } from '../../src/gateway.js';
+import { TaikoRollup } from '../../src/taiko/TaikoRollup.js';
+import { Foundry } from '../foundry.js';
+import { createProviderPair, providerURL } from '../providers.js';
 import { runSlotDataTests } from './tests.js';
-import { describe, afterAll } from 'bun:test';
 
 describe('taiko', async () => {
   const config = TaikoRollup.mainnetConfig;

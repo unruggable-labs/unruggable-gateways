@@ -1,8 +1,8 @@
-import { EVMRequest, MAX_STACK } from '../../src/vm.js';
-import { Foundry } from '@adraffy/blocksmith';
+import { afterAll, describe, expect, test } from 'bun:test';
 import { ethers } from 'ethers';
-import { afterAll, test, expect, describe } from 'bun:test';
 import { EthProver } from '../../src/eth/EthProver.js';
+import { EVMRequest, MAX_STACK } from '../../src/vm.js';
+import { Foundry } from '../foundry.js';
 
 describe('limits', async () => {
   const foundry = await Foundry.launch({ infoLog: false });
@@ -14,7 +14,7 @@ describe('limits', async () => {
       }
     `,
   });
-  const prover = await EthProver.latest(foundry.provider);
+  const prover = await EthProver.latest(foundry.client);
   async function exec(r: EVMRequest) {
     const state = await prover.evalRequest(r);
     return prover.prove(state.needs);

@@ -1,15 +1,15 @@
-import type { BigNumberish } from '../../src/types.js';
-import { EVMProgram, EVMRequest, solidityFollowSlot } from '../../src/vm.js';
-import { EthProver } from '../../src/eth/EthProver.js';
-import { Foundry } from '@adraffy/blocksmith';
+import { afterAll, describe, expect, test } from 'bun:test';
 import { ethers } from 'ethers';
-import { test, afterAll, expect, describe } from 'bun:test';
+import { toHex } from 'viem';
+import { EthProver } from '../../src/eth/EthProver.js';
+import { EVMProgram, EVMRequest, solidityFollowSlot } from '../../src/vm.js';
+import { Foundry } from '../foundry.js';
 
 function hexStr(s: string) {
-  return ethers.hexlify(ethers.toUtf8Bytes(s));
+  return toHex(s);
 }
-function uint256(x: BigNumberish) {
-  return ethers.toBeHex(x, 32);
+function uint256(x: bigint | number) {
+  return toHex(x, { size: 32 });
 }
 
 describe('ops', async () => {
@@ -31,7 +31,7 @@ describe('ops', async () => {
   });
 
   async function verify(req: EVMRequest) {
-    const prover = await EthProver.latest(foundry.provider);
+    const prover = await EthProver.latest(foundry.client);
     const stateRoot = await prover.fetchStateRoot();
     const vm = await prover.evalRequest(req);
     const { proofs, order } = await prover.prove(vm.needs);
@@ -78,14 +78,15 @@ describe('ops', async () => {
 
   test('slice', async () => {
     const small = '0x112233445566778899';
-    const big = Uint8Array.from({ length: 500 }, (_, i) => i);
+    const bigBytes = Uint8Array.from({ length: 500 }, (_, i) => i);
+    const big = toHex(bigBytes);
     const req = new EVMRequest();
     req.pushBytes(small).slice(4, 3).addOutput();
     req.pushBytes(big).slice(300, 5).addOutput();
     req.pushBytes('0x').slice(0, 0).addOutput();
     const { values } = await verify(req);
     expect(values[0]).toBe(ethers.dataSlice(small, 4, 4 + 3));
-    expect(values[1]).toBe(ethers.hexlify(big.slice(300, 300 + 5)));
+    expect(values[1]).toBe(ethers.hexlify(bigBytes.slice(300, 300 + 5)));
     expect(values[2]).toBe('0x');
   });
 
@@ -275,9 +276,9 @@ describe('ops', async () => {
   test('evalLoop requireContract', async () => {
     const req = new EVMRequest();
     req.push(1);
-    req.push(contract.target);
-    req.push('0x51050ec063d393217B436747617aD1C2285Aeeee');
-    req.push(uint256(0));
+    req.pushBytes(contract.target);
+    req.pushBytes('0x51050ec063d393217B436747617aD1C2285Aeeee');
+    req.pushBytes(uint256(0));
     req.begin().target().requireContract().end();
     req.evalLoop({ success: true, acquire: true });
     const { target, stack } = await verify(req);

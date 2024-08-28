@@ -1,8 +1,8 @@
-import { EVMRequest } from '../../src/vm.js';
-import { EthProver } from '../../src/eth/EthProver.js';
-import { Foundry } from '@adraffy/blocksmith';
+import { afterAll, expect, test } from 'bun:test';
 import { ethers } from 'ethers';
-import { test, afterAll, expect } from 'bun:test';
+import { EthProver } from '../../src/eth/EthProver.js';
+import { EVMRequest } from '../../src/vm.js';
+import { Foundry } from '../foundry.js';
 
 test('ClowesConcatSlice', async () => {
   const foundry = await Foundry.launch({ infoLog: false });
@@ -33,7 +33,7 @@ test('ClowesConcatSlice', async () => {
     args: [data, key, VALUE],
   });
 
-  const prover = await EthProver.latest(foundry.provider);
+  const prover = await EthProver.latest(foundry.client);
 
   const r = new EVMRequest(2)
     .setTarget(contract.target)

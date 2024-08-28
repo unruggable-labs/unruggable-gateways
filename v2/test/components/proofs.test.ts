@@ -1,6 +1,6 @@
+import { afterAll, describe, expect, test } from 'bun:test';
 import { EthProver } from '../../src/eth/EthProver.js';
-import { Foundry } from '@adraffy/blocksmith';
-import { describe, afterAll, test, expect } from 'bun:test';
+import { Foundry } from '../foundry.js';
 
 describe('proofs', async () => {
   const foundry = await Foundry.launch({ infoLog: false });
@@ -21,7 +21,7 @@ describe('proofs', async () => {
     fetchedCalls = 0;
     fetchedSlots = 0;
   }
-  foundry.provider.on('debug', (e) => {
+  foundry.emitter.on('debug', (e) => {
     if (e.action === 'sendRpcPayload' && e.payload.method === 'eth_getProof') {
       fetchedCalls++;
       fetchedSlots += e.payload.params[1].length;
@@ -29,14 +29,14 @@ describe('proofs', async () => {
   });
 
   test('reconstruction: empty', async () => {
-    const prover = await EthProver.latest(foundry.provider);
+    const prover = await EthProver.latest(foundry.client);
     const p0 = await prover.fetchProofs(contract.target);
     const p1 = await prover.getProofs(contract.target);
     expect(p0).toEqual(p1);
   });
 
   test('reconstruction: 1 slot', async () => {
-    const prover = await EthProver.latest(foundry.provider);
+    const prover = await EthProver.latest(foundry.client);
     const slots = [0n];
     const p0 = await prover.fetchProofs(contract.target, slots);
     const p1 = await prover.getProofs(contract.target, slots);
@@ -44,7 +44,7 @@ describe('proofs', async () => {
   });
 
   test('reconstruction: 3 slot scrambled', async () => {
-    const prover = await EthProver.latest(foundry.provider);
+    const prover = await EthProver.latest(foundry.client);
     const slots = [2n, 0n, 1n];
     const p0 = await prover.fetchProofs(contract.target, slots);
     const p1 = await prover.getProofs(contract.target, slots);
@@ -52,7 +52,7 @@ describe('proofs', async () => {
   });
 
   test('reconstruction: batched', async () => {
-    const prover = await EthProver.latest(foundry.provider);
+    const prover = await EthProver.latest(foundry.client);
     const slots = [0n, 1n];
     const p0 = await prover.fetchProofs(contract.target, slots);
     prover.proofBatchSize = 1;
@@ -61,7 +61,7 @@ describe('proofs', async () => {
   });
 
   test('reconstruction: batched cached', async () => {
-    const prover = await EthProver.latest(foundry.provider);
+    const prover = await EthProver.latest(foundry.client);
     const slots = [0n, 1n];
     const p0 = await prover.getProofs(contract.target, slots);
     resetStats();
@@ -72,7 +72,7 @@ describe('proofs', async () => {
   });
 
   test('fetchProofs() batch = 1', async () => {
-    const prover = await EthProver.latest(foundry.provider);
+    const prover = await EthProver.latest(foundry.client);
     resetStats();
     prover.proofBatchSize = 1;
     await prover.fetchProofs(contract.target, [0n, 1n]);
@@ -80,14 +80,14 @@ describe('proofs', async () => {
   });
 
   test('fetchProofs() batch > 1', async () => {
-    const prover = await EthProver.latest(foundry.provider);
+    const prover = await EthProver.latest(foundry.client);
     resetStats();
     await prover.fetchProofs(contract.target, [0n, 1n]);
     expect(fetchedCalls).toBe(1);
   });
 
   test('getProof() 01:10', async () => {
-    const prover = await EthProver.latest(foundry.provider);
+    const prover = await EthProver.latest(foundry.client);
     resetStats();
     const [p0, p1] = await Promise.all([
       prover.getProofs(contract.target, [0n, 1n]),
@@ -100,7 +100,7 @@ describe('proofs', async () => {
   });
 
   test('getProof() 01:12:02', async () => {
-    const prover = await EthProver.latest(foundry.provider);
+    const prover = await EthProver.latest(foundry.client);
     resetStats();
     const [p0, p1, p2] = await Promise.all([
       prover.getProofs(contract.target, [0n, 1n]),
@@ -115,7 +115,7 @@ describe('proofs', async () => {
   });
 
   test('getProof() 012345:012:345', async () => {
-    const prover = await EthProver.latest(foundry.provider);
+    const prover = await EthProver.latest(foundry.client);
     resetStats();
     const [p0, p1, p2] = await Promise.all([
       prover.getProofs(contract.target, [0n, 1n, 2n, 3n, 4n, 5n]),

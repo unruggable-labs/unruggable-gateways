@@ -1,27 +1,49 @@
-import type { Chain, ChainPair, Provider, ProviderPair } from '../src/types.js';
 import { ethers } from 'ethers';
+import { createClient, http, type Client } from 'viem';
 import {
-  CHAIN_MAINNET,
-  CHAIN_SEPOLIA,
-  CHAIN_OP,
-  CHAIN_OP_SEPOLIA,
-  CHAIN_BASE,
-  CHAIN_BASE_SEPOLIA,
-  CHAIN_SCROLL,
-  CHAIN_TAIKO,
-  CHAIN_ZKSYNC,
-  CHAIN_ZKSYNC_SEPOLIA,
-  CHAIN_ZKEVM,
-  CHAIN_ZKEVM_CARDONA,
-  CHAIN_ARB1,
-  CHAIN_ARB_NOVA,
-  CHAIN_ARB_SEPOLIA,
-  CHAIN_LINEA_SEPOLIA,
-  CHAIN_LINEA,
-  CHAIN_SCROLL_SEPOLIA,
-} from '../src/chains.js';
+  arbitrum,
+  arbitrumNova,
+  arbitrumSepolia,
+  base,
+  baseSepolia,
+  linea,
+  lineaSepolia,
+  mainnet,
+  optimism,
+  optimismSepolia,
+  polygonZkEvm,
+  polygonZkEvmCardona,
+  scroll,
+  scrollSepolia,
+  sepolia,
+  taiko,
+  zksync,
+  zksyncSepoliaTestnet,
+} from 'viem/chains';
+import type { ChainId, ChainPair, ClientPair } from '../src/types.js';
 
-export function providerURL(chain: Chain): string {
+const supportedChains = [
+  mainnet,
+  sepolia,
+  optimism,
+  optimismSepolia,
+  base,
+  baseSepolia,
+  arbitrum,
+  arbitrumNova,
+  arbitrumSepolia,
+  scroll,
+  scrollSepolia,
+  taiko,
+  zksync,
+  zksyncSepoliaTestnet,
+  polygonZkEvm,
+  polygonZkEvmCardona,
+  linea,
+  lineaSepolia,
+];
+
+export function transportUrl(chainId: ChainId): string {
   type ProviderClass = {
     getRequest(network: ethers.Network, key: string): ethers.FetchRequest;
   };
@@ -30,7 +52,7 @@ export function providerURL(chain: Chain): string {
     ['ALCHEMY_KEY', ethers.AlchemyProvider],
     ['ANKR_KEY', ethers.AnkrProvider],
   ];
-  const network = ethers.Network.from(chain);
+  const network = ethers.Network.from(chainId);
   for (const [env, cls] of ordering) {
     const key = process.env[env];
     if (!key) continue;
@@ -40,84 +62,86 @@ export function providerURL(chain: Chain): string {
       /*empty*/
     }
   }
-  switch (chain) {
-    case CHAIN_MAINNET:
+  switch (chainId) {
+    case mainnet.id:
       // https://developers.cloudflare.com/web3/ethereum-gateway/
       //return 'https://cloudflare-eth.com';
       // 20240713: might be better to use the ankr public rpcs
       return `https://rpc.ankr.com/eth`;
-    case CHAIN_SEPOLIA:
+    case sepolia.id:
       return `https://rpc.ankr.com/eth_sepolia`;
-    case CHAIN_OP:
+    case optimism.id:
       // https://docs.optimism.io/chain/networks#op-mainnet
       return 'https://mainnet.optimism.io';
-    case CHAIN_OP_SEPOLIA:
+    case optimismSepolia.id:
       // https://docs.optimism.io/chain/networks#op-sepolia
       return 'https://sepolia.optimism.io';
-    case CHAIN_BASE:
+    case base.id:
       // https://docs.base.org/docs/network-information#base-mainnet
       return 'https://mainnet.base.org';
-    case CHAIN_BASE_SEPOLIA:
+    case baseSepolia.id:
       // https://docs.base.org/docs/network-information#base-testnet-sepolia
       return 'https://sepolia.base.org';
-    case CHAIN_ARB1:
+    case arbitrum.id:
       // https://docs.arbitrum.io/build-decentralized-apps/reference/node-providers#arbitrum-public-rpc-endpoints
       return 'https://arb1.arbitrum.io/rpc';
-    case CHAIN_ARB_NOVA:
+    case arbitrumNova.id:
       return 'https://nova.arbitrum.io/rpc';
-    case CHAIN_ARB_SEPOLIA:
+    case arbitrumSepolia.id:
       return 'https://sepolia-rollup.arbitrum.io/rpc';
-    case CHAIN_SCROLL:
+    case scroll.id:
       // https://docs.scroll.io/en/developers/developer-quickstart/#scroll-mainnet
       return 'https://rpc.scroll.io';
-    case CHAIN_SCROLL_SEPOLIA:
+    case scrollSepolia.id:
       // https://docs.scroll.io/en/developers/developer-quickstart/#scroll-sepolia-testnet
       return 'https://sepolia-rpc.scroll.io';
-    case CHAIN_TAIKO:
+    case taiko.id:
       // https://docs.taiko.xyz/network-reference/rpc-configuration#taiko-mainnet
       return 'https://rpc.mainnet.taiko.xyz';
-    case CHAIN_ZKSYNC:
+    case zksync.id:
       // https://docs.zksync.io/build/connect-to-zksync#mainnet-network-details
       return 'https://mainnet.era.zksync.io';
-    case CHAIN_ZKSYNC_SEPOLIA:
+    case zksyncSepoliaTestnet.id:
       // https://docs.zksync.io/build/connect-to-zksync#sepolia-testnet-network-details
       return 'https://sepolia.era.zksync.dev';
-    case CHAIN_ZKEVM:
+    case polygonZkEvm.id:
       // https://docs.polygon.technology/zkEVM/get-started/quick-start/#manually-add-network-to-wallet
       return 'https://zkevm.polygonscan.com';
-    case CHAIN_ZKEVM_CARDONA:
+    case polygonZkEvmCardona.id:
       //return 'https://cardona-zkevm.polygonscan.com/';
       return 'https://rpc.cardona.zkevm-rpc.com';
-    case CHAIN_LINEA:
+    case linea.id:
       // https://docs.linea.build/developers/quickstart/info-contracts
       return 'https://rpc.linea.build';
-    case CHAIN_LINEA_SEPOLIA:
+    case lineaSepolia.id:
       return 'https://rpc.sepolia.linea.build';
   }
-  throw Object.assign(new Error('unknown provider'), { chain });
+  throw Object.assign(new Error('unknown provider'), { chainId });
 }
 
-export function createProvider(chain: Chain): Provider {
-  return new ethers.JsonRpcProvider(providerURL(chain), chain, {
-    staticNetwork: true,
+export function createClientFromId(chainId: ChainId): Client {
+  return createClient({
+    transport: http(transportUrl(chainId), { retryCount: 0 }),
+    chain: supportedChains.find((c) => c.id === chainId)!,
+    cacheTime: 0,
   });
 }
 
-export function createProviderPair(
-  a: Chain | ChainPair,
-  b?: Chain
-): ProviderPair {
-  if (typeof a !== 'bigint') {
+export function createClientPair(
+  a: ChainId | ChainPair,
+  b?: ChainId
+): ClientPair {
+  if (typeof a !== 'number') {
     b = a.chain2;
     a = a.chain1;
   }
   if (!b) {
     // if only 1 chain is provided => (mainnet, chain)
     b = a;
-    a = CHAIN_MAINNET;
+    a = mainnet.id;
   }
   return {
-    provider1: createProvider(a),
-    provider2: createProvider(b),
+    client1: createClientFromId(a),
+    client2: createClientFromId(b),
   };
 }

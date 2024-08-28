@@ -1,32 +1,43 @@
-import { ZKSyncRollup } from '../../src/zksync/ZKSyncRollup.js';
+import { CcipReadRouter } from '@ensdomains/ccip-read-router';
+import { afterAll, describe } from 'bun:test';
+import type { Client } from 'viem';
 import { Gateway } from '../../src/gateway.js';
-import { serve } from '@resolverworks/ezccip';
-import { Foundry } from '@adraffy/blocksmith';
-import { createProviderPair, providerURL } from '../providers.js';
+import type { ZKSyncClient } from '../../src/zksync/types.js';
+import { ZKSyncRollup } from '../../src/zksync/ZKSyncRollup.js';
+import { Foundry } from '../foundry.js';
+import { createClientPair, transportUrl } from '../providers.js';
 import { runSlotDataTests } from './tests.js';
-import { describe, afterAll } from 'bun:test';
 
 describe('zksync', async () => {
   const config = ZKSyncRollup.mainnetConfig;
-  const rollup = new ZKSyncRollup(createProviderPair(config), config);
+  const rollup = new ZKSyncRollup(
+    createClientPair(config) as { client1: Client; client2: ZKSyncClient },
+    config
+  );
   const foundry = await Foundry.launch({
-    fork: providerURL(config.chain1),
+    fork: transportUrl(config.chain1),
     infoLog: false,
     infiniteCallGas: true, // Blake2s is ~12m gas per proof!
   });
   afterAll(() => foundry.shutdown());
   const gateway = new Gateway(rollup);
-  const ccip = await serve(gateway, {
-    protocol: 'raw',
-    log: false,
-  });
-  afterAll(() => ccip.http.close());
+  const router = CcipReadRouter();
+  gateway.register(router);
+
+  const server = Bun.serve(router);
+
+  afterAll(() => server.stop());
   const smt = await foundry.deploy({
     file: 'ZKSyncSMT',
   });
   const verifier = await foundry.deploy({
     file: 'ZKSyncVerifier',
-    args: [[ccip.endpoint], rollup.defaultWindow, rollup.DiamondProxy, smt],
+    args: [
+      [`http://${server.hostname}:${server.port}`],
+      rollup.defaultWindow,
+      rollup.diamondProxy.address,
+      smt,
+    ],
   });
   // https://explorer.zksync.io/address/0x1Cd42904e173EA9f7BA05BbB685882Ea46969dEc#contract
   const reader = await foundry.deploy({
