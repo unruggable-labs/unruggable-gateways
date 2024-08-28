@@ -1,26 +1,23 @@
-import { ethers } from 'ethers';
+import { encodeAbiParameters, parseAbiParameters, toHex, zeroHash } from 'viem';
+import { getContractEvents, readContract } from 'viem/actions';
+import { linea, lineaSepolia, mainnet, sepolia } from 'viem/chains';
+
+import { CachedMap } from '../cached.js';
+import {
+  AbstractRollup,
+  type RollupCommit,
+  type RollupDeployment,
+} from '../rollup.js';
 import type {
+  ClientPair,
   EncodedProof,
   HexAddress,
   HexString,
   HexString32,
-  ProviderPair,
 } from '../types.js';
+import { rollupAbi } from './abi.js';
 import { LineaProver } from './LineaProver.js';
-import { ROLLUP_ABI } from './types.js';
-import {
-  CHAIN_LINEA,
-  CHAIN_LINEA_SEPOLIA,
-  CHAIN_MAINNET,
-  CHAIN_SEPOLIA,
-} from '../chains.js';
-import { CachedMap } from '../cached.js';
-import {
-  type RollupDeployment,
-  type RollupCommit,
-  AbstractRollup,
-} from '../rollup.js';
-import { ABI_CODER } from '../utils.js';
+import { type LineaClient } from './types.js';
 
 // https://docs.linea.build/developers/quickstart/ethereum-differences
 // https://github.com/Consensys/linea-contracts
@@ -33,73 +30,80 @@ export type LineaCommit = RollupCommit<LineaProver> & {
 };
 
 export type LineaConfig = {
-  L1MessageService: HexAddress;
-  SparseMerkleProof: HexAddress;
+  l1MessageServiceAddress: HexAddress;
+  sparseMerkleProofAddress: HexAddress;
 };
 
-export class LineaRollup extends AbstractRollup<LineaCommit> {
+export class LineaRollup extends AbstractRollup<LineaCommit, LineaClient> {
   // https://docs.linea.build/developers/quickstart/info-contracts
   static readonly mainnetConfig: RollupDeployment<LineaConfig> = {
-    chain1: CHAIN_MAINNET,
-    chain2: CHAIN_LINEA,
-    L1MessageService: '0xd19d4B5d358258f05D7B411E21A1460D11B0876F',
+    chain1: mainnet.id,
+    chain2: linea.id,
+    l1MessageServiceAddress: '0xd19d4B5d358258f05D7B411E21A1460D11B0876F',
     // https://github.com/Consensys/linea-ens/blob/main/packages/linea-ens-resolver/deployments/mainnet/SparseMerkleProof.json
-    SparseMerkleProof: '0xBf8C454Af2f08fDD90bB7B029b0C2c07c2a7b4A3',
+    sparseMerkleProofAddress: '0xBf8C454Af2f08fDD90bB7B029b0C2c07c2a7b4A3',
   } as const;
   static readonly testnetConfig: RollupDeployment<LineaConfig> = {
-    chain1: CHAIN_SEPOLIA,
-    chain2: CHAIN_LINEA_SEPOLIA,
-    L1MessageService: '0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5',
+    chain1: sepolia.id,
+    chain2: lineaSepolia.id,
+    l1MessageServiceAddress: '0xB218f8A4Bc926cF1cA7b3423c154a0D627Bdb7E5',
     // https://github.com/Consensys/linea-ens/blob/main/packages/linea-ens-resolver/deployments/sepolia/SparseMerkleProof.json
-    SparseMerkleProof: '0x718D20736A637CDB15b6B586D8f1BF081080837f',
+    sparseMerkleProofAddress: '0x718D20736A637CDB15b6B586D8f1BF081080837f',
   } as const;
 
-  readonly L1MessageService: ethers.Contract;
-  constructor(providers: ProviderPair, config: LineaConfig) {
-    super(providers);
-    this.L1MessageService = new ethers.Contract(
-      config.L1MessageService,
-      ROLLUP_ABI,
-      this.provider1
-    );
+  readonly l1MessageService: { address: HexAddress; abi: typeof rollupAbi };
+  constructor(clients: ClientPair<LineaClient>, config: LineaConfig) {
+    super(clients);
+    this.l1MessageService = {
+      address: config.l1MessageServiceAddress,
+      abi: rollupAbi,
+    };
   }
 
   async fetchLatestCommitIndex(): Promise<bigint> {
-    return this.L1MessageService.currentL2BlockNumber({
+    return readContract(this.client1, {
+      ...this.l1MessageService,
+      functionName: 'currentL2BlockNumber',
       blockTag: 'finalized',
     });
   }
   async fetchParentCommitIndex(commit: LineaCommit): Promise<bigint> {
     // find the starting state root
-    const [log] = await this.L1MessageService.queryFilter(
-      this.L1MessageService.filters.DataFinalized(
-        commit.index,
-        null,
-        commit.stateRoot
-      )
-    );
+    const [log] = await getContractEvents(this.client1, {
+      ...this.l1MessageService,
+      eventName: 'DataFinalized',
+      args: {
+        lastBlockFinalized: commit.index,
+        finalRootHash: commit.stateRoot,
+      },
+    });
     if (log) {
       // find the block that finalized this root
       const prevStateRoot = log.topics[2];
-      const [prevLog] = await this.L1MessageService.queryFilter(
-        this.L1MessageService.filters.DataFinalized(null, null, prevStateRoot)
-      );
+      const [prevLog] = await getContractEvents(this.client1, {
+        ...this.l1MessageService,
+        eventName: 'DataFinalized',
+        args: { finalRootHash: prevStateRoot },
+      });
       if (prevLog) return BigInt(prevLog.topics[1]); // l2BlockNumber
     }
     return -1n;
   }
   async fetchCommit(index: bigint): Promise<LineaCommit> {
-    const stateRoot: HexString32 =
-      await this.L1MessageService.stateRootHashes(index);
-    if (stateRoot === ethers.ZeroHash) {
+    const stateRoot = await readContract(this.client1, {
+      ...this.l1MessageService,
+      functionName: 'stateRootHashes',
+      args: [index],
+    });
+    if (stateRoot === zeroHash) {
       throw new Error('not finalized');
     }
     return {
       index,
       stateRoot,
       prover: new LineaProver(
-        this.provider2,
-        '0x' + index.toString(16),
+        this.client2,
+        toHex(index),
         new CachedMap(Infinity, this.commitCacheSize)
       ),
     };
@@ -109,10 +113,11 @@ export class LineaRollup extends AbstractRollup<LineaCommit> {
     proofs: EncodedProof[],
     order: Uint8Array
   ): HexString {
-    return ABI_CODER.encode(
-      ['uint256', 'bytes[]', 'bytes'],
-      [commit.index, proofs, order]
-    );
+    return encodeAbiParameters(parseAbiParameters('uint256, bytes[], bytes'), [
+      commit.index,
+      proofs,
+      toHex(order),
+    ]);
   }
 
   override windowFromSec(sec: number): number {

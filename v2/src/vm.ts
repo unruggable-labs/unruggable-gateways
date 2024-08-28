@@ -14,6 +14,7 @@ import {
   type Address,
   type Hex,
 } from 'viem';
+
 import type { CachedMap } from './cached.js';
 import type { EncodedProof, HexAddress, HexString } from './types.js';
 import { unwrap, Wrapped, type Unwrappable } from './wrap.js';

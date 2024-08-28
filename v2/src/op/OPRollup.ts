@@ -1,5 +1,6 @@
 import { readContract } from 'viem/actions';
 import { base, mainnet } from 'viem/chains';
+
 import type { RollupDeployment } from '../rollup.js';
 import type { ClientPair, HexAddress } from '../types.js';
 import { oracleAbi } from './abi.js';

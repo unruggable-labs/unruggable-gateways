@@ -1,14 +1,22 @@
-import type { EncodedProof, HexString, Provider } from '../types.js';
+import {
+  encodeAbiParameters,
+  parseAbiParameters,
+  sliceHex,
+  toHex,
+  zeroHash,
+} from 'viem';
+import { getStorageAt } from 'viem/actions';
+
+import { CachedMap } from '../cached.js';
+import type { EncodedProof, HexString } from '../types.js';
+import { NULL_CODE_HASH } from '../utils.js';
 import {
   AbstractProver,
   makeStorageKey,
   storageMapFromCache,
   type Need,
 } from '../vm.js';
-import { CachedMap } from '../cached.js';
-import { ethers } from 'ethers';
-import { ABI_CODER, NULL_CODE_HASH } from '../utils.js';
-import type { LineaProof, RPCLineaGetProof } from './types.js';
+import type { LineaClient, LineaProof, RPCLineaGetProof } from './types.js';
 
 //const NULL_CODE_HASH = '0x0134373b65f439c874734ff51ea349327c140cde2e47a933146e6f9f2ad8eb17'; // mimc(ZeroHash)
 
@@ -20,24 +28,30 @@ function isContract(accountProof: LineaProof) {
   return (
     isExistanceProof(accountProof) &&
     // https://github.com/Consensys/linea-monorepo/blob/a001342170768a22988a29b2dca8601199c6e205/contracts/contracts/lib/SparseMerkleProof.sol#L23
-    ethers.dataSlice(accountProof.proof.value, 128, 160) !== NULL_CODE_HASH
+    sliceHex(accountProof.proof.value, 128, 160) !== NULL_CODE_HASH
   );
 }
 
 function encodeProof(proof: LineaProof) {
-  return ABI_CODER.encode(
-    ['tuple(uint256, bytes, bytes[])[]'],
+  return encodeAbiParameters(
+    parseAbiParameters('(uint256, bytes, bytes[])[]'),
     [
       isExistanceProof(proof)
-        ? [[proof.leafIndex, proof.proof.value, proof.proof.proofRelatedNodes]]
+        ? [
+            [
+              BigInt(proof.leafIndex),
+              proof.proof.value,
+              proof.proof.proofRelatedNodes,
+            ],
+          ]
         : [
             [
-              proof.leftLeafIndex,
+              BigInt(proof.leftLeafIndex),
               proof.leftProof.value,
               proof.leftProof.proofRelatedNodes,
             ],
             [
-              proof.rightLeafIndex,
+              BigInt(proof.rightLeafIndex),
               proof.rightProof.value,
               proof.rightProof.proofRelatedNodes,
             ],
@@ -48,9 +62,9 @@ function encodeProof(proof: LineaProof) {
 
 export class LineaProver extends AbstractProver {
   constructor(
-    readonly provider: Provider,
+    readonly client: LineaClient,
     readonly block: HexString,
-    readonly cache: CachedMap<string, any> = new CachedMap()
+    readonly cache: CachedMap<string> = new CachedMap()
   ) {
     super();
   }
@@ -62,24 +76,27 @@ export class LineaProver extends AbstractProver {
     slot: bigint
   ): Promise<HexString> {
     // check to see if we know this target isn't a contract
-    const accountProof: LineaProof | undefined = await this.cache.peek(target);
+    const accountProof = await this.cache.peek<LineaProof>(target);
     if (accountProof && !isContract(accountProof)) {
-      return ethers.ZeroHash;
+      return zeroHash;
     }
     // check to see if we've already have a proof for this value
     const storageKey = makeStorageKey(target, slot);
-    const storageProof: LineaProof | undefined =
-      await this.cache.peek(storageKey);
+    const storageProof = await this.cache.peek<LineaProof>(storageKey);
     if (storageProof) {
       return isExistanceProof(storageProof)
         ? storageProof.proof.value
-        : ethers.ZeroHash;
+        : zeroHash;
     }
     // we didn't have the proof
     if (this.useFastCalls) {
       return this.cache.get(
         storageKey + '!',
-        () => this.provider.getStorage(target, slot),
+        () =>
+          getStorageAt(this.client, {
+            address: target,
+            slot: toHex(slot),
+          }) as Promise<HexString>,
         this.fastCallCacheMs
       );
     } else {
@@ -87,7 +104,7 @@ export class LineaProver extends AbstractProver {
       return isContract(proof.accountProof) &&
         isExistanceProof(proof.storageProofs[0])
         ? proof.storageProofs[0].proof.value
-        : ethers.ZeroHash;
+        : zeroHash;
     }
   }
   override async isContract(target: HexString) {
@@ -135,8 +152,7 @@ export class LineaProver extends AbstractProver {
       Array.from(targets, async ([target, bucket]) => {
         let m = [...bucket.map];
         try {
-          const accountProof: LineaProof | undefined =
-            await this.cache.cachedValue(target);
+          const accountProof = await this.cache.cachedValue<LineaProof>(target);
           if (accountProof && !isContract(accountProof)) {
             m = []; // if we know target isn't a contract, we only need accountProof
           }
@@ -164,7 +180,7 @@ export class LineaProver extends AbstractProver {
     target: HexString,
     slots: bigint[] = []
   ): Promise<RPCLineaGetProof> {
-    target = target.toLowerCase();
+    target = target.toLowerCase() as HexString;
     // there are (3) cases:
     // 1.) account doesn't exist
     // 2.) account is EOA
@@ -173,7 +189,7 @@ export class LineaProver extends AbstractProver {
     const { promise, resolve, reject } = Promise.withResolvers();
     // check if we have an account proof
     let accountProof: Promise<LineaProof> | LineaProof | undefined =
-      this.cache.peek(target);
+      this.cache.peek<LineaProof>(target);
     if (!accountProof) {
       // missing account proof, so block it
       this.cache.set(
@@ -186,7 +202,7 @@ export class LineaProver extends AbstractProver {
     const storageProofs: (Promise<LineaProof> | LineaProof | undefined)[] =
       slots.map((slot, i) => {
         const key = makeStorageKey(target, slot);
-        const p = this.cache.peek(key);
+        const p = this.cache.peek<LineaProof>(key);
         if (!p) {
           // missing storage proof, so block it
           this.cache.set(
@@ -237,13 +253,16 @@ export class LineaProver extends AbstractProver {
     const ps: Promise<RPCLineaGetProof>[] = [];
     for (let i = 0; ; ) {
       ps.push(
-        this.provider.send('linea_getProof', [
-          target,
-          slots
-            .slice(i, (i += this.proofBatchSize))
-            .map((slot) => ethers.toBeHex(slot, 32)),
-          this.block,
-        ])
+        this.client.request({
+          method: 'linea_getProof',
+          params: [
+            target,
+            slots
+              .slice(i, (i += this.proofBatchSize))
+              .map((slot) => toHex(slot, { size: 32 })),
+            this.block,
+          ],
+        })
       );
       if (i >= slots.length) break;
     }

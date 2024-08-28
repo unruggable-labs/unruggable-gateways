@@ -1,20 +1,6 @@
-import { ethers } from 'ethers';
-import type { HexString, HexString32 } from '../types.js';
-
-export const ROLLUP_ABI = new ethers.Interface([
-  // ZkEvmV2.sol
-  `function currentL2BlockNumber() view returns (uint256)`,
-  `function stateRootHashes(uint256 l2BlockNumber) view returns (bytes32)`,
-  // ILineaRollup.sol
-  `event DataFinalized(
-    uint256 indexed lastBlockFinalized,
-    bytes32 indexed startingRootHash,
-    bytes32 indexed finalRootHash,
-    bool withProof
-  )`,
-  // IZkEvmV2.sol
-  `event BlocksVerificationDone(uint256 indexed lastBlockFinalized, bytes32 startingRootHash, bytes32 finalRootHash)`,
-]);
+import type { Address } from 'viem';
+import type { linea, lineaSepolia } from 'viem/chains';
+import type { ClientWithCustomRpc, HexString, HexString32 } from '../types.js';
 
 export type LineaProofObject = {
   proofRelatedNodes: HexString[];
@@ -41,3 +27,18 @@ export type RPCLineaGetProof = {
   accountProof: LineaProof;
   storageProofs: LineaProof[]; // note: this is plural
 };
+
+export type LineaClient = ClientWithCustomRpc<
+  [
+    {
+      Method: 'linea_getProof';
+      Parameters: [
+        address: Address,
+        keys: HexString32[],
+        blockNumber: HexString,
+      ];
+      ReturnType: RPCLineaGetProof;
+    },
+  ],
+  typeof linea | typeof lineaSepolia
+>;

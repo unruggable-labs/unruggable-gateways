@@ -1,4 +1,4 @@
-import type { GetProofReturnType, RpcBlock as RpcBlock_ } from 'viem';
+import type { Block, GetProofReturnType } from 'viem';
 import type { HexString, HexString32 } from '../types.js';
 
 export type RpcProof = GetProofReturnType & {
@@ -9,7 +9,7 @@ export type EthAccountProof = Omit<RpcProof, 'storageProof'>;
 export type EthStorageProof = RpcProof['storageProof'][0];
 export type EthProof = HexString[];
 
-export type RpcBlock = RpcBlock_<'finalized', false> & {
+export type RpcBlock = Block<bigint, false> & {
   parentBeaconBlockRoot?: HexString32;
 };
 

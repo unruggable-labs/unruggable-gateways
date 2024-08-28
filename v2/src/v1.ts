@@ -1,4 +1,5 @@
 import { hexToBytes, toHex, zeroAddress, type Address } from 'viem';
+
 import type { HexString } from './types.js';
 import { EVMRequest } from './vm.js';
 

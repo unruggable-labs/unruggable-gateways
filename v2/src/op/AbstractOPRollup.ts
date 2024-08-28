@@ -1,6 +1,7 @@
 import type { AbiParameterToPrimitiveType } from 'abitype';
 import { encodeAbiParameters, parseAbiParameter, toHex, zeroHash } from 'viem';
 import { getBlock, getProof } from 'viem/actions';
+
 import { CachedMap } from '../cached.js';
 import { EthProver } from '../eth/EthProver.js';
 import { AbstractRollupV1, type RollupCommit } from '../rollup.js';

@@ -1,14 +1,13 @@
 import { toRlp } from 'viem';
+
 import type { RpcBlock } from './eth/types.js';
 import type { HexString, RecursiveArray } from './types.js';
 
 // https://ethereum.github.io/execution-specs/src/ethereum/rlp.py.html
 
-export function encodeRlpUint(
-  x?: HexString | null
-): HexString | undefined | null {
+export function encodeRlpUint(x?: bigint | null): HexString | undefined | null {
   if (x === undefined || x === null) return x;
-  const s = BigInt(x).toString(16);
+  const s = x.toString(16);
   return s === '0' ? '0x' : s.length & 1 ? `0x0${s}` : `0x${s}`;
 }
 
