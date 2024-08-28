@@ -1,17 +1,14 @@
-import type { EncodedProof, HexAddress, HexString } from '../types.js';
-import type { RPCEthGetBlock, RPCEthGetProof } from '../eth/types.js';
-import { AbstractRollupV1, type RollupCommit } from '../rollup.js';
-import { EthProver } from '../eth/EthProver.js';
-import { ethers } from 'ethers';
+import type { AbiParameterToPrimitiveType } from 'abitype';
+import { encodeAbiParameters, parseAbiParameter, toHex, zeroHash } from 'viem';
+import { getBlock, getProof } from 'viem/actions';
 import { CachedMap } from '../cached.js';
-import { ABI_CODER } from '../utils.js';
+import { EthProver } from '../eth/EthProver.js';
+import { AbstractRollupV1, type RollupCommit } from '../rollup.js';
+import type { EncodedProof, HexAddress, HexString } from '../types.js';
 
-const OutputRootProofType = `tuple(
-  bytes32 version,
-  bytes32 stateRoot,
-  bytes32 messagePasserStorageRoot,
-  bytes32 latestBlockhash
-)`;
+const OutputRootProofType = parseAbiParameter(
+  '(bytes32 version, bytes32 stateRoot, bytes32 messagePasserStorageRoot, bytes32 latestBlockhash)'
+);
 
 export type OPCommit = RollupCommit<EthProver> & {
   readonly blockHash: HexString;
@@ -19,30 +16,29 @@ export type OPCommit = RollupCommit<EthProver> & {
   readonly passerRoot: HexString;
 };
 
-function outputRootProofTuple(commit: OPCommit) {
-  return [
-    ethers.ZeroHash,
-    commit.stateRoot,
-    commit.passerRoot,
-    commit.blockHash,
-  ];
+function outputRootProofTuple(
+  commit: OPCommit
+): AbiParameterToPrimitiveType<typeof OutputRootProofType> {
+  return {
+    version: zeroHash,
+    stateRoot: commit.stateRoot,
+    messagePasserStorageRoot: commit.passerRoot,
+    latestBlockhash: commit.blockHash,
+  };
 }
 
 export abstract class AbstractOPRollup extends AbstractRollupV1<OPCommit> {
-  L2ToL1MessagePasser: HexAddress =
+  l2ToL1MessagePasserAddress: HexAddress =
     '0x4200000000000000000000000000000000000016';
-  async createCommit(index: bigint, block: HexString): Promise<OPCommit> {
+  async createCommit(index: bigint, blockNumber: bigint): Promise<OPCommit> {
     const [{ storageHash: passerRoot }, { stateRoot, hash: blockHash }] =
       await Promise.all([
-        this.provider2.send('eth_getProof', [
-          this.L2ToL1MessagePasser,
-          [],
-          block,
-        ]) as Promise<RPCEthGetProof>,
-        this.provider2.send('eth_getBlockByNumber', [
-          block,
-          false,
-        ]) as Promise<RPCEthGetBlock>,
+        getProof(this.client2, {
+          address: this.l2ToL1MessagePasserAddress,
+          storageKeys: [],
+          blockNumber,
+        }),
+        getBlock(this.client2, { blockNumber, includeTransactions: false }),
       ]);
     return {
       index,
@@ -50,8 +46,8 @@ export abstract class AbstractOPRollup extends AbstractRollupV1<OPCommit> {
       stateRoot,
       passerRoot,
       prover: new EthProver(
-        this.provider2,
-        block,
+        this.client2,
+        blockNumber,
         new CachedMap(Infinity, this.commitCacheSize)
       ),
     };
@@ -61,9 +57,14 @@ export abstract class AbstractOPRollup extends AbstractRollupV1<OPCommit> {
     proofs: EncodedProof[],
     order: Uint8Array
   ): HexString {
-    return ABI_CODER.encode(
-      ['uint256', OutputRootProofType, 'bytes[]', 'bytes'],
-      [commit.index, outputRootProofTuple(commit), proofs, order]
+    return encodeAbiParameters(
+      [
+        { type: 'uint256' },
+        OutputRootProofType,
+        { type: 'bytes[]' },
+        { type: 'bytes' },
+      ],
+      [commit.index, outputRootProofTuple(commit), proofs, toHex(order)]
     );
   }
   override encodeWitnessV1(
@@ -71,8 +72,14 @@ export abstract class AbstractOPRollup extends AbstractRollupV1<OPCommit> {
     accountProof: EncodedProof,
     storageProofs: EncodedProof[]
   ): HexString {
-    return ABI_CODER.encode(
-      [`tuple(uint256, ${OutputRootProofType})`, 'tuple(bytes, bytes[])'],
+    return encodeAbiParameters(
+      [
+        {
+          type: 'tuple',
+          components: [{ type: 'uint256' }, OutputRootProofType],
+        },
+        { type: 'tuple', components: [{ type: 'bytes' }, { type: 'bytes[]' }] },
+      ],
       [
         [commit.index, outputRootProofTuple(commit)],
         [accountProof, storageProofs],

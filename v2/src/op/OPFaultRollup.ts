@@ -1,73 +1,64 @@
+import { readContract } from 'viem/actions';
+import { baseSepolia, mainnet, optimism, sepolia } from 'viem/chains';
 import type { RollupDeployment } from '../rollup.js';
-import { ethers } from 'ethers';
-import type { HexAddress, ProviderPair } from '../types.js';
-import { PORTAL_ABI, GAME_FINDER_ABI } from './types.js';
-import {
-  CHAIN_BASE_SEPOLIA,
-  CHAIN_MAINNET,
-  CHAIN_OP,
-  CHAIN_SEPOLIA,
-} from '../chains.js';
+import type { ClientPair, HexAddress } from '../types.js';
+import { gameFinderAbi, portalAbi } from './abi.js';
 import { AbstractOPRollup, type OPCommit } from './AbstractOPRollup.js';
 
 // https://docs.optimism.io/chain/differences
 // https://specs.optimism.io/fault-proof/stage-one/bridge-integration.html
 
 export type OPFaultConfig = {
-  OptimismPortal: HexAddress;
-  GameFinder: HexAddress;
+  optimismPortalAddress: HexAddress;
+  gameFinderAddress: HexAddress;
   gameTypes?: number[]; // if empty, dynamically uses respectedGameType()
 };
 
-type ABIFinalizedGame = {
-  gameType: bigint;
-  gameProxy: HexAddress;
-  l2BlockNumber: bigint;
-};
-
-const callOptions = { blockTag: 'finalized' };
+const callOptions = { blockTag: 'finalized' } as const;
 
 export class OPFaultRollup extends AbstractOPRollup {
   static readonly mainnetConfig: RollupDeployment<OPFaultConfig> = {
-    chain1: CHAIN_MAINNET,
-    chain2: CHAIN_OP,
+    chain1: mainnet.id,
+    chain2: optimism.id,
     // https://docs.optimism.io/chain/addresses
-    OptimismPortal: '0xbEb5Fc579115071764c7423A4f12eDde41f106Ed',
-    GameFinder: '0x5A8E83f0E728bEb821b91bB82cFAE7F67bD36f7e',
+    optimismPortalAddress: '0xbEb5Fc579115071764c7423A4f12eDde41f106Ed',
+    gameFinderAddress: '0x5A8E83f0E728bEb821b91bB82cFAE7F67bD36f7e',
   } as const;
   static readonly baseTestnetConfig: RollupDeployment<OPFaultConfig> = {
-    chain1: CHAIN_SEPOLIA,
-    chain2: CHAIN_BASE_SEPOLIA,
+    chain1: sepolia.id,
+    chain2: baseSepolia.id,
     // https://docs.base.org/docs/base-contracts/#ethereum-testnet-sepolia
-    OptimismPortal: '0x49f53e41452C74589E85cA1677426Ba426459e85',
-    GameFinder: '0x0f1449C980253b576aba379B11D453Ac20832a89',
+    optimismPortalAddress: '0x49f53e41452C74589E85cA1677426Ba426459e85',
+    gameFinderAddress: '0x0f1449C980253b576aba379B11D453Ac20832a89',
   } as const;
 
-  static async create(providers: ProviderPair, config: OPFaultConfig) {
-    const optimismPortal = new ethers.Contract(
-      config.OptimismPortal,
-      PORTAL_ABI,
-      providers.provider1
-    );
-    const gameFinder = new ethers.Contract(
-      config.GameFinder,
-      GAME_FINDER_ABI,
-      providers.provider1
-    );
+  static async create(clients: ClientPair, config: OPFaultConfig) {
+    const optimismPortal = {
+      address: config.optimismPortalAddress,
+      abi: portalAbi,
+    };
+    const gameFinder = {
+      address: config.gameFinderAddress,
+      abi: gameFinderAbi,
+    };
     const bitMask = (config.gameTypes ?? []).reduce((a, x) => a | (1 << x), 0);
-    return new this(providers, optimismPortal, gameFinder, bitMask);
+    return new this(clients, optimismPortal, gameFinder, BigInt(bitMask));
   }
   private constructor(
-    providers: ProviderPair,
-    readonly OptimismPortal: ethers.Contract,
-    readonly GameFinder: ethers.Contract,
-    readonly gameTypeBitMask: number
+    clients: ClientPair,
+    readonly optimismPortal: { address: HexAddress; abi: typeof portalAbi },
+    readonly gameFinder: { address: HexAddress; abi: typeof gameFinderAbi },
+    readonly gameTypeBitMask: bigint
   ) {
-    super(providers);
+    super(clients);
   }
 
-  async fetchRespectedGameType(): Promise<bigint> {
-    return this.OptimismPortal.respectedGameType(callOptions);
+  async fetchRespectedGameType(): Promise<number> {
+    return readContract(this.client1, {
+      ...this.optimismPortal,
+      ...callOptions,
+      functionName: 'respectedGameType',
+    });
   }
 
   override async fetchLatestCommitIndex(): Promise<bigint> {
@@ -79,32 +70,32 @@ export class OPFaultRollup extends AbstractOPRollup {
     // 20240820: correctly handles the aug 16 respectedGameType change
     // TODO: this should be simplified in the future once there is a better policy
     // 20240822: once again uses a helper contract to reduce rpc burden
-    return this.GameFinder.findFinalizedGameIndex(
-      this.OptimismPortal.target,
-      this.gameTypeBitMask,
-      0,
-      callOptions
-    );
+    return readContract(this.client1, {
+      ...this.gameFinder,
+      ...callOptions,
+      functionName: 'findFinalizedGameIndex',
+      args: [this.optimismPortal.address, this.gameTypeBitMask, 0n],
+    });
   }
   override async fetchParentCommitIndex(commit: OPCommit) {
-    return this.GameFinder.findFinalizedGameIndex(
-      this.OptimismPortal.target,
-      this.gameTypeBitMask,
-      commit.index,
-      callOptions
-    );
+    return readContract(this.client1, {
+      ...this.gameFinder,
+      ...callOptions,
+      functionName: 'findFinalizedGameIndex',
+      args: [this.optimismPortal.address, this.gameTypeBitMask, commit.index],
+    });
   }
   override async fetchCommit(index: bigint) {
-    const game: ABIFinalizedGame = await this.GameFinder.getFinalizedGame(
-      this.OptimismPortal.target,
-      this.gameTypeBitMask,
-      index,
-      callOptions
-    );
-    if (!game.l2BlockNumber) {
+    const [, , l2BlockNumber] = await readContract(this.client1, {
+      ...this.gameFinder,
+      ...callOptions,
+      functionName: 'getFinalizedGame',
+      args: [this.optimismPortal.address, this.gameTypeBitMask, index],
+    });
+    if (!l2BlockNumber) {
       throw new Error(`Game(${index}) not finalized`);
     }
-    return this.createCommit(index, '0x' + game.l2BlockNumber.toString(16));
+    return this.createCommit(index, l2BlockNumber);
   }
 
   override windowFromSec(sec: number): number {

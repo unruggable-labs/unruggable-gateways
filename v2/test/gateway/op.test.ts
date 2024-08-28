@@ -1,33 +1,34 @@
-import { serve } from '@resolverworks/ezccip';
+import { CcipReadRouter } from '@ensdomains/ccip-read-router';
 import { afterAll, describe } from 'bun:test';
 import { Gateway } from '../../src/gateway.js';
 import { OPFaultRollup } from '../../src/op/OPFaultRollup.js';
 import { Foundry } from '../foundry.js';
-import { createProviderPair, providerURL } from '../providers.js';
+import { createClientPair, transportUrl } from '../providers.js';
 import { runSlotDataTests } from './tests.js';
 
 describe('op', async () => {
   const config = OPFaultRollup.mainnetConfig;
-  const rollup = await OPFaultRollup.create(createProviderPair(config), config);
+  const rollup = await OPFaultRollup.create(createClientPair(config), config);
   const foundry = await Foundry.launch({
-    fork: providerURL(config.chain1),
+    fork: transportUrl(config.chain1),
     infoLog: false,
   });
   afterAll(() => foundry.shutdown());
   const gateway = new Gateway(rollup);
-  const ccip = await serve(gateway, {
-    protocol: 'raw',
-    log: false,
-  });
-  afterAll(() => ccip.http.close());
+  const router = CcipReadRouter();
+  gateway.register(router);
+
+  const server = Bun.serve(router);
+
+  afterAll(() => server.stop());
   const commit = await gateway.getLatestCommit();
   const verifier = await foundry.deploy({
     // OPFaultVerifier is too slow in fork mode (30sec+)
     file: 'FixedOPFaultVerifier',
     args: [
-      [ccip.endpoint],
+      [`http://${server.hostname}:${server.port}`],
       rollup.defaultWindow,
-      rollup.OptimismPortal,
+      rollup.optimismPortal.address,
       rollup.gameTypeBitMask,
       commit.index,
     ],

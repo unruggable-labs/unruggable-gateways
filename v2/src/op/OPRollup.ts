@@ -1,47 +1,47 @@
+import { readContract } from 'viem/actions';
+import { base, mainnet } from 'viem/chains';
 import type { RollupDeployment } from '../rollup.js';
-import type { HexAddress, HexString32, ProviderPair } from '../types.js';
-import { ethers } from 'ethers';
-import { ORACLE_ABI } from './types.js';
-import { CHAIN_BASE, CHAIN_MAINNET } from '../chains.js';
+import type { ClientPair, HexAddress } from '../types.js';
+import { oracleAbi } from './abi.js';
 import { AbstractOPRollup, type OPCommit } from './AbstractOPRollup.js';
 
 export type OPConfig = {
-  L2OutputOracle: HexAddress;
-};
-
-type ABIOutputProposal = {
-  outputRoot: HexString32;
-  timestamp: bigint;
-  l2BlockNumber: bigint;
+  l2OutputOracleAddress: HexAddress;
 };
 
 export class OPRollup extends AbstractOPRollup {
   static readonly baseMainnetConfig: RollupDeployment<OPConfig> = {
-    chain1: CHAIN_MAINNET,
-    chain2: CHAIN_BASE,
-    L2OutputOracle: '0x56315b90c40730925ec5485cf004d835058518A0',
+    chain1: mainnet.id,
+    chain2: base.id,
+    l2OutputOracleAddress: '0x56315b90c40730925ec5485cf004d835058518A0',
   } as const;
 
-  readonly L2OutputOracle;
-  constructor(providers: ProviderPair, config: OPConfig) {
-    super(providers);
-    this.L2OutputOracle = new ethers.Contract(
-      config.L2OutputOracle,
-      ORACLE_ABI,
-      providers.provider1
-    );
+  readonly l2OutputOracle: { address: HexAddress; abi: typeof oracleAbi };
+  constructor(clients: ClientPair, config: OPConfig) {
+    super(clients);
+    this.l2OutputOracle = {
+      address: config.l2OutputOracleAddress,
+      abi: oracleAbi,
+    };
   }
 
   override async fetchLatestCommitIndex(): Promise<bigint> {
-    return this.L2OutputOracle.latestOutputIndex({ blockTag: 'finalized' });
+    return readContract(this.client1, {
+      ...this.l2OutputOracle,
+      functionName: 'latestOutputIndex',
+      blockTag: 'finalized',
+    });
   }
   override async fetchParentCommitIndex(commit: OPCommit): Promise<bigint> {
     return commit.index - 1n;
   }
   override async fetchCommit(index: bigint): Promise<OPCommit> {
-    const output: ABIOutputProposal =
-      await this.L2OutputOracle.getL2Output(index);
-    return this.createCommit(index, '0x' + output.l2BlockNumber.toString(16));
+    const output = await readContract(this.client1, {
+      ...this.l2OutputOracle,
+      functionName: 'getL2Output',
+      args: [index],
+    });
+    return this.createCommit(index, output.l2BlockNumber);
   }
 
   override windowFromSec(sec: number): number {
