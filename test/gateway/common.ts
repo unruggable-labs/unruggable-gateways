@@ -1,7 +1,7 @@
 import type { Chain, ChainPair, HexAddress } from '../../src/types.js';
 import type { RollupDeployment } from '../../src/rollup.js';
 import { Gateway } from '../../src/gateway.js';
-import { createProviderPair, providerURL } from '../providers.js';
+import { createProviderPair, providerURL } from '../../src/providers.js';
 import { chainName } from '../../src/chains.js';
 import { serve } from '@resolverworks/ezccip';
 import { DeployedContract, Foundry } from '@adraffy/blocksmith';
@@ -18,6 +18,7 @@ import {
 import { EthSelfRollup } from '../../src/eth/EthSelfRollup.js';
 import { afterAll } from 'bun:test';
 import { describe } from '../bun-describe-fix.js';
+import { testConfig } from '../../src/environment.js';
 
 export function testName(
   { chain1, chain2 }: ChainPair,
@@ -61,9 +62,12 @@ export function testOP(
   opts: TestOptions & { minAgeSec?: number }
 ) {
   describe.skipIf(shouldSkip(opts))(testName(config), async () => {
-    const rollup = new OPRollup(createProviderPair(config), config);
+    const rollup = new OPRollup(
+      createProviderPair(testConfig(chainName(config.chain2)), config),
+      config
+    );
     const foundry = await Foundry.launch({
-      fork: providerURL(config.chain1),
+      fork: providerURL(testConfig(chainName(config.chain2)), config.chain1),
       infoLog: !!opts.log,
     });
     afterAll(() => foundry.shutdown());
@@ -94,9 +98,12 @@ export function testOPFault(
   describe.skipIf(shouldSkip(opts))(
     testName(config, { unfinalized: !!config.minAgeSec }),
     async () => {
-      const rollup = new OPFaultRollup(createProviderPair(config), config);
+      const rollup = new OPFaultRollup(
+        createProviderPair(testConfig(chainName(config.chain2)), config),
+        config
+      );
       const foundry = await Foundry.launch({
-        fork: providerURL(config.chain1),
+        fork: providerURL(testConfig(chainName(config.chain2)), config.chain1),
         infoLog: !!opts.log,
       });
       afterAll(() => foundry.shutdown());
@@ -135,9 +142,12 @@ export function testScroll(
   opts: TestOptions
 ) {
   describe.skipIf(shouldSkip(opts))(testName(config), async () => {
-    const rollup = new ScrollRollup(createProviderPair(config), config);
+    const rollup = new ScrollRollup(
+      createProviderPair(testConfig(chainName(config.chain2)), config),
+      config
+    );
     const foundry = await Foundry.launch({
-      fork: providerURL(config.chain1),
+      fork: providerURL(testConfig(chainName(config.chain2)), config.chain1),
       infoLog: !!opts.log,
     });
     afterAll(() => foundry.shutdown());
@@ -165,7 +175,7 @@ export function testScroll(
 export function testSelfEth(chain: Chain, opts: TestOptions) {
   describe.skipIf(shouldSkip(opts))(chainName(chain), async () => {
     const foundry = await Foundry.launch({
-      fork: providerURL(chain),
+      fork: providerURL(testConfig(chainName(chain)), chain),
       infoLog: !!opts.log,
     });
     afterAll(() => foundry.shutdown());

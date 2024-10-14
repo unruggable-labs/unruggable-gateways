@@ -1,13 +1,14 @@
 import { Foundry } from '@adraffy/blocksmith';
 import { LineaRollup } from '../../src/linea/LineaRollup.js';
 import { UnfinalizedLineaRollup } from '../../src/linea/UnfinalizedLineaRollup.js';
-import { createProviderPair, providerURL } from '../providers.js';
+import { createProviderPair, providerURL } from '../../src/providers.js';
 import { ABI_CODER } from '../../src/utils.js';
 import { GatewayRequest } from '../../src/vm.js';
+import { USER_CONFIG } from '../../src/environment.js';
 
 const config = LineaRollup.mainnetConfig;
 const rollup = new UnfinalizedLineaRollup(
-  createProviderPair(config),
+  createProviderPair(USER_CONFIG, config),
   config,
   (86400 * 2) / 12
 );
@@ -17,7 +18,7 @@ const commit = await rollup.fetchLatestCommit();
 console.log(commit);
 
 const foundry = await Foundry.launch({
-	fork: providerURL(config.chain1)
+	fork: providerURL(USER_CONFIG, config.chain1)
 });
 const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
 const hooks = await foundry.deploy({

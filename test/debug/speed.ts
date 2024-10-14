@@ -1,8 +1,9 @@
 import { OPRollup } from "../../src/op/OPRollup.js";
 import { createProviderPair } from "../providers.js";
+import { USER_CONFIG } from '../../src/environment.js';
 
 const config = OPRollup.baseMainnetConfig;
-const rollup = new OPRollup(createProviderPair(config), config);
+const rollup = new OPRollup(createProviderPair(USER_CONFIG, config), config);
 
 const commit = await logTime('fetchLatestCommit', rollup.fetchLatestCommit());
 await logTime('fetchParentCommit', rollup.fetchParentCommit(commit));

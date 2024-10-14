@@ -1,8 +1,12 @@
 import { ScrollRollup } from '../../src/scroll/ScrollRollup.js';
-import { createProviderPair } from '../providers.js';
+import { createProviderPair } from '../../src/providers.js';
+import { USER_CONFIG } from '../../src/environment.js';
 
 const config = ScrollRollup.mainnetConfig;
-const rollup = new ScrollRollup(createProviderPair(config), config);
+const rollup = new ScrollRollup(
+  createProviderPair(USER_CONFIG, config),
+  config
+);
 
 console.log({
   ScrollChain: rollup.ScrollChain.target,

@@ -1,8 +1,9 @@
-import { createProviderPair } from '../providers.js';
+import { createProviderPair } from '../../src/providers.js';
 import { OPFaultRollup } from '../../src/op/OPFaultRollup.js';
+import { USER_CONFIG } from '../../src/environment.js';
 
 const config = OPFaultRollup.mainnetConfig;
-const rollup = new OPFaultRollup(createProviderPair(config), {
+const rollup = new OPFaultRollup(createProviderPair(USER_CONFIG, config), {
   ...config,
   minAgeSec: 3600,
 });

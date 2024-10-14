@@ -3,10 +3,12 @@ import { UnfinalizedLineaRollup } from '../../src/linea/UnfinalizedLineaRollup.j
 import { Gateway } from '../../src/gateway.js';
 import { serve } from '@resolverworks/ezccip';
 import { Foundry } from '@adraffy/blocksmith';
-import { createProviderPair, providerURL } from '../providers.js';
+import { createProviderPair, providerURL } from '../../src/providers.js';
 import { setupTests, testName } from './common.js';
 import { describe } from '../bun-describe-fix.js';
 import { afterAll } from 'bun:test';
+import { testConfig } from '../../src/environment.js';
+import { chainName } from '../../src/chains.js';
 
 // NOTE: since shomei does not produce proofs before finalization
 // this approach wont work however the verifier does work
@@ -17,12 +19,12 @@ describe.skipIf(!!process.env.IS_CI)(
   testName(config, { unfinalized: true }),
   async () => {
     const rollup = new UnfinalizedLineaRollup(
-      createProviderPair(config),
+      createProviderPair(testConfig(chainName(config.chain2)), config),
       config,
       (86400 * 2) / 12 // ~2 days of blocks >= finalization period
     );
     const foundry = await Foundry.launch({
-      fork: providerURL(config.chain1),
+      fork: providerURL(testConfig(chainName(config.chain2)), config.chain1),
       infoLog: false,
     });
     afterAll(() => foundry.shutdown());

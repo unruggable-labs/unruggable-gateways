@@ -33,3 +33,5 @@ export * from './eth/EthSelfRollup.js';
 
 export * from './gateway.js';
 export * from './linea/LineaGatewayV1.js';
+
+export * from './server-adapter.js';

@@ -1,10 +1,10 @@
-import { createProviderPair } from '../providers.js';
+import { createProviderPair } from '../../src/providers.js';
 import { UnfinalizedLineaRollup } from '../../src/linea/UnfinalizedLineaRollup.js';
 import { LineaRollup } from '../../src/linea/LineaRollup.js';
 
 const config = LineaRollup.mainnetConfig;
 const rollup = new UnfinalizedLineaRollup(
-  createProviderPair(config),
+  createProviderPair(USER_CONFIG, config),
   config,
   300
 );
