@@ -6,8 +6,7 @@ function wait(t: number) {
 }
 
 describe('LRU', () => {
-  // no values should be cached
-  test('0 element', async () => {
+  test('0 element: no values should be cached', async () => {
     const c = new LRU<number, number>(0);
     c.setValue(1, 1);
     expect(c.size).toStrictEqual(0);
@@ -17,8 +16,7 @@ describe('LRU', () => {
     expect(c.size).toStrictEqual(0);
   });
 
-  // the latest value should be cached
-  test('1 element', async () => {
+  test('1 element: latest value should be cached', async () => {
     const c = new LRU<number, number>(1);
     c.setValue(1, 1);
     c.setValue(2, 2);
@@ -30,8 +28,7 @@ describe('LRU', () => {
     expect(c.peek(3)).resolves.toStrictEqual(3);
   });
 
-  // the last n elements should be cached
-  test('loop', async () => {
+  test('n element: last n elements should be cached', async () => {
     const n = 3;
     const c = new LRU<number, number>(n);
     for (let i = 0; i < 100; i++) {
@@ -65,8 +62,7 @@ describe('LRU', () => {
     expect([...c.keys()]).toStrictEqual(vs.slice(-c.size));
   });
 
-  // pending elements touch on resolution
-  test('pending', async () => {
+  test('pending elements touch() on resolution', async () => {
     const c = new LRU<number, number>(2);
     const { promise, resolve } = Promise.withResolvers<number>();
     c.setPending(1, promise);
@@ -77,8 +73,7 @@ describe('LRU', () => {
     expect([...c.keys()]).toStrictEqual([2, 1]);
   });
 
-  // replaced elements do not touch
-  test('replace', async () => {
+  test('replaced elements do not touch() on resolution', async () => {
     const c = new LRU<number, number>(2);
     const { promise, resolve } = Promise.withResolvers<number>();
     c.setPending(1, promise);
@@ -90,8 +85,7 @@ describe('LRU', () => {
 });
 
 describe('CachedMap', () => {
-  // cached map with 0 cache time should clear immediately after resolves
-  test('pending map', async () => {
+  test('0 cache time should be empty post-resolution', async () => {
     const c = new CachedMap(0);
     await c.get('A', async () => 1);
     expect(c.cachedSize).toEqual(0);
@@ -103,8 +97,7 @@ describe('CachedMap', () => {
     expect(c.peek('A')).rejects.toBe(2);
   });
 
-  // cached map with infinite cache time should resolve once and never schedule
-  test('once map', async () => {
+  test('infinite cache time should resolve and never schedule', async () => {
     const c = new CachedMap(Infinity);
     await c.get('A', async () => 1);
     expect(c.cachedRemainingMs('A') === Infinity);
@@ -116,7 +109,7 @@ describe('CachedMap', () => {
     ).resolves.toBe(1);
   });
 
-  test('cached map', async () => {
+  test('general behavior', async () => {
     const c = new CachedMap(100);
     c.slopMs = 1;
     c.get('A', () => wait(100).then(() => 1));

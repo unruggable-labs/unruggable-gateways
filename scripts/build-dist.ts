@@ -80,7 +80,7 @@ try {
 }
 
 function runTypescript(...args: string[]) {
-  spawnSync('bun', ['tsc', '-p', '.', ...args]);
+  spawnSync('bunx', ['tsc', '-p', '.', ...args]);
 }
 
 function setPackageType(type: string) {

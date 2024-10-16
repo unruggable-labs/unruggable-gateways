@@ -11,7 +11,9 @@ describe('microcode', async () => {
   async function compare(small: GatewayRequest, big: GatewayRequest) {
     const prover = await EthProver.latest(foundry.provider);
     // the requests should be different
-    expect(small.ops, 'program').not.toEqual(big.ops);
+    expect(small.ops, 'program diff').not.toEqual(big.ops);
+    // small should be less ops
+    expect(small.ops.length < big.ops.length, 'program size').toBeTrue();
     const vm1 = await prover.evalRequest(small);
     const vm2 = await prover.evalRequest(big);
     expect(vm1.exitCode, 'exitCode').toEqual(vm2.exitCode);
@@ -19,7 +21,6 @@ describe('microcode', async () => {
     const outputs2 = await vm2.resolveOutputs();
     // the outputs should be the same
     expect(outputs1, 'outputs').toEqual(outputs2);
-    expect(small.ops.length < big.ops.length, 'ops').toBeTrue();
   }
 
   test('x FOLLOW == x GET_SLOT CONCAT KECCAK SET_SLOT', async () => {

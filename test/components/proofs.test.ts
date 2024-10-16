@@ -1,4 +1,5 @@
 import { EthProver } from '../../src/eth/EthProver.js';
+import { GatewayRequest } from '../../src/vm.js';
 import { Foundry } from '@adraffy/blocksmith';
 import { afterAll, test, expect } from 'bun:test';
 import { describe } from '../bun-describe-fix.js';
@@ -6,14 +7,12 @@ import { describe } from '../bun-describe-fix.js';
 describe('proofs', async () => {
   const foundry = await Foundry.launch({ infoLog: false });
   afterAll(foundry.shutdown);
-  const contract = await foundry.deploy({
-    sol: `
-      contract C {
-        uint256 value1 = 1;
-        uint256 value2 = 2;
-      }
-    `,
-  });
+  const contract = await foundry.deploy(`
+    contract C {
+      uint256 value1 = 1;
+      uint256 value2 = 2;
+    }
+  `);
 
   let fetchedCalls: number;
   let fetchedSlots: number;
@@ -126,5 +125,77 @@ describe('proofs', async () => {
     expect(fetchedCalls).toEqual(1);
     expect(fetchedSlots).toEqual(6);
     expect(p0.storageProof).toEqual(p1.storageProof.concat(p2.storageProof));
+  });
+
+  async function requireV1(req: GatewayRequest, required: boolean) {
+    const prover = await EthProver.latest(foundry.provider);
+    const state = await prover.evalRequest(req);
+    if (required) {
+      expect(prover.proveV1(state.needs)).resolves.toBeDefined();
+    } else {
+      expect(prover.proveV1(state.needs)).rejects.toThrow(/must be storage/);
+    }
+  }
+
+  test('single target() is V1 compat', async () => {
+    await requireV1(
+      new GatewayRequest().setTarget(contract.target).read(),
+      true
+    );
+  });
+
+  test('multi target() is not V1 compat', async () => {
+    await requireV1(
+      new GatewayRequest().push(1).target().push(2).target(),
+      false
+    );
+  });
+
+  test('readHashedBytes() is not V1 compat', async () => {
+    await requireV1(
+      new GatewayRequest().setTarget(contract.target).push(0).readHashedBytes(),
+      false
+    );
+  });
+
+  async function requireProofs(req: GatewayRequest, required: boolean) {
+    const prover = await EthProver.latest(foundry.provider);
+    const state = await prover.evalRequest(req);
+    const proofSeq = await prover.prove(state.needs);
+    expect(proofSeq.proofs.every((x) => x !== '0x')).toBe(required);
+  }
+
+  /*
+  test('read() requires proof', async () => {
+    await requireProofs(
+      new GatewayRequest().setTarget(contract.target).read(),
+      true
+    );
+  });
+
+  test('isContract() requires proof', async () => {
+    await requireProofs(
+      new GatewayRequest().setTarget(contract.target).isContract(),
+      true
+    );
+  });
+
+  test('target() w/o access requires no proof', async () => {
+    await requireProofs(
+      new GatewayRequest().push(1).target().push(2).target(),
+      false
+    );
+  });
+
+  test('getTarget() requires no proof', async () => {
+    await requireProofs(
+      new GatewayRequest().setTarget(contract.target).getTarget(),
+      false
+    );
+  });
+  */
+
+  test('setTarget() requires proof', async () => {
+    await requireProofs(new GatewayRequest().setTarget(contract.target), true);
   });
 });

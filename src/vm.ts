@@ -1016,6 +1016,15 @@ export abstract class BlockProver extends AbstractProver {
     });
     this.checkProofCount(refs.length);
     for (const bucket of buckets.values()) {
+      // NOTE: technically, we only need to prove the account
+      // if the state was accessed or storage was read
+      // because we can set an invalid storageRoot
+      // but this is rare and makes machine complicated
+      // as it requires 3 states: proven true, proven false, unknown
+      // so far, only ZKSync has this functionality due to gas:
+      // see: ZKSyncHookVerifierHooks.sol:verifyAccountState()
+      // see: ZKSyncProver.ts:prove()
+      //if (bucket.need.required || bucket.map.size) {
       promises.push(this._proveNeed(bucket.need, bucket.ref, bucket.map));
     }
     await Promise.all(promises);

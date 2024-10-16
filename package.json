@@ -19,7 +19,7 @@
   ],
   "type": "module",
   "scripts": {
-    "check": "tsc -p . --noEmit",
+    "check": "bunx tsc -p . --noEmit",
     "forge": "forge build --force",
     "serve": "bun scripts/serve.ts",
     "test": "IS_CI=1 bun test --timeout 25000",
