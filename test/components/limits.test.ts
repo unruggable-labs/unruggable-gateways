@@ -10,14 +10,12 @@ describe('limits', async () => {
   const foundry = await Foundry.launch({ infoLog: false });
   afterAll(foundry.shutdown);
   const MAX_BYTES = 257;
-  const contract = await foundry.deploy({
-    sol: `
-	  contract X {
-		bytes pass = new bytes(${MAX_BYTES});
-		bytes fail = new bytes(${MAX_BYTES + 1});
-	  }
-	`,
-  });
+  const contract = await foundry.deploy(`
+    contract X {
+      bytes pass = new bytes(${MAX_BYTES});
+      bytes fail = new bytes(${MAX_BYTES + 1});
+    }
+  `);
 
   async function exec(prover: EthProver, req: GatewayRequest) {
     const state = await prover.evalRequest(req);

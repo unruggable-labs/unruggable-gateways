@@ -10,8 +10,9 @@ contract TestGatewayFetcher is Test {
     using GatewayFetcher for GatewayRequest;
 
     function test_stack() external {
+        evalUint256(R(1).push(true), 1);
         evalUint256(R(1).push(1).pop().stackCount(), 0);
-        evalUint256(R(1).pop().stackCount(), 0);
+        evalUint256(R(1).pop().stackCount(), 0); // under pop is okay
         evalUint256(R(1).push(2).push(3).swap().pop(), 3);
         evalUint256(R(1).push(1).dup().stackCount(), 2);
         evalUint256(R(1).push(1).push(2).dup(1), 1);
@@ -140,34 +141,22 @@ contract TestGatewayFetcher is Test {
 
     // eval
     function test_eval_push() external view {
-        evalUint256(
-            R(1)
-                .push(1)
-                .push(GatewayFetcher.newCommand().push(2).plus())
-                .eval(),
-            3
-        );
+        evalUint256(R(1).push(1).push(C().push(2).plus()).eval(), 3);
     }
     function test_eval_setOutput() external view {
         evalUint256(
-            R(1)
-                .push(GatewayFetcher.newCommand().push(1).setOutput(0))
-                .eval()
-                .pushOutput(0),
+            R(1).push(C().push(1).setOutput(0)).eval().pushOutput(0),
             1
         );
     }
     function test_eval_exit() external view {
-        (, uint8 exitCode) = evalRequest(
-            R(1).push(GatewayFetcher.newCommand().exit(1)).eval()
-        );
+        (, uint8 exitCode) = evalRequest(R(1).push(C().exit(1)).eval());
         assertEq(exitCode, 1);
     }
-    function test_eval_cond() external view {
-        (, uint8 exitCode) = evalRequest(
-            R(1).push(GatewayFetcher.newCommand().concat()).push(false).evalIf()
-        );
-        assertEq(exitCode, 0);
+    function test_eval_cond() external {
+        vm.expectRevert();
+        evalRequest(R(1).push(C().concat()).push(true).evalIf());
+        evalRequest(R(1).push(C().concat()).push(false).evalIf());
     }
 
     // test helpers
@@ -186,7 +175,12 @@ contract TestGatewayFetcher is Test {
         ProofSequence memory ps;
         (outputs, exitcode) = GatewayVM.evalRequest(r, ps);
     }
+
+    // shorthand
     function R(uint8 n) internal pure returns (GatewayRequest memory) {
         return GatewayFetcher.newRequest(n);
+    }
+    function C() internal pure returns (GatewayRequest memory) {
+        return GatewayFetcher.newCommand();
     }
 }

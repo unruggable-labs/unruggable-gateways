@@ -6,6 +6,7 @@ import {
   readdirSync,
   renameSync,
 } from 'node:fs';
+import { FoundryBase } from '@adraffy/blocksmith';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
@@ -31,25 +32,27 @@ if (pkg.type !== 'module') {
 }
 log(`Saved configuration`);
 
-// verify build
-log(`Typechecking...`);
-runTypescript('--noEmit');
-log('Ready!');
-
-// clear dist
 rmdirSync(distDir, { recursive: true });
 mkdirSync(distDir);
 log(`Cleaned ${distDir}`);
 
-// remove tests and scripts
-tsc.include = ['src'];
-writeFileSync(tsconfigFile, JSON.stringify(tsc));
+log(`Typechecking...`);
+runTypescript('--noEmit');
+
+log(`Compiling Contracts...`);
+const foundry = await FoundryBase.load({ profile: 'dist' });
+await foundry.build(true);
+
+log('Ready!');
 
 // create outputs
 const cjsDir = join(distDir, 'cjs');
 const esmDir = join(distDir, 'esm');
 const typesDir = join(distDir, 'types');
 try {
+  tsc.include = ['src']; // remove tests and scripts
+  writeFileSync(tsconfigFile, JSON.stringify(tsc));
+
   setPackageType('commonjs');
   runTypescript('--outDir', cjsDir, '--module', 'node16');
   forceExtension(cjsDir, 'cjs');
@@ -77,7 +80,7 @@ try {
 }
 
 function runTypescript(...args: string[]) {
-  spawnSync('bun', ['tsc', '-p', '.', ...args]);
+  spawnSync('bunx', ['tsc', '-p', '.', ...args]);
 }
 
 function setPackageType(type: string) {

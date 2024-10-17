@@ -8,18 +8,19 @@ describe('microcode', async () => {
   const foundry = await Foundry.launch({ infoLog: false });
   afterAll(foundry.shutdown);
 
-  async function compare(single: GatewayRequest, multi: GatewayRequest) {
+  async function compare(small: GatewayRequest, big: GatewayRequest) {
     const prover = await EthProver.latest(foundry.provider);
     // the requests should be different
-    expect(single.ops, 'program').not.toEqual(multi.ops);
-    const vm1 = await prover.evalRequest(single);
-    const vm2 = await prover.evalRequest(multi);
+    expect(small.ops, 'program diff').not.toEqual(big.ops);
+    // small should be less ops
+    expect(small.ops.length < big.ops.length, 'program size').toBeTrue();
+    const vm1 = await prover.evalRequest(small);
+    const vm2 = await prover.evalRequest(big);
     expect(vm1.exitCode, 'exitCode').toEqual(vm2.exitCode);
     const outputs1 = await vm1.resolveOutputs();
     const outputs2 = await vm2.resolveOutputs();
     // the outputs should be the same
     expect(outputs1, 'outputs').toEqual(outputs2);
-    expect(single.ops.length < multi.ops.length, 'ops').toBeTrue();
   }
 
   test('x FOLLOW == x GET_SLOT CONCAT KECCAK SET_SLOT', async () => {
