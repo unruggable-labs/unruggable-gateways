@@ -120,6 +120,19 @@ export class OPRollup extends AbstractOPRollup {
     L2OutputOracle: '0xA0E35F56C318DE1bD5D9ca6A94Fe7e37C5663348',
   };
 
+  // https://docs.mintchain.io/deploy/contracts#l1-contract-addresses
+  static readonly mintMainnetConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.MINT,
+    L2OutputOracle: '0xB751A613f2Db932c6cdeF5048E6D2af05F9B98ED',
+    //commitFreqSec: 12 * 60 * 60 // 12hr
+  };
+  static readonly mintSepoliaConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.SEPOLIA,
+    chain2: CHAINS.MINT_SEPOLIA,
+    L2OutputOracle: '0x0Da5ac919E3C42E825b4dC221983Da6A0021DCdD',
+  };
+
   readonly L2OutputOracle;
   constructor(providers: ProviderPair, config: OPConfig) {
     super(providers);

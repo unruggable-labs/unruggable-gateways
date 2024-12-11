@@ -12,10 +12,10 @@ for (const info of RPC_INFO.values()) {
     formatChain(info.chain).padStart(10),
     chainName(info.chain).padEnd(16),
     `[${info.alchemy ? 'A' : ' '}${info.infura ? 'I' : ' '}${info.ankr ? 'K' : ' '}]`,
-    url === info.rpc ? '!' : ' ',
+    url === info.publicHTTP ? '!' : ' ',
     url
   );
-  if (url === info.rpc) {
+  if (url === info.publicHTTP) {
     usingPublic.push(info.chain);
   }
 }

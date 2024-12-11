@@ -17,7 +17,8 @@ struct ProofSequence {
 
 library GatewayVM {
     error InvalidRequest();
-    error InvalidStackIndex();
+    error InvalidStackIndex(uint256 index);
+    error InvalidOutputIndex(uint256 index);
     error StackOverflow();
 
     // current limit is 256 because of stackBits
@@ -169,7 +170,10 @@ library GatewayVM {
         Machine memory vm,
         uint256 back
     ) internal pure returns (uint256) {
-        if (back >= vm.stackSize) revert InvalidStackIndex();
+        if (back >= vm.stackSize) {
+            uint256 index = vm.stackSize - 1 - back;
+            revert InvalidStackIndex(index);
+        }
         unchecked {
             return vm.stackSize - 1 - back;
         }
@@ -338,7 +342,8 @@ library GatewayVM {
                 );
                 vm.slot = 0;
             } else if (op == GatewayOP.SET_OUTPUT) {
-                uint256 i = vm.popAsUint256(); // rhs evaluates BEFORE lhs
+                uint256 i = vm.popAsUint256();
+                if (i >= outputs.length) revert InvalidOutputIndex(i); // rhs evaluates BEFORE lhs
                 outputs[i] = vm.popAsBytes();
             } else if (op == GatewayOP.ASSERT) {
                 uint8 exitCode = vm.readByte();
@@ -366,10 +371,12 @@ library GatewayVM {
                 );
             } else if (op == GatewayOP.PUSH_STACK) {
                 uint256 i = vm.popAsUint256();
-                if (i >= vm.stackSize) revert InvalidStackIndex();
+                if (i >= vm.stackSize) revert InvalidStackIndex(i);
                 vm.push(vm.stack[i], vm.isStackRaw(i));
             } else if (op == GatewayOP.PUSH_OUTPUT) {
-                vm.pushBytes(outputs[vm.popAsUint256()]);
+                uint256 i = vm.popAsUint256();
+                if (i >= outputs.length) revert InvalidOutputIndex(i);
+                vm.pushBytes(outputs[i]);
             } else if (op == GatewayOP.GET_SLOT) {
                 vm.pushUint256(vm.slot);
             } else if (op == GatewayOP.GET_TARGET) {

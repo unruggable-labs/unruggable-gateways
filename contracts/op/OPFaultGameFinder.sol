@@ -24,7 +24,7 @@ interface IDisputeGameFactory {
 interface IDisputeGame {
     function status() external view returns (uint256);
     function l2BlockNumber() external view returns (uint256);
-	function rootClaim() external view returns (bytes32);
+    function rootClaim() external view returns (bytes32);
 }
 
 // https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/src/dispute/lib/Types.sol#L7
@@ -33,6 +33,7 @@ uint256 constant DEFENDER_WINS = 2;
 
 contract OPFaultGameFinder {
     error GameNotFound();
+    error InvalidGameTypeBitMask();
 
     function findGameIndex(
         IOptimismPortal portal,
@@ -40,8 +41,10 @@ contract OPFaultGameFinder {
         uint256 gameTypeBitMask,
         uint256 gameCount
     ) external view virtual returns (uint256) {
-        if (gameTypeBitMask == 0)
+        if (gameTypeBitMask == 0) {
             gameTypeBitMask = 1 << portal.respectedGameType();
+            if (gameTypeBitMask == 0) revert InvalidGameTypeBitMask();
+        }
         IDisputeGameFactory factory = portal.disputeGameFactory();
         if (gameCount == 0) gameCount = factory.gameCount();
         while (gameCount > 0) {
@@ -78,11 +81,13 @@ contract OPFaultGameFinder {
             uint256 created,
             IDisputeGame gameProxy,
             uint256 l2BlockNumber,
-			bytes32 rootClaim
+            bytes32 rootClaim
         )
     {
-        if (gameTypeBitMask == 0)
+        if (gameTypeBitMask == 0) {
             gameTypeBitMask = 1 << portal.respectedGameType();
+            if (gameTypeBitMask == 0) revert InvalidGameTypeBitMask();
+        }
         IDisputeGameFactory factory = portal.disputeGameFactory();
         (gameType, created, gameProxy) = factory.gameAtIndex(gameIndex);
         if (
@@ -95,7 +100,7 @@ contract OPFaultGameFinder {
             )
         ) {
             l2BlockNumber = gameProxy.l2BlockNumber();
-			rootClaim = gameProxy.rootClaim();
+            rootClaim = gameProxy.rootClaim();
         }
     }
 

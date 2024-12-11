@@ -130,10 +130,8 @@ contract ScrollVerifierHooks is IVerifierHooks {
                     // If the trie does not contain a value for key, the returned proof contains all
                     // nodes of the longest existing prefix of the key (at least the root node), ending
                     // with the node that proves the absence of the key.
-                    if (i > 0) {
-                        bytes32 p = bytes32((1 << i) - 1); // prefix mask
-                        if ((temp & p) != (keyHash & p)) revert InvalidProof();
-                    }
+                    bytes32 p = bytes32((1 << i) - 1); // prefix mask
+                    if ((temp & p) != (keyHash & p)) revert InvalidProof();
                     // this is a proof for a different value that traverses to the same place
                     keyHash = temp;
                 }

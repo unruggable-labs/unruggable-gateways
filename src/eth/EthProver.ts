@@ -1,4 +1,4 @@
-import type { HexAddress, HexString, ProofRef } from '../types.js';
+import type { HexAddress, HexString, HexString32, ProofRef } from '../types.js';
 import {
   type EthAccountProof,
   type EthStorageProof,
@@ -18,6 +18,8 @@ export class EthProver extends BlockProver {
     target = target.toLowerCase();
     if (this.fast) {
       return this.cache.get(target, async (a) => {
+        // note: this actually reverts when the block is bad
+        // eg. {"code": -32602, "message": "Unknown block number"}
         const code = await this.provider.getCode(a, this.block);
         return code.length > 2;
       });
@@ -45,9 +47,15 @@ export class EthProver extends BlockProver {
       return toPaddedHex(storageProof.value);
     }
     if (fast) {
-      return this.cache.get(storageKey, () =>
-        this.provider.getStorage(target, slot, this.block)
-      );
+      return this.cache.get(storageKey, async () => {
+        // note: this returns null when block is bad
+        const res: HexString32 | null = await this.provider.send(
+          'eth_getStorageAt',
+          [target, toPaddedHex(slot), this.block]
+        );
+        if (!res) throw new Error(`unprovable block: ${this.block}`);
+        return res;
+      });
     }
     const proofs = await this.getProofs(target, [slot]);
     return isContract(proofs)
@@ -152,6 +160,8 @@ export class EthProver extends BlockProver {
       if (i >= slots.length) break;
     }
     const vs = await Promise.all(ps);
+    // note: this returns null when block is bad
+    if (!vs[0]) throw new Error(`unprovable block: ${this.block}`);
     for (let i = 1; i < vs.length; i++) {
       vs[0].storageProof.push(...vs[i].storageProof);
     }

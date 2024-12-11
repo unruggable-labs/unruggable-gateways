@@ -37,7 +37,8 @@ export const CHAINS = {
   CYBER: 7560n,
   CYBER_SEPOLIA: 111557560n,
   REDSTONE: 690n,
-  // GNOSIS: 100n, // L1: must verify against withdrawal signatures?
+  GNOSIS: 100n, // L1: must verify against withdrawal signatures?
+  GNOSIS_CHIADO: 10200n,
   SHAPE: 360n,
   BSC: 56n,
   OP_BNB: 204n,
@@ -59,6 +60,8 @@ export const CHAINS = {
   LISK: 1135n,
   LISK_SEPOLIA: 4202n,
   ABSTRACT_SEPOLIA: 11124n,
+  MINT: 185n,
+  MINT_SEPOLIA: 1687n,
 } as const satisfies Record<string, Chain>;
 
 export function chainName(chain: Chain): string {

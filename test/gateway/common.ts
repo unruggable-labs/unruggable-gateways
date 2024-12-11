@@ -52,6 +52,7 @@ type TestOptions = {
   log?: boolean;
   skipCI?: boolean;
   skipZero?: boolean;
+  window?: number;
 };
 
 export async function quickTest(
@@ -108,7 +109,7 @@ export function testOP(
       file: 'OPVerifier',
       args: [
         [ccip.endpoint],
-        rollup.defaultWindow,
+        opts.window ?? rollup.defaultWindow,
         hooks,
         rollup.L2OutputOracle,
         opts.minAgeSec ?? 0,
@@ -146,7 +147,7 @@ export function testOPFault(
         file: 'OPFaultVerifier',
         args: [
           [ccip.endpoint],
-          rollup.defaultWindow,
+          opts.window ?? rollup.defaultWindow,
           hooks,
           [
             rollup.OptimismPortal,
@@ -183,7 +184,12 @@ export function testScroll(
     });
     const verifier = await foundry.deploy({
       file: 'ScrollVerifier',
-      args: [[ccip.endpoint], rollup.defaultWindow, hooks, rollup.ScrollChain],
+      args: [
+        [ccip.endpoint],
+        opts.window ?? rollup.defaultWindow,
+        hooks,
+        rollup.ScrollChain,
+      ],
       libs: { GatewayVM },
     });
     if (opts.skipZero === undefined) {
@@ -209,7 +215,7 @@ export function testSelfEth(chain: Chain, opts: TestOptions) {
     const hooks = await foundry.deploy({ file: 'EthVerifierHooks' });
     const verifier = await foundry.deploy({
       file: 'SelfVerifier',
-      args: [[ccip.endpoint], rollup.defaultWindow, hooks],
+      args: [[ccip.endpoint], opts.window ?? rollup.defaultWindow, hooks],
       libs: { GatewayVM },
     });
     await setupTests(verifier, opts);
@@ -245,7 +251,7 @@ export function testTrustedEth(chain2: Chain, opts: TestOptions) {
           verifier.setConfig(
             fetcher,
             [ccip.endpoint],
-            rollup.defaultWindow,
+            opts.window ?? rollup.defaultWindow,
             hooks
           )
         );
@@ -282,7 +288,7 @@ export function testLinea(
       file: 'LineaVerifier',
       args: [
         [ccip.endpoint],
-        rollup.defaultWindow,
+        opts.window ?? rollup.defaultWindow,
         hooks,
         config.L1MessageService,
       ],
@@ -315,7 +321,12 @@ export function testZKSync(
     });
     const verifier = await foundry.deploy({
       file: 'ZKSyncVerifier',
-      args: [[ccip.endpoint], rollup.defaultWindow, hooks, rollup.DiamondProxy],
+      args: [
+        [ccip.endpoint],
+        opts.window ?? rollup.defaultWindow,
+        hooks,
+        rollup.DiamondProxy,
+      ],
       libs: { GatewayVM },
     });
     await setupTests(verifier, opts);
@@ -340,7 +351,12 @@ export function testTaiko(
     const hooks = await foundry.deploy({ file: 'EthVerifierHooks' });
     const verifier = await foundry.deploy({
       file: 'TaikoVerifier',
-      args: [[ccip.endpoint], rollup.defaultWindow, hooks, rollup.TaikoL1],
+      args: [
+        [ccip.endpoint],
+        opts.window ?? rollup.defaultWindow,
+        hooks,
+        rollup.TaikoL1,
+      ],
       libs: { GatewayVM },
     });
     await setupTests(verifier, opts);
@@ -377,7 +393,7 @@ export function testDoubleNitro(
         file: 'DoubleNitroVerifier',
         args: [
           [ccip.endpoint],
-          rollup.defaultWindow,
+          opts.window ?? rollup.defaultWindow,
           hooks,
           rollup.rollup12.Rollup,
           rollup.rollup12.minAgeBlocks,

@@ -3,6 +3,7 @@ import type { HexAddress, HexString32, ProviderPair } from '../types.js';
 import { Contract } from 'ethers/contract';
 import { PORTAL_ABI, GAME_FINDER_ABI, GAME_ABI } from './types.js';
 import { CHAINS } from '../chains.js';
+import { isEthersError } from '../utils.js';
 import {
   AbstractOPRollup,
   hashOutputRootProof,
@@ -131,6 +132,7 @@ export class OPFaultRollup extends AbstractOPRollup {
           // canary often has invalid block <== likely triggers first
           // canary has invalid time
           // canary has invalid root claim
+          if (isEthersError(err)) throw err;
           index = await this.GameFinder.findGameIndex(
             this.OptimismPortal.target,
             this.minAgeSec,
