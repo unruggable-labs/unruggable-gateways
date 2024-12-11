@@ -1,9 +1,13 @@
 import type { RollupDeployment } from '../rollup.js';
-import type { HexAddress, ProviderPair } from '../types.js';
+import type { HexAddress, HexString32, ProviderPair } from '../types.js';
 import { Contract } from 'ethers/contract';
-import { PORTAL_ABI, GAME_FINDER_ABI } from './types.js';
+import { PORTAL_ABI, GAME_FINDER_ABI, GAME_ABI } from './types.js';
 import { CHAINS } from '../chains.js';
-import { AbstractOPRollup, type OPCommit } from './AbstractOPRollup.js';
+import {
+  AbstractOPRollup,
+  hashOutputRootProof,
+  type OPCommit,
+} from './AbstractOPRollup.js';
 
 // https://docs.optimism.io/chain/differences
 // https://specs.optimism.io/fault-proof/stage-one/bridge-integration.html
@@ -113,7 +117,31 @@ export class OPFaultRollup extends AbstractOPRollup {
       blockTag: this.latestBlockTag,
     });
   }
-
+  private async _ensureRootClaim(index: bigint) {
+    // dodge canary by requiring a valid root claim
+    // finalized claims are assumed valid
+    if (this.unfinalized) {
+      for (;;) {
+        try {
+          await this.fetchCommit(index);
+          break;
+        } catch (err) {
+          // NOTE: this could fail for a variety of reasons
+          // so we can't just catch "invalid root claim"
+          // canary often has invalid block <== likely triggers first
+          // canary has invalid time
+          // canary has invalid root claim
+          index = await this.GameFinder.findGameIndex(
+            this.OptimismPortal.target,
+            this.minAgeSec,
+            this.gameTypeBitMask,
+            index
+          );
+        }
+      }
+    }
+    return index;
+  }
   override async fetchLatestCommitIndex(): Promise<bigint> {
     // the primary assumption is that the anchor root is the finalized state
     // however, this is strangely conditional on the gameType
@@ -123,22 +151,26 @@ export class OPFaultRollup extends AbstractOPRollup {
     // 20240820: correctly handles the aug 16 respectedGameType change
     // this should be simplified in the future once there is a better policy
     // 20240822: once again uses a helper contract to reduce rpc burden
-    return this.GameFinder.findGameIndex(
-      this.OptimismPortal.target,
-      this.minAgeSec,
-      this.gameTypeBitMask,
-      0,
-      { blockTag: this.latestBlockTag }
+    return this._ensureRootClaim(
+      await this.GameFinder.findGameIndex(
+        this.OptimismPortal.target,
+        this.minAgeSec,
+        this.gameTypeBitMask,
+        0, // most recent game
+        { blockTag: this.latestBlockTag }
+      )
     );
   }
   protected override async _fetchParentCommitIndex(
     commit: OPCommit
   ): Promise<bigint> {
-    return this.GameFinder.findGameIndex(
-      this.OptimismPortal.target,
-      this.minAgeSec,
-      this.gameTypeBitMask,
-      commit.index
+    return this._ensureRootClaim(
+      await this.GameFinder.findGameIndex(
+        this.OptimismPortal.target,
+        this.minAgeSec,
+        this.gameTypeBitMask,
+        commit.index
+      )
     );
   }
   protected override async _fetchCommit(index: bigint) {
@@ -149,7 +181,14 @@ export class OPFaultRollup extends AbstractOPRollup {
       index
     );
     if (!game.l2BlockNumber) throw new Error('invalid game');
-    return this.createCommit(index, game.l2BlockNumber);
+    const commit = await this.createCommit(index, game.l2BlockNumber);
+    if (this.unfinalized) {
+      const gameProxy = new Contract(game.gameProxy, GAME_ABI, this.provider1);
+      const expected: HexString32 = await gameProxy.rootClaim();
+      const computed = hashOutputRootProof(commit);
+      if (expected !== computed) throw new Error(`invalid root claim`);
+    }
+    return commit;
   }
 
   override windowFromSec(sec: number): number {

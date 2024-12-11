@@ -24,6 +24,7 @@ interface IDisputeGameFactory {
 interface IDisputeGame {
     function status() external view returns (uint256);
     function l2BlockNumber() external view returns (uint256);
+	function rootClaim() external view returns (bytes32);
 }
 
 // https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/src/dispute/lib/Types.sol#L7
@@ -76,7 +77,8 @@ contract OPFaultGameFinder {
             uint256 gameType,
             uint256 created,
             IDisputeGame gameProxy,
-            uint256 l2BlockNumber
+            uint256 l2BlockNumber,
+			bytes32 rootClaim
         )
     {
         if (gameTypeBitMask == 0)
@@ -93,6 +95,7 @@ contract OPFaultGameFinder {
             )
         ) {
             l2BlockNumber = gameProxy.l2BlockNumber();
+			rootClaim = gameProxy.rootClaim();
         }
     }
 
@@ -103,6 +106,7 @@ contract OPFaultGameFinder {
         uint256 gameTypeBitMask,
         uint256 minAgeSec
     ) internal view returns (bool) {
+        if (gameType > 255) return false;
         if (gameTypeBitMask & (1 << gameType) == 0) return false;
         if (minAgeSec == 0) {
             return gameProxy.status() == DEFENDER_WINS;

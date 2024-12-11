@@ -121,12 +121,10 @@ export class ReverseOPRollup extends AbstractRollup<ReverseOPCommit> {
       prover2.fetchBlock(),
       prover2.fetchProofs(this.L1Block.target as string, [SLOT_HASH]),
     ]);
-    const rlpEncodedL1Block = encodeRlpBlock(l1BlockInfo);
-    const rlpEncodedL2Block = encodeRlpBlock(l2BlockInfo);
     return {
       index,
-      rlpEncodedL1Block,
-      rlpEncodedL2Block,
+      rlpEncodedL1Block: encodeRlpBlock(l1BlockInfo),
+      rlpEncodedL2Block: encodeRlpBlock(l2BlockInfo),
       accountProof: EthProver.encodeProof(proof.accountProof),
       storageProof: EthProver.encodeProof(proof.storageProof[0].proof),
       prover,

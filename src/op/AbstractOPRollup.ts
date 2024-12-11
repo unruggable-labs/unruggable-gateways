@@ -3,6 +3,7 @@ import type {
   BigNumberish,
   ProofSequence,
   ProofSequenceV1,
+  HexString32,
 } from '../types.js';
 import {
   AbstractRollup,
@@ -11,24 +12,32 @@ import {
 } from '../rollup.js';
 import { EthProver } from '../eth/EthProver.js';
 import { ZeroHash } from 'ethers/constants';
+import { keccak256 } from 'ethers/crypto';
 import { ABI_CODER } from '../utils.js';
 
-const OutputRootProofType = `tuple(
+const OutputRootProofType = `(
   bytes32 version,
   bytes32 stateRoot,
   bytes32 messagePasserStorageRoot,
   bytes32 latestBlockhash
 )`;
 
+function outputRootProofTuple(commit: OPCommit) {
+  return [ZeroHash, commit.stateRoot, commit.passerRoot, commit.blockHash];
+}
+
+// same as lib/optimism/packages/contract-bedrock/src/libraries/Hashing.sol
+export function hashOutputRootProof(commit: OPCommit): HexString32 {
+  return keccak256(
+    ABI_CODER.encode([OutputRootProofType], [outputRootProofTuple(commit)])
+  );
+}
+
 export type OPCommit = RollupCommit<EthProver> & {
   readonly blockHash: HexString;
   readonly stateRoot: HexString;
   readonly passerRoot: HexString;
 };
-
-function outputRootProofTuple(commit: OPCommit) {
-  return [ZeroHash, commit.stateRoot, commit.passerRoot, commit.blockHash];
-}
 
 const L2ToL1MessagePasser = '0x4200000000000000000000000000000000000016';
 
@@ -53,7 +62,7 @@ export abstract class AbstractOPRollup
   }
   override encodeWitness(commit: OPCommit, proofSeq: ProofSequence) {
     return ABI_CODER.encode(
-      [`tuple(uint256, ${OutputRootProofType}, bytes[], bytes)`],
+      [`(uint256, ${OutputRootProofType}, bytes[], bytes)`],
       [
         [
           commit.index,
@@ -66,7 +75,7 @@ export abstract class AbstractOPRollup
   }
   encodeWitnessV1(commit: OPCommit, proofSeq: ProofSequenceV1) {
     return ABI_CODER.encode(
-      [`tuple(uint256, ${OutputRootProofType})`, 'tuple(bytes, bytes[])'],
+      [`(uint256, ${OutputRootProofType})`, 'tuple(bytes, bytes[])'],
       [
         [commit.index, outputRootProofTuple(commit)],
         [proofSeq.accountProof, proofSeq.storageProofs],

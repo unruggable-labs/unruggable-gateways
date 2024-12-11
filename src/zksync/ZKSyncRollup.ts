@@ -57,6 +57,13 @@ export class ZKSyncRollup extends AbstractRollup<ZKSyncCommit> {
     DiamondProxy: '0x9A62B01fFa3bD358d03508ef60bB522ABA5d1bEb',
   };
 
+  // https://docs.abs.xyz/how-abstract-works/architecture/components/l1-rollup-contracts#list-of-l1-rollup-contracts
+  static readonly abstractSepoliaConfig: RollupDeployment<ZKSyncConfig> = {
+    chain1: CHAINS.SEPOLIA,
+    chain2: CHAINS.ABSTRACT_SEPOLIA,
+    DiamondProxy: '0x8aD52ff836A30f063dF51A00C99518880B8b36ac',
+  };
+
   readonly DiamondProxy: Contract;
   constructor(providers: ProviderPair, config: ZKSyncConfig) {
     super(providers);

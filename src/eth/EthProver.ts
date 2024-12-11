@@ -17,8 +17,8 @@ export class EthProver extends BlockProver {
   override async isContract(target: HexAddress): Promise<boolean> {
     target = target.toLowerCase();
     if (this.fast) {
-      return this.cache.get(target, async () => {
-        const code = await this.provider.getCode(target, this.block);
+      return this.cache.get(target, async (a) => {
+        const code = await this.provider.getCode(a, this.block);
         return code.length > 2;
       });
     }

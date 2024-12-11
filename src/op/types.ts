@@ -26,6 +26,10 @@ export const GAME_FINDER_ABI = new Interface([
    )`,
 ]);
 
+export const GAME_ABI = new Interface([
+  `function rootClaim() view returns (bytes32)`,
+]);
+
 export const L1_BLOCK_ABI = new Interface([
   `function number() view returns (uint256)`,
   //`function hash() view returns (bytes32)`,

@@ -316,6 +316,10 @@ async function createGateway(name: string, unfinalized: boolean) {
       return createOPGateway(OPRollup.cyberMainnetConfig);
     case 'fraxtal':
       return createOPGateway(OPRollup.fraxtalMainnetConfig);
+    case 'lisk':
+      return createOPGateway(OPRollup.liskMainnetConfig);
+    case 'lisk-sepolia':
+      return createOPGateway(OPRollup.liskSepoliaConfig);
     case 'mantle':
       return createOPGateway(OPRollup.mantleMainnetConfig);
     case 'mode':
@@ -326,6 +330,10 @@ async function createGateway(name: string, unfinalized: boolean) {
       return createOPGateway(OPRollup.redstoneMainnetConfig);
     case 'shape':
       return createOPGateway(OPRollup.shapeMainnetConfig);
+    case 'zircuit':
+      return createOPGateway(OPRollup.zircuitMainnetConfig);
+    case 'zircuit-sepolia':
+      return createOPGateway(OPRollup.zircuitSepoliaConfig);
     case 'zora':
       return createOPGateway(OPRollup.zoraMainnetConfig);
     case 'self-eth':

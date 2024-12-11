@@ -95,6 +95,31 @@ export class OPRollup extends AbstractOPRollup {
     L2OutputOracle: '0x19A6d1E9034596196295CF148509796978343c5D',
   };
 
+  // https://docs.zircuit.com/smart-contracts/contract_addresses
+  static readonly zircuitMainnetConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.ZIRCUIT,
+    L2OutputOracle: '0x92Ef6Af472b39F1b363da45E35530c24619245A4',
+  };
+  // https://docs.zircuit.com/testnet/contract_addresses
+  static readonly zircuitSepoliaConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.SEPOLIA,
+    chain2: CHAINS.ZIRCUIT_SEPOLIA,
+    L2OutputOracle: '0x740C2dac453aEf7140809F80b72bf0e647af8148',
+  };
+
+  // https://docs.lisk.com/contracts#ethereum-network-l1
+  static readonly liskMainnetConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.LISK,
+    L2OutputOracle: '0x113cB99283AF242Da0A0C54347667edF531Aa7d6',
+  };
+  static readonly liskSepoliaConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.SEPOLIA,
+    chain2: CHAINS.LISK_SEPOLIA,
+    L2OutputOracle: '0xA0E35F56C318DE1bD5D9ca6A94Fe7e37C5663348',
+  };
+
   readonly L2OutputOracle;
   constructor(providers: ProviderPair, config: OPConfig) {
     super(providers);

@@ -1,7 +1,6 @@
 import { OPFaultRollup } from '../../src/op/OPFaultRollup.js';
 import { testOPFault } from './common.js';
 
-// TODO: check this once game is finalized
 testOPFault(OPFaultRollup.unichainSepoliaConfig, {
   // https://sepolia.uniscan.xyz/address/0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6#code
   slotDataContract: '0x0d3e01829E8364DeC0e7475ca06B5c73dbA33ef6',

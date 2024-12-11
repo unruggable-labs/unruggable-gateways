@@ -10,10 +10,9 @@ interface IPoseidon {
     ) external view returns (bytes32);
 }
 
-//import "forge-std/console.sol";
-
 contract ScrollVerifierHooks is IVerifierHooks {
     IPoseidon immutable _poseidon;
+
     constructor(IPoseidon poseidon) {
         _poseidon = poseidon;
     }
@@ -24,10 +23,11 @@ contract ScrollVerifierHooks is IVerifierHooks {
     // https://github.com/ethereum/go-ethereum/blob/master/trie/proof.go#L114
     // https://github.com/scroll-tech/mpt-circuit/blob/v0.7/spec/mpt-proof.md#storage-segmenttypes
 
-    // 20240622
-    // we no longer care (verify or require) about the magic bytes, as it doesn't do anything
+    // 20240622: we ignore magic bytes (doesn't do anything)
     // https://github.com/scroll-tech/zktrie/blob/23181f209e94137f74337b150179aeb80c72e7c8/trie/zk_trie_proof.go#L13
     // bytes32 constant MAGIC = keccak256("THIS IS SOME MAGIC BYTES FOR SMT m1rRXgP2xpDI");
+
+    // 20241205: we ignore compressed flags (doesn't do anything)
 
     // https://github.com/scroll-tech/zktrie/blob/23181f209e94137f74337b150179aeb80c72e7c8/trie/zk_trie_node.go#L30
     uint256 constant NODE_LEAF = 4;
@@ -37,117 +37,107 @@ contract ScrollVerifierHooks is IVerifierHooks {
     uint256 constant NODE_BRANCH_LEAF = 8; // BX
     uint256 constant NODE_BRANCH_BRANCH = 9; // BB
 
-    // 20240918: 900k gas
     function verifyAccountState(
         bytes32 stateRoot,
         address account,
         bytes memory encodedProof
     ) external view returns (bytes32 storageRoot) {
-        bytes[] memory proof = abi.decode(encodedProof, (bytes[]));
-        bytes32 key = poseidonHash1(bytes20(account)); // left aligned
-        (bytes32 leafHash, bytes memory leaf) = walkTree(key, proof, stateRoot);
-        // HOW DO I TELL THIS DOESNT EXIST?
-        if (!isValidLeaf(leaf, 230, bytes32(bytes20(account)), key, 0x05080000))
-            revert InvalidProof();
-        // REUSING VARIABLE #1
+        (
+            bytes32 keyHash,
+            bytes32 leafHash,
+            bytes memory leaf,
+            bool exists
+        ) = walkTree(bytes20(account), encodedProof, stateRoot, 230); // flags = 0x05080000
+        if (leafHash == 0) return NOT_A_CONTRACT;
         bytes32 temp;
-        assembly {
-            temp := mload(add(leaf, 69))
-        } // nonce||codesize||0
-        // REUSING VARIABLE #2
-        assembly {
-            stateRoot := mload(add(leaf, 101))
-        } // balance
-        assembly {
-            storageRoot := mload(add(leaf, 133))
-        }
+        bytes32 amount;
         bytes32 codeHash;
         assembly {
+            temp := mload(add(leaf, 69)) // nonce||codesize||0
+            amount := mload(add(leaf, 101))
+            storageRoot := mload(add(leaf, 133))
             codeHash := mload(add(leaf, 165))
         }
         bytes32 h = poseidonHash2(storageRoot, poseidonHash1(codeHash), 1280);
-        h = poseidonHash2(poseidonHash2(temp, stateRoot, 1280), h, 1280);
-        // REUSING VARIABLE #3
+        h = poseidonHash2(poseidonHash2(temp, amount, 1280), h, 1280);
         assembly {
             temp := mload(add(leaf, 197))
         }
         h = poseidonHash2(h, temp, 1280);
-        h = poseidonHash2(key, h, 4);
+        h = poseidonHash2(keyHash, h, 4);
         if (leafHash != h) revert InvalidProof(); // InvalidAccountLeafNodeHash
-        if (codeHash == NULL_CODE_HASH) storageRoot = NOT_A_CONTRACT;
+        if (codeHash == NULL_CODE_HASH || !exists) storageRoot = NOT_A_CONTRACT;
     }
 
-    // 20240918: 93k gas
     function verifyStorageValue(
         bytes32 storageRoot,
         address /*target*/,
         uint256 slot,
         bytes memory encodedProof
     ) external view returns (bytes32 value) {
-        bytes[] memory proof = abi.decode(encodedProof, (bytes[]));
-        bytes32 key = poseidonHash1(bytes32(slot));
-        (bytes32 leafHash, bytes memory leaf) = walkTree(
-            key,
-            proof,
-            storageRoot
-        );
-        uint256 nodeType = uint8(leaf[0]);
-        if (nodeType == NODE_LEAF) {
-            if (!isValidLeaf(leaf, 102, bytes32(slot), key, 0x01010000))
-                revert InvalidProof();
+        (
+            bytes32 keyHash,
+            bytes32 leafHash,
+            bytes memory leaf,
+            bool exists
+        ) = walkTree(bytes32(slot), encodedProof, storageRoot, 102); // flags = 0x01010000
+        if (leafHash != 0) {
             assembly {
                 value := mload(add(leaf, 69))
             }
-            bytes32 h = poseidonHash2(key, poseidonHash1(value), 4);
+            bytes32 h = poseidonHash2(keyHash, poseidonHash1(value), 4);
             if (leafHash != h) revert InvalidProof(); // InvalidStorageLeafNodeHash
-        } else if (nodeType == NODE_LEAF_EMPTY) {
-            if (leaf.length != 1) revert InvalidProof();
-            if (leafHash != 0) revert InvalidProof(); // InvalidStorageEmptyLeafNodeHash
+            if (!exists) value = 0;
         }
-    }
-
-    function isValidLeaf(
-        bytes memory leaf,
-        uint256 len,
-        bytes32 raw,
-        bytes32 key,
-        bytes4 flag
-    ) internal pure returns (bool) {
-        if (leaf.length != len) return false;
-        bytes32 temp;
-        assembly {
-            temp := mload(add(leaf, 33))
-        }
-        if (temp != key) return false; // KeyMismatch
-        assembly {
-            temp := mload(add(leaf, 65))
-        }
-        if (bytes4(temp) != flag) return false; // InvalidCompressedFlag
-        if (uint8(leaf[len - 33]) != 32) return false; // InvalidKeyPreimageLength
-        assembly {
-            temp := mload(add(leaf, len))
-        }
-        return temp == raw; // InvalidKeyPreimage
     }
 
     function walkTree(
         bytes32 key,
-        bytes[] memory proof,
-        bytes32 rootHash
-    ) internal view returns (bytes32 expectedHash, bytes memory v) {
-        expectedHash = rootHash;
-        bool done;
-        //console.log("[WALK PROOF] %s", proof.length);
+        bytes memory encodedProof,
+        bytes32 rootHash,
+        uint256 leafSize
+    )
+        internal
+        view
+        returns (bytes32 keyHash, bytes32 h, bytes memory v, bool exists)
+    {
+        bytes[] memory proof = abi.decode(encodedProof, (bytes[]));
+        keyHash = poseidonHash1(key);
+        h = rootHash;
         for (uint256 i; ; i++) {
             if (i == proof.length) revert InvalidProof();
             v = proof[i];
-            bool left = uint256(key >> i) & 1 == 0;
+            if (v.length == 0) revert InvalidProof();
             uint256 nodeType = uint8(v[0]);
-            //console.log("[%s] %s %s", i, nodeType, left ? "L" : "R");
-            if (nodeType == NODE_LEAF) {
-                // 20240917: tate noted 1 slot trie is just a terminal node
-                if (done || i == 0) break;
-                revert InvalidProof(); // expected leaf
+            if (nodeType == NODE_LEAF_EMPTY) {
+                if (h != 0) revert InvalidProof();
+                break;
+            } else if (nodeType == NODE_LEAF) {
+                if (v.length != leafSize) revert InvalidProof();
+                // NOTE: leafSize is >= 33
+                if (uint8(v[leafSize - 33]) != 32) revert InvalidProof(); // InvalidKeyPreimageLength
+                bytes32 temp;
+                assembly {
+                    temp := mload(add(v, 33))
+                }
+                if (temp == keyHash) {
+                    assembly {
+                        temp := mload(add(v, leafSize))
+                    }
+                    if (temp != key) revert InvalidProof(); // InvalidKeyPreimage
+                    exists = true;
+                } else {
+                    // If the trie does not contain a value for key, the returned proof contains all
+                    // nodes of the longest existing prefix of the key (at least the root node), ending
+                    // with the node that proves the absence of the key.
+                    if (i > 0) {
+                        bytes32 p = bytes32((1 << i) - 1); // prefix mask
+                        if ((temp & p) != (keyHash & p)) revert InvalidProof();
+                    }
+                    // this is a proof for a different value that traverses to the same place
+                    keyHash = temp;
+                }
+                break;
             } else if (
                 nodeType < NODE_LEAF_LEAF ||
                 nodeType > NODE_BRANCH_BRANCH ||
@@ -161,52 +151,20 @@ contract ScrollVerifierHooks is IVerifierHooks {
                 l := mload(add(v, 33))
                 r := mload(add(v, 65))
             }
-            bytes32 h = poseidonHash2(l, r, nodeType);
-            if (h != expectedHash) revert InvalidProof();
-            expectedHash = left ? l : r;
-            if (
-                nodeType == NODE_LEAF_LEAF ||
-                (
-                    left
-                        ? nodeType == NODE_LEAF_BRANCH
-                        : nodeType == NODE_BRANCH_LEAF
-                )
-            ) {
-                //console.log("done = true");
-                done = true;
-            }
+            if (h != poseidonHash2(l, r, nodeType)) revert InvalidProof();
+            h = uint256(keyHash >> i) & 1 == 0 ? l : r;
         }
     }
 
     function poseidonHash1(bytes32 x) internal view returns (bytes32) {
         return poseidonHash2(x >> 128, (x << 128) >> 128, 512);
     }
+
     function poseidonHash2(
         bytes32 v0,
         bytes32 v1,
         uint256 domain
     ) internal view returns (bytes32) {
-        //uint256 g = gasleft();
         return _poseidon.poseidon([uint256(v0), uint256(v1)], domain);
-        //console.log("hash: %s", g - gasleft());
-        /*
-		// try POSEIDON.poseidon([uint256(v0), uint256(v1)], domain) returns (bytes32 h) {
-		// 	return h;
-		// } catch {
-		// 	revert InvalidProof();
-		// }
-		bool success;
-		assembly {
-			let x := mload(0x40)
-			// keccak256("poseidon(uint256[2],uint256)")
-			mstore(x, 0xa717016c00000000000000000000000000000000000000000000000000000000)
-			mstore(add(x, 0x04), v0)
-			mstore(add(x, 0x24), v1)
-			mstore(add(x, 0x44), domain)
-			success := staticcall(gas(), _poseidon, x, 0x64, 0x20, 0x20)
-			r := mload(0x20)
-		}
-		if (!success) revert InvalidProof();
-		*/
     }
 }

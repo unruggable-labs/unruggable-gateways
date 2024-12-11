@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import type { Chain, ChainPair, Provider, ProviderPair } from '../src/types.js';
 import { CHAINS } from '../src/chains.js';
 import { FetchRequest } from 'ethers/utils';
@@ -14,6 +15,8 @@ export type RPCInfo = {
 
 // TODO: this list is incomplete!
 // need to scrape all of the slugs and test rpc functionality and proof depth
+// https://docs.metamask.io/services/get-started/endpoints/
+// https://dashboard.alchemy.com/chains
 export const RPC_INFO = new Map<Chain, RPCInfo>(
   (
     [
@@ -197,9 +200,17 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         rpc: 'https://rpc.mantle.xyz', // wss://wss.mantle.xyz
       },
       {
+        chain: CHAINS.MANTLE_SEPOLIA,
+        rpc: 'https://rpc.sepolia.mantle.xyz',
+      },
+      {
         // https://docs.mode.network/general-info/network-details#mode-mainnet
         chain: CHAINS.MODE,
         rpc: 'https://mainnet.mode.network/',
+      },
+      {
+        chain: CHAINS.MODE_SEPOLIA,
+        rpc: 'https://sepolia.mode.network',
       },
       {
         // https://docs.cyber.co/build-on-cyber/connecting-wallet
@@ -240,6 +251,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         chain: CHAINS.OP_BNB,
         rpc: 'https://opbnb-mainnet-rpc.bnbchain.org',
         infura: 'opbnb-mainnet',
+        alchemy: 'opbnb-mainnet',
       },
       {
         // https://docs.celo.org/network#celo-alfajores
@@ -258,16 +270,16 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         rpc: 'https://worldchain-sepolia.g.alchemy.com/public',
         alchemy: 'worldchain-sepolia',
       },
-      // https://docs.apechain.com/metamask
-      // https://apechain.hub.caldera.xyz/
       {
+        // https://docs.apechain.com/metamask
+        // https://apechain.hub.caldera.xyz/
         chain: CHAINS.APE,
         rpc: 'https://rpc.apechain.com/http',
         // wss://rpc.apechain.com/ws
         // https://apechain.calderachain.xyz/http
       },
-      // https://docs.zero.network/build-on-zero/network-information#zer%CE%B8-network
       {
+        // https://docs.zero.network/build-on-zero/network-information#zer%CE%B8-network
         chain: CHAINS.ZERO,
         rpc: 'https://rpc.zerion.io/v1/zero',
       },
@@ -275,27 +287,68 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         chain: CHAINS.ZERO_SEPOLIA,
         rpc: 'https://rpc.zerion.io/v1/zero-sepolia',
       },
-      // https://docs.inkonchain.com/quick-start/get-connected
       {
+        // https://docs.inkonchain.com/quick-start/get-connected
         chain: CHAINS.INK_SEPOLIA,
         rpc: 'https://rpc-qnd-sepolia.inkonchain.com', // wss://rpc-qnd-sepolia.inkonchain.com
       },
-      // https://docs.unichain.org/docs/technical-information/network-information#unichain-sepolia-testnet
       {
+        // https://docs.unichain.org/docs/technical-information/network-information#unichain-sepolia-testnet
         chain: CHAINS.UNICHAIN_SEPOLIA,
         rpc: 'https://sepolia.unichain.org',
         alchemy: 'unichain-sepolia',
       },
-      // https://docs.morphl2.io/docs/build-on-morph/developer-resources/contracts
       {
+        // https://docs.morphl2.io/docs/build-on-morph/developer-resources/contracts
         chain: CHAINS.MORPH,
+        rpc: 'https://rpc-quicknode.morphl2.io',
+      },
+      {
+        chain: CHAINS.MORPH_HOLESKY,
         rpc: 'https://rpc-quicknode-holesky.morphl2.io',
       },
-      // https://docs.soneium.org/docs/builders/overview
       {
+        // https://docs.soneium.org/docs/builders/overview
         chain: CHAINS.SONEIUM_MINATO,
         rpc: 'https://rpc.minato.soneium.org/',
         alchemy: 'soneium-minato',
+      },
+      {
+        // https://www.starknet.io/fullnodes-rpc-services/
+        // https://docs.starknet.io/tools/api-services/
+        chain: CHAINS.STARKNET,
+        rpc: 'https://rpc.starknet.lava.build',
+        alchemy: 'starknet-mainnet',
+        infura: 'starknet-mainnet',
+      },
+      {
+        chain: CHAINS.STARKNET_SEPOLIA,
+        rpc: 'https://rpc.starknet-testnet.lava.build',
+        alchemy: 'starknet-sepolia',
+        infura: 'starknet-sepolia',
+      },
+      {
+        // https://docs.zircuit.com/dev-tools/rpc-endpoints
+        chain: CHAINS.ZIRCUIT,
+        rpc: 'https://zircuit1-mainnet.p2pify.com/',
+      },
+      {
+        chain: CHAINS.ZIRCUIT_SEPOLIA,
+        rpc: 'https://zircuit1-testnet.p2pify.com',
+      },
+      {
+        // https://docs.lisk.com/network-info
+        chain: CHAINS.LISK,
+        rpc: 'https://rpc.api.lisk.com',
+      },
+      {
+        chain: CHAINS.LISK_SEPOLIA,
+        rpc: 'https://rpc.sepolia-api.lisk.com',
+      },
+      // https://docs.abs.xyz/connect-to-abstract
+      {
+        chain: CHAINS.ABSTRACT_SEPOLIA,
+        rpc: 'https://api.testnet.abs.xyz', // ws://api.testnet.abs.xyz/ws
       },
     ] satisfies RPCInfo[]
   ).map((x) => [x.chain, x])
