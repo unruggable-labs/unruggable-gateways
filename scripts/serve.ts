@@ -1,7 +1,11 @@
 import type { Serve } from 'bun';
 import type { Chain } from '../src/types.js';
 import type { RollupDeployment, RollupCommitType } from '../src/rollup.js';
-import { createProviderPair, createProvider } from '../test/providers.js';
+import {
+  createProviderPair,
+  createProvider,
+  providerURL,
+} from '../test/providers.js';
 import { CHAINS, chainName } from '../src/chains.js';
 import { Gateway } from '../src/gateway.js';
 import { type OPConfig, OPRollup } from '../src/op/OPRollup.js';
@@ -19,11 +23,35 @@ import { PolygonPoSRollup } from '../src/polygon/PolygonPoSRollup.js';
 import { EthSelfRollup } from '../src/eth/EthSelfRollup.js';
 import { Contract } from 'ethers/contract';
 import { SigningKey } from 'ethers/crypto';
+import { id as keccakStr } from 'ethers/hash';
 import { toUnpaddedHex } from '../src/utils.js';
 import { TrustedRollup } from '../src/TrustedRollup.js';
 import { EthProver } from '../src/eth/EthProver.js';
 //import { LineaProver } from '../src/linea/LineaProver.js';
 import { ZKSyncProver } from '../src/zksync/ZKSyncProver.js';
+import { execSync } from 'child_process';
+
+const versionIdentifier = (() => {
+  try {
+    // Try to get the current tag
+    const currentTag = execSync('git describe --tags --exact-match', {
+      stdio: 'pipe',
+    })
+      .toString()
+      .trim();
+    return currentTag;
+  } catch (error) {
+    try {
+      const commitHash = execSync('git rev-parse HEAD', { stdio: 'pipe' })
+        .toString()
+        .trim();
+      return commitHash;
+    } catch (error) {
+      /* empty */
+    }
+  }
+  return '';
+})();
 
 // NOTE: you can use CCIPRewriter to test an existing setup against a local gateway!
 // [raffy] https://adraffy.github.io/ens-normalize.js/test/resolver.html#raffy.linea.eth.nb2hi4dthixs62dpnvss4ylooruxg5dvobuwiltdn5ws62duoryc6.ccipr.eth
@@ -100,10 +128,13 @@ gateway.rollup.configure = (c: RollupCommitType<typeof gateway.rollup>) => {
 };
 
 const config: Record<string, any> = {
+  version: versionIdentifier,
   gateway: gateway.constructor.name,
   rollup: gateway.rollup.constructor.name,
   chain1: chainName(gateway.rollup.provider1._network.chainId),
+  rpc1: keccakStr(providerURL(gateway.rollup.provider1._network.chainId)),
   chain2: chainName(gateway.rollup.provider2._network.chainId),
+  rpc2: keccakStr(providerURL(gateway.rollup.provider2._network.chainId)),
   since: new Date(),
   unfinalized: gateway.rollup.unfinalized,
   prefetch,
