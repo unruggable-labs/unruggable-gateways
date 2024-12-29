@@ -291,10 +291,17 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         publicHTTP: 'https://rpc.zerion.io/v1/zero-sepolia',
       },
       {
-        // https://docs.inkonchain.com/quick-start/get-connected
+        // https://docs.inkonchain.com/general/network-information
+        chain: CHAINS.INK,
+        publicHTTP: 'https://rpc-gel.inkonchain.com',
+        publicWS: 'wss://rpc-gel.inkonchain.com',
+        alchemy: 'ink-mainnet',
+      },
+      {
         chain: CHAINS.INK_SEPOLIA,
         publicHTTP: 'https://rpc-qnd-sepolia.inkonchain.com',
         publicWS: 'wss://rpc-qnd-sepolia.inkonchain.com',
+        alchemy: 'ink-sepolia',
       },
       {
         // https://docs.unichain.org/docs/technical-information/network-information#unichain-sepolia-testnet
@@ -374,6 +381,26 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       {
         chain: CHAINS.GNOSIS_CHIADO,
         publicHTTP: 'https://rpc.chiadochain.net',
+      },
+      {
+        // https://docs.sophon.xyz/build/network-information
+        chain: CHAINS.SOPHON,
+        publicHTTP: 'https://rpc.sophon.xyz',
+      },
+      {
+        chain: CHAINS.SOPHON_SEPOLIA,
+        publicHTTP: 'https://rpc.testnet.sophon.xyz',
+      },
+      {
+        // https://build.swellnetwork.io/docs/developer-resources/rpc-providers-and-bridges
+        chain: CHAINS.SWELL,
+        publicHTTP: 'https://swell-mainnet.alt.technology',
+        ankr: 'swell',
+      },
+      {
+        chain: CHAINS.SWELL_SEPOLIA,
+        publicHTTP: 'https://swell-testnet.alt.technology',
+        ankr: 'swell-testnet',
       },
     ] satisfies RPCInfo[]
   ).map((x) => [x.chain, x])

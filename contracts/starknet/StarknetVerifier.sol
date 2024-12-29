@@ -10,6 +10,7 @@ interface IRollup {
     function stateBlockNumber() external view returns (uint256);
 }
 
+// https://github.com/starkware-libs/cairo-lang/blob/master/src/starkware/starknet/solidity/Starknet.sol#L60
 uint256 constant SLOT_STATE_ROOT = uint256(
     keccak256('STARKNET_1.0_INIT_STARKNET_STATE_STRUCT')
 );
@@ -70,7 +71,7 @@ contract StarknetVerifier is AbstractVerifier {
                 address(_rollup),
                 p.accountProof
             );
-            storageRoot = _ethHooks.verifyStorageValue(
+            stateRoot = _ethHooks.verifyStorageValue(
                 storageRoot,
                 address(_rollup),
                 SLOT_STATE_ROOT,

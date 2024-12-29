@@ -1002,6 +1002,9 @@ export abstract class BlockProver extends AbstractProver {
     super(provider);
     this.block = toUnpaddedHex(block);
   }
+  get blockNumber() {
+    return BigInt(this.block);
+  }
   fetchBlock() {
     return fetchBlock(this.provider, this.block);
   }

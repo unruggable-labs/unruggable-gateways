@@ -48,6 +48,7 @@ export const CHAINS = {
   APE: 33139n,
   ZERO: 543210n,
   ZERO_SEPOLIA: 4457845n,
+  INK: 57073n,
   INK_SEPOLIA: 763373n,
   UNICHAIN_SEPOLIA: 1301n,
   MORPH: 2818n,
@@ -62,6 +63,10 @@ export const CHAINS = {
   ABSTRACT_SEPOLIA: 11124n,
   MINT: 185n,
   MINT_SEPOLIA: 1687n,
+  SOPHON: 50104n,
+  SOPHON_SEPOLIA: 531050104n,
+  SWELL: 1923n,
+  SWELL_SEPOLIA: 1924n,
 } as const satisfies Record<string, Chain>;
 
 export function chainName(chain: Chain): string {

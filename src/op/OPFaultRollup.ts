@@ -64,7 +64,13 @@ export class OPFaultRollup extends AbstractOPRollup {
     GameFinder: GAME_FINDER_SEPOLIA,
   };
 
-  // https://docs.inkonchain.com/build/useful-info/ink-contracts#l1-testnet-contracts-sepolia
+  // https://docs.inkonchain.com/useful-information/contracts#l1-contract-addresses
+  static readonly inkMainnetConfig: RollupDeployment<OPFaultConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.INK,
+    OptimismPortal: '0x5d66c1782664115999c47c9fa5cd031f495d3e4f',
+    GameFinder: GAME_FINDER_MAINNET,
+  };
   static readonly inkSepoliaConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.INK_SEPOLIA,
@@ -85,6 +91,20 @@ export class OPFaultRollup extends AbstractOPRollup {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.SONEIUM_MINATO,
     OptimismPortal: '0x65ea1489741A5D72fFdD8e6485B216bBdcC15Af3',
+    GameFinder: GAME_FINDER_SEPOLIA,
+  };
+
+  // https://build.swellnetwork.io/docs/developer-resources/contract-addresses
+  static readonly swellMainnetConfig: RollupDeployment<OPFaultConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.SWELL,
+    OptimismPortal: '0x758E0EE66102816F5C3Ec9ECc1188860fbb87812',
+    GameFinder: GAME_FINDER_MAINNET,
+  };
+  static readonly swellSepoliaConfig: RollupDeployment<OPFaultConfig> = {
+    chain1: CHAINS.SEPOLIA,
+    chain2: CHAINS.SWELL_SEPOLIA,
+    OptimismPortal: '0x595329c60c0b9e54a5246e98fb0fa7fcfd454f64',
     GameFinder: GAME_FINDER_SEPOLIA,
   };
 
