@@ -37,6 +37,9 @@ contract ScrollVerifierHooks is IVerifierHooks {
     uint256 constant NODE_BRANCH_LEAF = 8; // BX
     uint256 constant NODE_BRANCH_BRANCH = 9; // BB
 
+    // https://docs.scroll.io/en/technology/sequencer/zktrie/
+    uint256 constant MAX_TRIE_DEPTH = 248;
+
     function verifyAccountState(
         bytes32 stateRoot,
         address account,
@@ -105,7 +108,7 @@ contract ScrollVerifierHooks is IVerifierHooks {
         keyHash = poseidonHash1(key);
         h = rootHash;
         for (uint256 i; ; i++) {
-            if (i == proof.length) revert InvalidProof();
+            if (i == proof.length || i >= MAX_TRIE_DEPTH) revert InvalidProof();
             v = proof[i];
             if (v.length == 0) revert InvalidProof();
             uint256 nodeType = uint8(v[0]);
