@@ -18,7 +18,7 @@ import { ZeroHash } from 'ethers/constants';
 import { Contract, EventLog } from 'ethers/contract';
 import { CHAINS } from '../chains.js';
 import { EthProver } from '../eth/EthProver.js';
-import { ABI_CODER, fetchBlock, MAINNET_BLOCK_SEC } from '../utils.js';
+import { ABI_CODER, fetchBlockNumber, MAINNET_BLOCK_SEC } from '../utils.js';
 import { encodeRlpBlock } from '../rlp.js';
 
 // https://docs.arbitrum.io/how-arbitrum-works/inside-arbitrum-nitro#the-rollup-chain
@@ -74,13 +74,23 @@ export class NitroRollup
     return !!this.minAgeBlocks;
   }
 
+  private async _ensureUsableNode(index: bigint) {
+    for (; index; index--) {
+      const node: ABINodeTuple = await this.Rollup.getNode(index);
+      if (node.stakerCount) break;
+    }
+    return index;
+  }
   async fetchLatestNode(minAgeBlocks = 0): Promise<bigint> {
     if (minAgeBlocks) {
-      const blockInfo = await fetchBlock(this.provider1, this.latestBlockTag);
-      const blockTag = BigInt(blockInfo.number) - BigInt(minAgeBlocks);
-      return this.Rollup.latestNodeCreated({
-        blockTag,
+      const latest = await fetchBlockNumber(
+        this.provider1,
+        this.latestBlockTag
+      );
+      const index: bigint = await this.Rollup.latestNodeCreated({
+        blockTag: latest - BigInt(minAgeBlocks),
       });
+      return this._ensureUsableNode(index);
     } else {
       return this.Rollup.latestConfirmed({
         blockTag: this.latestBlockTag,
@@ -88,15 +98,17 @@ export class NitroRollup
     }
   }
   async fetchNodeData(index: bigint) {
-    const [{ createdAtBlock, prevNum }, [event]] = await Promise.all([
-      this.Rollup.getNode(index) as Promise<ABINodeTuple>,
-      this.Rollup.queryFilter(
-        this.unfinalized
-          ? this.Rollup.filters.NodeCreated(index)
-          : this.Rollup.filters.NodeConfirmed(index)
-      ),
-    ]);
+    const [{ createdAtBlock, stakerCount, prevNum }, [event]] =
+      await Promise.all([
+        this.Rollup.getNode(index) as Promise<ABINodeTuple>,
+        this.Rollup.queryFilter(
+          this.unfinalized
+            ? this.Rollup.filters.NodeCreated(index)
+            : this.Rollup.filters.NodeConfirmed(index)
+        ),
+      ]);
     if (!createdAtBlock) throw new Error('unknown node');
+    if (!stakerCount) throw new Error('no stakers');
     if (!(event instanceof EventLog)) throw new Error('no node event');
     let blockHash: HexString32;
     let sendRoot: HexString32;
@@ -117,7 +129,9 @@ export class NitroRollup
   protected override async _fetchParentCommitIndex(
     commit: NitroCommit
   ): Promise<bigint> {
-    return this.unfinalized ? commit.index - 1n : commit.prevNum;
+    return this.unfinalized
+      ? this._ensureUsableNode(commit.index - 1n)
+      : commit.prevNum;
   }
   protected override async _fetchCommit(index: bigint): Promise<NitroCommit> {
     const { prevNum, blockHash, sendRoot } = await this.fetchNodeData(index);
@@ -136,7 +150,7 @@ export class NitroRollup
     proofSeq: ProofSequence
   ): HexString {
     return ABI_CODER.encode(
-      ['tuple(uint256, bytes32, bytes, bytes[], bytes)'],
+      ['(uint256, bytes32, bytes, bytes[], bytes)'],
       [
         [
           commit.index,
@@ -151,8 +165,8 @@ export class NitroRollup
   encodeWitnessV1(commit: NitroCommit, proofSeq: ProofSequenceV1): HexString {
     return ABI_CODER.encode(
       [
-        'tuple(bytes32 version, bytes32 sendRoot, uint64 nodeIndex, bytes rlpEncodedBlock)',
-        'tuple(bytes, bytes[])',
+        '(bytes32 version, bytes32 sendRoot, uint64 nodeIndex, bytes rlpEncodedBlock)',
+        '(bytes, bytes[])',
       ],
       [
         [ZeroHash, commit.sendRoot, commit.index, commit.rlpEncodedBlock],
