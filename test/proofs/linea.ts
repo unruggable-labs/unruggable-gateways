@@ -1,8 +1,11 @@
 import { LineaRollup } from '../../src/linea/LineaRollup.js';
-import { createProviderPair } from '../../test/providers.js';
+import { createProviderPair, providerURL } from '../../test/providers.js';
 
 const config = LineaRollup.mainnetConfig;
 const rollup = new LineaRollup(createProviderPair(config), config);
+
+console.log('provider1', providerURL(rollup.provider1._network.chainId));
+console.log('provider2', providerURL(rollup.provider2._network.chainId));
 
 rollup.provider2.on('debug', (e) => {
   if (e.action === 'sendRpcPayload') {
