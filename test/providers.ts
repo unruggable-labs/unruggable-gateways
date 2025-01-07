@@ -60,7 +60,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         rpc: 'https://mainnet.base.org',
         ankr: 'base',
         infura: 'base-mainnet',
-        //alchemy: 'base-mainnet', // 20241116: eth_getProof depth is less than 100
+        alchemy: 'base-mainnet', // 20250107 eth_getProof depth now seems OK
       },
       {
         // https://docs.base.org/docs/network-information#base-testnet-sepolia
@@ -68,7 +68,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         rpc: 'https://sepolia.base.org',
         ankr: 'base_sepolia',
         infura: 'base-sepolia',
-        //alchemy: 'base-sepolia', // 20241116: eth_getProof depth is less than 100
+        alchemy: 'base-sepolia', // 20250107 eth_getProof depth now seems OK
       },
       {
         // https://docs.arbitrum.io/build-decentralized-apps/reference/node-providers#arbitrum-public-rpc-endpoints
@@ -97,12 +97,14 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         rpc: 'https://rpc.scroll.io',
         ankr: 'scroll',
         infura: 'scroll-mainnet',
+        alchemy: 'scroll-mainnet',
       },
       {
         chain: CHAINS.SCROLL_SEPOLIA,
         rpc: 'https://sepolia-rpc.scroll.io',
         ankr: 'scroll_sepolia_testnet',
         infura: 'scroll-sepolia',
+        alchemy: 'scroll-sepolia',
       },
       {
         // https://docs.taiko.xyz/network-reference/rpc-configuration#taiko-mainnet
