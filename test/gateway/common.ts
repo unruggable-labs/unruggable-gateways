@@ -51,7 +51,6 @@ type TestOptions = {
   slotDataPointer?: HexAddress;
   log?: boolean;
   skipCI?: boolean;
-  skipZero?: boolean;
   window?: number;
 };
 
@@ -82,7 +81,7 @@ export async function setupTests(
     await foundry.confirm(reader.setPointer(opts.slotDataPointer));
   }
   await configure?.(reader);
-  runSlotDataTests(reader, !!opts.slotDataPointer, !!opts.skipZero);
+  runSlotDataTests(reader, !!opts.slotDataPointer);
 }
 
 function shouldSkip(opts: TestOptions) {
@@ -163,6 +162,37 @@ export function testOPFault(
   );
 }
 
+export function testNitro(
+  config: RollupDeployment<NitroConfig>,
+  opts: TestOptions & { minAgeBlocks?: number }
+) {
+  describe(testName(config), async () => {
+    const rollup = new NitroRollup(createProviderPair(config), config);
+    const foundry = await Foundry.launch({
+      fork: providerURL(config.chain1),
+      infoLog: !!opts.log,
+    });
+    afterAll(foundry.shutdown);
+    const gateway = new Gateway(rollup);
+    const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
+    afterAll(ccip.shutdown);
+    const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
+    const hooks = await foundry.deploy({ file: 'EthVerifierHooks' });
+    const verifier = await foundry.deploy({
+      file: 'NitroVerifier',
+      args: [
+        [ccip.endpoint],
+        opts.window ?? rollup.defaultWindow,
+        hooks,
+        rollup.Rollup,
+        opts.minAgeBlocks ?? rollup.minAgeBlocks,
+      ],
+      libs: { GatewayVM },
+    });
+    await setupTests(verifier, opts);
+  });
+}
+
 export function testScroll(
   config: RollupDeployment<ScrollConfig>,
   opts: TestOptions
@@ -192,10 +222,6 @@ export function testScroll(
       ],
       libs: { GatewayVM },
     });
-    if (opts.skipZero === undefined) {
-      // 20241004: we know this test fails, auto-skip during ci
-      opts.skipZero = !!process.env.IS_CI;
-    }
     await setupTests(verifier, opts);
   });
 }

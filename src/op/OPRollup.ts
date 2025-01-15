@@ -133,6 +133,19 @@ export class OPRollup extends AbstractOPRollup {
     L2OutputOracle: '0x0Da5ac919E3C42E825b4dC221983Da6A0021DCdD',
   };
 
+  // https://docs.gobob.xyz/learn/reference/contracts/#ethereum-l1
+  static readonly bobMainnetConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.BOB,
+    L2OutputOracle: '0xdDa53E23f8a32640b04D7256e651C1db98dB11C1',
+    // commitFreqSec: 12hr
+  };
+  static readonly bobSepoliaConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.SEPOLIA,
+    chain2: CHAINS.BOB_SEPOLIA,
+    L2OutputOracle: '0xd1cBBC06213B7E14e99aDFfFeF1C249E6f9537e0',
+  };
+
   readonly L2OutputOracle;
   constructor(providers: ProviderPair, config: OPConfig) {
     super(providers);

@@ -4,11 +4,7 @@ import { expect, test } from 'bun:test';
 const opts = { enableCcipRead: true };
 
 // imo better to expect(await) than expect().resolves
-export function runSlotDataTests(
-  r: Contract,
-  pointer = false,
-  skipZero = false
-) {
+export function runSlotDataTests(r: Contract, pointer = false) {
   test('latest = 49', async () => {
     expect(await r.readLatest(opts)).toEqual(49n);
   });
@@ -35,7 +31,7 @@ export function runSlotDataTests(
   test('realnames[highscorers[latest]] = "Hal Finney"', async () => {
     expect(await r.readLatestHighscorerRealName(opts)).toEqual('Hal Finney');
   });
-  test.skipIf(skipZero)('zero = 0', async () => {
+  test('zero = 0', async () => {
     expect(await r.readZero(opts)).toEqual(0n);
   });
   test('root.str = "raffy"', async () => {

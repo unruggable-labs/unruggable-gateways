@@ -31,9 +31,12 @@ export class GatewayProvider extends JsonRpcProvider {
   }
   constructor(
     fr: FetchRequest,
-    readonly chain: Chain
+    readonly chain: Chain,
+    // 20250107: infura/alchemy lowered limit to 10
+    // TODO: make this a provider-specific setting?
+    batchMaxCount = 10
   ) {
-    super(fr, chain, { staticNetwork: true });
+    super(fr, chain, { staticNetwork: true, batchMaxCount });
   }
   override async _send(
     payload: JsonRpcPayload | JsonRpcPayload[]

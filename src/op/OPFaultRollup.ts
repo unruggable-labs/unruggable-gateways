@@ -86,10 +86,16 @@ export class OPFaultRollup extends AbstractOPRollup {
     GameFinder: GAME_FINDER_SEPOLIA,
   };
 
-  // https://docs.soneium.org/docs/builders/contracts#optimism-l1-stack-on-sepolia
+  // https://docs.soneium.org/docs/builders/contracts
+  static readonly soneiumMainnetConfig: RollupDeployment<OPFaultConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.SONEIUM,
+    OptimismPortal: '0x88e529a6ccd302c948689cd5156c83d4614fae92',
+    GameFinder: GAME_FINDER_MAINNET,
+  };
   static readonly soneiumMinatoConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.SEPOLIA,
-    chain2: CHAINS.SONEIUM_MINATO,
+    chain2: CHAINS.SONEIUM_SEPOLIA,
     OptimismPortal: '0x65ea1489741A5D72fFdD8e6485B216bBdcC15Af3',
     GameFinder: GAME_FINDER_SEPOLIA,
   };

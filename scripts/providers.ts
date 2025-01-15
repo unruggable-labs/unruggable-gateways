@@ -1,6 +1,6 @@
 import type { Chain } from '../src/types.js';
 import { CHAINS, chainName } from '../src/chains.js';
-import { RPC_INFO, providerURL } from '../test/providers.js';
+import { RPC_INFO, providerURL, providerOrder } from '../test/providers.js';
 
 const usingPublic: Chain[] = [];
 const leftover = new Set<Chain>(Object.values(CHAINS));
@@ -20,13 +20,15 @@ for (const info of RPC_INFO.values()) {
   }
 }
 
+console.log('\nOrder:', providerOrder());
+
 if (usingPublic.length) {
-  console.error(`${usingPublic.length} using Public RPC!`);
+  console.error(`\n${usingPublic.length} using Public RPC!`);
   console.error(usingPublic.map(chainName));
 }
 
 if (leftover.size) {
-  console.error(`${leftover.size} missing RPCInfo!`);
+  console.error(`\n${leftover.size} missing RPCInfo!`);
   console.error(Array.from(leftover, chainName));
   process.exit(1); // fatal
 }

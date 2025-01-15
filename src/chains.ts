@@ -53,7 +53,8 @@ export const CHAINS = {
   UNICHAIN_SEPOLIA: 1301n,
   MORPH: 2818n,
   MORPH_HOLESKY: 2810n,
-  SONEIUM_MINATO: 1946n,
+  SONEIUM: 1868n,
+  SONEIUM_SEPOLIA: 1946n,
   STARKNET: 0x534e5f4d41494en, // SN_MAIN
   STARKNET_SEPOLIA: 0x534e5f5345504f4c4941n, // SN_SEPOLIA
   ZIRCUIT: 48900n,
@@ -67,6 +68,8 @@ export const CHAINS = {
   SOPHON_SEPOLIA: 531050104n,
   SWELL: 1923n,
   SWELL_SEPOLIA: 1924n,
+  BOB: 60808n,
+  BOB_SEPOLIA: 808813n,
 } as const satisfies Record<string, Chain>;
 
 export function chainName(chain: Chain): string {

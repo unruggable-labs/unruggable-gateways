@@ -20,6 +20,8 @@ await Promise.all(
   })
 );
 
-if (!errors) {
+if (errors) {
+  console.error(`\nErrors: ${errors}`);
+} else {
   console.log('OK');
 }
