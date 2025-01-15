@@ -166,7 +166,7 @@ export function testNitro(
   config: RollupDeployment<NitroConfig>,
   opts: TestOptions & { minAgeBlocks?: number }
 ) {
-  describe(testName(config), async () => {
+  describe.skipIf(shouldSkip(opts))(testName(config), async () => {
     const rollup = new NitroRollup(createProviderPair(config), config);
     const foundry = await Foundry.launch({
       fork: providerURL(config.chain1),

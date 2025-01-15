@@ -503,7 +503,7 @@ function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
         break;
       }
       case 'public': {
-        return { info, type: 'public', url: info.publicHTTP };
+        return { info, type, url: info.publicHTTP };
       }
       default: {
         throw new Error(`unknown provider type: ${type}`);
@@ -522,7 +522,7 @@ export function providerType(chain: Chain): string {
 
 export function createProvider(chain: Chain): Provider {
   const fr = new FetchRequest(providerURL(chain));
-  fr.timeout = 5000; // 5 minutes is too long
+  fr.timeout = 10000; // 5 minutes is too long
   // fr.preflightFunc = async (req) => {
   //   console.log(req.url);
   //   return req;
