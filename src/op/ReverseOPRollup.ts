@@ -61,7 +61,7 @@ export class ReverseOPRollup extends AbstractRollup<ReverseOPCommit> {
   };
 
   readonly L1Block: Contract;
-  readonly commitStep;
+  readonly commitStep: bigint;
   //readonly storageSlot: bigint; // using const SLOT_* instead
   constructor(providers: ProviderPair, config: OPReverseConfig) {
     super(providers);

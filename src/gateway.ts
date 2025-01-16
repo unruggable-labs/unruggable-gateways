@@ -26,6 +26,12 @@ const callCapacity0 = 1000;
 // edit with: gateway.latestCache.cacheMs
 const pollMs0 = 60000;
 
+type CachedCommit<R extends Rollup> = {
+  commit: RollupCommitType<R>;
+  valid: CachedValue<boolean>;
+  parent: CachedValue<bigint>;
+};
+
 export class Gateway<R extends Rollup> extends EZCCIP {
   // the max number of non-latest commitments to keep in memory
   commitDepth = 2;
@@ -35,10 +41,7 @@ export class Gateway<R extends Rollup> extends EZCCIP {
     () => this.rollup.fetchLatestCommitIndex(),
     pollMs0
   );
-  readonly commitCacheMap = new CachedMap<bigint, RollupCommitType<R>>(
-    Infinity
-  );
-  readonly parentCacheMap = new CachedMap<bigint, bigint>(Infinity);
+  readonly commitCacheMap = new CachedMap<bigint, CachedCommit<R>>(Infinity);
   readonly callLRU = new LRU<string, Uint8Array>(callCapacity0);
   constructor(readonly rollup: R) {
     super();
@@ -86,53 +89,73 @@ export class Gateway<R extends Rollup> extends EZCCIP {
       });
     }
   }
-  async getLatestCommit() {
-    // check if the commit changed
-    const prev = await this.latestCache.value;
+  private async _updateLatest() {
+    const prev = await this.latestCache.value?.catch(() => {});
     const next = await this.latestCache.get();
-    const commit = await this.cachedCommit(next);
+    const cached = await this.cachedCommit(next);
     const max = this.commitDepth + 1; // depth + latest
     if (prev !== next && this.commitCacheMap.cachedSize > max) {
       // purge the oldest if we have too many
+      // note: this will nuke any historicals
       const old = [...this.commitCacheMap.cachedKeys()].sort().slice(0, -max);
       for (const key of old) {
         this.commitCacheMap.delete(key);
       }
     }
-    return commit;
+    return cached;
   }
-  async getRecentCommit(index: bigint) {
-    const latest = await this.getLatestCommit();
-    let commit = latest;
+
+  async getLatestCommit(): Promise<RollupCommitType<R>> {
+    return (await this._updateLatest()).commit;
+  }
+  async getRecentCommit(index: bigint): Promise<RollupCommitType<R>> {
+    const latest = await this._updateLatest();
+    let cursor = latest;
     // check recent cache in linear order
     for (let depth = 0; ; ) {
-      if (index >= commit.index) return commit;
+      if (index >= cursor.commit.index) return cursor.commit;
       if (++depth >= this.commitDepth) break;
-      const prevIndex = await this.cachedParentCommitIndex(commit);
-      commit = await this.cachedCommit(prevIndex);
+      const prev = await cursor.parent.get();
+      cursor = await this.cachedCommit(prev);
     }
     // if older than that, consider one-off commit
     // this can be unaligned but must be finalized
     if (this.allowHistorical) {
-      return this.commitCacheMap.get(
-        index,
-        (i) => this.rollup.fetchCommit(i),
-        250 // 20240926: maybe this should be cached for a bit (was 0)
-      );
+      // 20240926: maybe this should be cached for a bit (was 0)
+      return (await this.cachedCommit(index, 250)).commit;
     }
     throw new Error(
-      `too old: ${index} vs ${latest.index}[depth=${this.commitDepth}]`
+      `too old: ${index} vs ${latest.commit.index}[depth=${this.commitDepth}]`
     );
   }
-  private cachedParentCommitIndex(
-    commit: RollupCommitType<R>
-  ): Promise<bigint> {
-    return this.parentCacheMap.get(commit.index, () => {
-      return this.rollup.fetchParentCommitIndex(commit);
-    });
-  }
-  private cachedCommit(index: bigint) {
-    return this.commitCacheMap.get(index, (i) => this.rollup.fetchCommit(i));
+  private async cachedCommit(
+    index: bigint,
+    cacheMs?: number
+  ): Promise<CachedCommit<R>> {
+    // see if we already have this commit
+    const cached = await this.commitCacheMap.peek(index);
+    // if we do, check if it's still valid
+    if (cached && !(await cached.valid.get())) {
+      // invalid, so nuke it, and request it again
+      this.commitCacheMap.delete(index);
+    }
+    return this.commitCacheMap.get(
+      index,
+      async (i) => {
+        const commit = await this.rollup.fetchCommit(i);
+        const parent = new CachedValue(
+          () => this.rollup.fetchParentCommitIndex(commit),
+          this.latestCache.cacheMs
+        );
+        const valid = new CachedValue(
+          () => this.rollup.isCommitStillValid(commit),
+          this.latestCache.cacheMs
+        );
+        valid.set(true); // mark it as valid
+        return { commit, valid, parent };
+      },
+      cacheMs
+    );
   }
 }
 
@@ -142,7 +165,10 @@ export abstract class GatewayV1<R extends Rollup> extends EZCCIP {
     const index = await this.rollup.fetchLatestCommitIndex();
     // since we can only serve the latest commit
     // we only keep the latest commit
-    if (index !== this.latestCommit?.index) {
+    if (
+      index !== this.latestCommit?.index ||
+      !(await this.rollup.isCommitStillValid(this.latestCommit))
+    ) {
       this.latestCommit = await this.rollup.fetchCommit(index);
     }
     return this.latestCommit;

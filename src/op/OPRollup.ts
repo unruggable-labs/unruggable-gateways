@@ -1,15 +1,24 @@
 import type { RollupDeployment } from '../rollup.js';
-import type { HexAddress, ProviderPair } from '../types.js';
-import { type ABIOutputTuple, ORACLE_ABI } from './types.js';
+import type { HexAddress, HexString32, ProviderPair } from '../types.js';
+import { ORACLE_ABI } from './types.js';
 import { Contract } from 'ethers/contract';
 import { CHAINS } from '../chains.js';
-import { AbstractOPRollup, type OPCommit } from './AbstractOPRollup.js';
+import { AbstractOPRollup, type AbstractOPCommit } from './AbstractOPRollup.js';
+import { isEthersError } from '../utils.js';
 
 export type OPConfig = {
   L2OutputOracle: HexAddress; // sometimes called L2OutputOracleProxy
 };
 
-export class OPRollup extends AbstractOPRollup {
+export type OPCommit = AbstractOPCommit & { output: ABIOutputTuple };
+
+type ABIOutputTuple = {
+  outputRoot: HexString32;
+  timestamp: bigint;
+  l2BlockNumber: bigint;
+};
+
+export class OPRollup extends AbstractOPRollup<OPCommit> {
   // 20241030: base changed to fault proofs
   // static readonly baseMainnetConfig: RollupDeployment<OPConfig> = {
   //   chain1: CHAINS.MAINNET,
@@ -95,7 +104,7 @@ export class OPRollup extends AbstractOPRollup {
     L2OutputOracle: '0x19A6d1E9034596196295CF148509796978343c5D',
   };
 
-  readonly L2OutputOracle;
+  readonly L2OutputOracle: Contract;
   constructor(providers: ProviderPair, config: OPConfig) {
     super(providers);
     this.L2OutputOracle = new Contract(
@@ -105,20 +114,32 @@ export class OPRollup extends AbstractOPRollup {
     );
   }
 
+  async fetchOutput(index: bigint): Promise<ABIOutputTuple | undefined> {
+    try {
+      // this panics with ARRAY_RANGE_ERROR when out of bounds
+      return await this.L2OutputOracle.getL2Output(index);
+    } catch (err) {
+      if (isEthersError(err) && err.code === 'CALL_EXCEPTION') return;
+      throw err;
+    }
+  }
+
   override async fetchLatestCommitIndex(): Promise<bigint> {
     return this.L2OutputOracle.latestOutputIndex({
       blockTag: this.latestBlockTag,
     });
   }
-  protected override async _fetchParentCommitIndex(
-    commit: OPCommit
-  ): Promise<bigint> {
-    return commit.index - 1n;
-  }
   protected override async _fetchCommit(index: bigint) {
-    // this fails with ARRAY_RANGE_ERROR when invalid
-    const output: ABIOutputTuple = await this.L2OutputOracle.getL2Output(index);
-    return this.createCommit(index, output.l2BlockNumber);
+    const output = await this.fetchOutput(index);
+    if (!output) throw new Error('invalid output');
+    const commit = await this.createCommit(index, output.l2BlockNumber);
+    return { ...commit, output };
+  }
+  override async isCommitStillValid(commit: OPCommit): Promise<boolean> {
+    // see: L2OutputOracle.deleteL2Outputs()
+    const output = await this.fetchOutput(commit.index);
+    if (!output) return false; // out-of-bounds => deleted
+    return output.outputRoot === commit.output.outputRoot; // unequal => replaced
   }
 
   override windowFromSec(sec: number): number {

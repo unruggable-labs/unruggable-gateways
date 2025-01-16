@@ -22,18 +22,18 @@ const OutputRootProofType = `(
   bytes32 latestBlockhash
 )`;
 
-function outputRootProofTuple(commit: OPCommit) {
+function outputRootProofTuple(commit: AbstractOPCommit) {
   return [ZeroHash, commit.stateRoot, commit.passerRoot, commit.blockHash];
 }
 
 // same as lib/optimism/packages/contract-bedrock/src/libraries/Hashing.sol
-export function hashOutputRootProof(commit: OPCommit): HexString32 {
+export function hashOutputRootProof(commit: AbstractOPCommit): HexString32 {
   return keccak256(
     ABI_CODER.encode([OutputRootProofType], [outputRootProofTuple(commit)])
   );
 }
 
-export type OPCommit = RollupCommit<EthProver> & {
+export type AbstractOPCommit = RollupCommit<EthProver> & {
   readonly blockHash: HexString;
   readonly stateRoot: HexString;
   readonly passerRoot: HexString;
@@ -41,12 +41,15 @@ export type OPCommit = RollupCommit<EthProver> & {
 
 const L2ToL1MessagePasser = '0x4200000000000000000000000000000000000016';
 
-export abstract class AbstractOPRollup
-  extends AbstractRollup<OPCommit>
-  implements RollupWitnessV1<OPCommit>
+export abstract class AbstractOPRollup<C extends AbstractOPCommit>
+  extends AbstractRollup<C>
+  implements RollupWitnessV1<C>
 {
   L2ToL1MessagePasser = L2ToL1MessagePasser;
-  async createCommit(index: bigint, block: BigNumberish): Promise<OPCommit> {
+  async createCommit(
+    index: bigint,
+    block: BigNumberish
+  ): Promise<AbstractOPCommit> {
     const prover = new EthProver(this.provider2, block);
     const [{ storageHash: passerRoot }, blockInfo] = await Promise.all([
       prover.fetchProofs(this.L2ToL1MessagePasser),
@@ -60,7 +63,7 @@ export abstract class AbstractOPRollup
       prover,
     };
   }
-  override encodeWitness(commit: OPCommit, proofSeq: ProofSequence) {
+  override encodeWitness(commit: C, proofSeq: ProofSequence) {
     return ABI_CODER.encode(
       [`(uint256, ${OutputRootProofType}, bytes[], bytes)`],
       [
@@ -73,9 +76,9 @@ export abstract class AbstractOPRollup
       ]
     );
   }
-  encodeWitnessV1(commit: OPCommit, proofSeq: ProofSequenceV1) {
+  encodeWitnessV1(commit: C, proofSeq: ProofSequenceV1) {
     return ABI_CODER.encode(
-      [`(uint256, ${OutputRootProofType})`, 'tuple(bytes, bytes[])'],
+      [`(uint256, ${OutputRootProofType})`, '(bytes, bytes[])'],
       [
         [commit.index, outputRootProofTuple(commit)],
         [proofSeq.accountProof, proofSeq.storageProofs],

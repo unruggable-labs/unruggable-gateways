@@ -7,7 +7,7 @@ import { isEthersError } from '../utils.js';
 import {
   AbstractOPRollup,
   hashOutputRootProof,
-  type OPCommit,
+  type AbstractOPCommit,
 } from './AbstractOPRollup.js';
 
 // https://docs.optimism.io/chain/differences
@@ -19,6 +19,8 @@ export type OPFaultConfig = {
   gameTypes?: number[]; // if empty, dynamically uses respectedGameType()
   minAgeSec?: number; // if falsy, requires finalization
 };
+
+export type OPFaultCommit = AbstractOPCommit & { game: ABIFoundGame };
 
 type ABIFoundGame = {
   gameType: bigint;
@@ -34,7 +36,7 @@ function maskFromGameTypes(gameTypes: number[] = []) {
   return gameTypes.reduce((a, x) => a | (1 << x), 0);
 }
 
-export class OPFaultRollup extends AbstractOPRollup {
+export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   // https://docs.optimism.io/chain/addresses
   static readonly mainnetConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.MAINNET,
@@ -110,7 +112,7 @@ export class OPFaultRollup extends AbstractOPRollup {
   }
 
   override get unfinalized() {
-    return !!this.minAgeSec;
+    return !!this.minAgeSec; // nonzero => unfinalized
   }
 
   async fetchRespectedGameType(): Promise<bigint> {
@@ -164,7 +166,7 @@ export class OPFaultRollup extends AbstractOPRollup {
     );
   }
   protected override async _fetchParentCommitIndex(
-    commit: OPCommit
+    commit: OPFaultCommit
   ): Promise<bigint> {
     return this._ensureRootClaim(
       await this.GameFinder.findGameIndex(
@@ -176,6 +178,7 @@ export class OPFaultRollup extends AbstractOPRollup {
     );
   }
   protected override async _fetchCommit(index: bigint) {
+    // note: GameFinder checks isCommitStillValid()
     const game: ABIFoundGame = await this.GameFinder.gameAtIndex(
       this.OptimismPortal.target,
       this.minAgeSec,
@@ -190,7 +193,12 @@ export class OPFaultRollup extends AbstractOPRollup {
       const computed = hashOutputRootProof(commit);
       if (expected !== computed) throw new Error(`invalid root claim`);
     }
-    return commit;
+    return { ...commit, game };
+  }
+  override async isCommitStillValid(commit: OPFaultCommit): Promise<boolean> {
+    return !(await this.OptimismPortal.disputeGameBlacklist(
+      commit.game.gameProxy
+    ));
   }
 
   override windowFromSec(sec: number): number {

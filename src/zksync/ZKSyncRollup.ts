@@ -73,11 +73,6 @@ export class ZKSyncRollup extends AbstractRollup<ZKSyncCommit> {
     });
     return count - 1n;
   }
-  protected override async _fetchParentCommitIndex(
-    commit: ZKSyncCommit
-  ): Promise<bigint> {
-    return commit.index - 1n;
-  }
   protected override async _fetchCommit(index: bigint): Promise<ZKSyncCommit> {
     const prover = new ZKSyncProver(this.provider2, Number(index));
     const details = await prover.fetchBatchDetails();

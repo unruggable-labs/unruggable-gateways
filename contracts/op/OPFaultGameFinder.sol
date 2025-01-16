@@ -7,6 +7,9 @@ pragma solidity ^0.8.23;
 interface IOptimismPortal {
     function disputeGameFactory() external view returns (IDisputeGameFactory);
     function respectedGameType() external view returns (uint256);
+    function disputeGameBlacklist(
+        IDisputeGame game
+    ) external view returns (bool);
 }
 
 // https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/src/dispute/interfaces/IDisputeGameFactory.sol
@@ -55,6 +58,7 @@ contract OPFaultGameFinder {
             ) = factory.gameAtIndex(--gameCount);
             if (
                 _isGameUsable(
+                    portal,
                     gameProxy,
                     gameType,
                     created,
@@ -92,6 +96,7 @@ contract OPFaultGameFinder {
         (gameType, created, gameProxy) = factory.gameAtIndex(gameIndex);
         if (
             _isGameUsable(
+                portal,
                 gameProxy,
                 gameType,
                 created,
@@ -105,6 +110,7 @@ contract OPFaultGameFinder {
     }
 
     function _isGameUsable(
+        IOptimismPortal portal,
         IDisputeGame gameProxy,
         uint256 gameType,
         uint256 created,
@@ -112,6 +118,7 @@ contract OPFaultGameFinder {
         uint256 minAgeSec
     ) internal view returns (bool) {
         if (gameTypeBitMask & (1 << gameType) == 0) return false;
+        if (portal.disputeGameBlacklist(gameProxy)) return false;
         if (minAgeSec == 0) {
             return gameProxy.status() == DEFENDER_WINS;
         } else {

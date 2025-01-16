@@ -5,6 +5,6 @@ artifacts/
 junk/
 dist/
 .vscode/
-
+.DS_Store
 *.tgz
 .env

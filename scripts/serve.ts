@@ -143,8 +143,12 @@ export default {
               gateway.commitCacheMap.cachedValue(i)
             )
           )) {
-            if (p.status === 'fulfilled' && p.value && p.value !== commit) {
-              commits.push(p.value);
+            if (
+              p.status === 'fulfilled' &&
+              p.value &&
+              p.value.commit !== commit
+            ) {
+              commits.push(p.value.commit);
             }
           }
         }

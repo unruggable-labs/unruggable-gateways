@@ -1,5 +1,4 @@
 import { Interface } from 'ethers/abi';
-import type { HexString32 } from '../types.js';
 
 export const ORACLE_ABI = new Interface([
   `function latestOutputIndex() external view returns (uint256)`,
@@ -8,15 +7,10 @@ export const ORACLE_ABI = new Interface([
    )`,
 ]);
 
-export type ABIOutputTuple = {
-  outputRoot: HexString32;
-  timestamp: bigint;
-  l2BlockNumber: bigint;
-};
-
 export const PORTAL_ABI = new Interface([
   `function disputeGameFactory() view returns (address)`,
   `function respectedGameType() view returns (uint32)`,
+  `function disputeGameBlacklist(address game) view returns (bool)`,
 ]);
 
 export const GAME_FINDER_ABI = new Interface([
