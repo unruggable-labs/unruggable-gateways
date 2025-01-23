@@ -10,6 +10,7 @@ export type RPCInfo = {
   readonly infura?: string;
   readonly alchemy?: string;
   readonly alchemyPremium?: boolean;
+  readonly drpc?: string;
 };
 
 // TODO: this list is incomplete!
@@ -23,6 +24,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'eth',
         infura: 'mainnet',
         alchemy: 'eth-mainnet',
+        drpc: 'ethereum',
       },
       {
         chain: CHAINS.SEPOLIA,
@@ -30,6 +32,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'eth_sepolia',
         infura: 'sepolia',
         alchemy: 'eth-sepolia',
+        drpc: 'sepolia',
       },
       {
         chain: CHAINS.HOLESKY,
@@ -37,6 +40,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'eth_holesky',
         infura: 'holesky',
         alchemy: 'eth-holesky',
+        drpc: 'holesky',
       },
       {
         // https://docs.optimism.io/chain/networks#op-mainnet
@@ -45,6 +49,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'optimism',
         infura: 'optimism-mainnet',
         alchemy: 'opt-mainnet',
+        drpc: 'optimism',
       },
       {
         // https://docs.optimism.io/chain/networks#op-sepolia
@@ -53,6 +58,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'optimism_sepolia',
         infura: 'optimism-sepolia',
         alchemy: 'opt-sepolia',
+        drpc: 'optimism-sepolia',
       },
       {
         // https://docs.base.org/docs/network-information#base-mainnet
@@ -61,6 +67,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'base',
         infura: 'base-mainnet',
         //alchemy: 'base-mainnet', // 20241116: eth_getProof depth is less than 100
+        drpc: 'base',
       },
       {
         // https://docs.base.org/docs/network-information#base-testnet-sepolia
@@ -69,6 +76,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'base_sepolia',
         infura: 'base-sepolia',
         //alchemy: 'base-sepolia', // 20241116: eth_getProof depth is less than 100
+        drpc: 'base-sepolia',
       },
       {
         // https://docs.arbitrum.io/build-decentralized-apps/reference/node-providers#arbitrum-public-rpc-endpoints
@@ -77,12 +85,14 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'arbitrum',
         infura: 'arbitrum-mainnet',
         alchemy: 'arb-mainnet',
+        drpc: 'arbitrum',
       },
       {
         chain: CHAINS.ARB_NOVA,
         rpc: 'https://nova.arbitrum.io/rpc',
         ankr: 'arbitrumnova',
         alchemy: 'arbnova-mainnet',
+        drpc: 'arbitrum-nova',
       },
       {
         chain: CHAINS.ARB_SEPOLIA,
@@ -90,6 +100,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'arbitrum_sepolia',
         infura: 'arbitrum-sepolia',
         alchemy: 'arb-sepolia',
+        drpc: 'arbitrum-sepolia',
       },
       {
         // https://docs.scroll.io/en/developers/developer-quickstart/#scroll-mainnet
@@ -97,23 +108,27 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         rpc: 'https://rpc.scroll.io',
         ankr: 'scroll',
         infura: 'scroll-mainnet',
+        drpc: 'scroll',
       },
       {
         chain: CHAINS.SCROLL_SEPOLIA,
         rpc: 'https://sepolia-rpc.scroll.io',
         ankr: 'scroll_sepolia_testnet',
         infura: 'scroll-sepolia',
+        drpc: 'scroll-sepolia',
       },
       {
         // https://docs.taiko.xyz/network-reference/rpc-configuration#taiko-mainnet
         chain: CHAINS.TAIKO,
         rpc: 'https://rpc.mainnet.taiko.xyz',
         ankr: 'taiko',
+        drpc: 'taiko',
       },
       {
         chain: CHAINS.TAIKO_HEKLA,
         rpc: 'https://rpc.hekla.taiko.xyz',
         ankr: 'taiko_hekla',
+        drpc: 'taiko-hekla',
       },
       {
         // https://docs.zksync.io/build/connect-to-zksync#mainnet-network-details
@@ -122,6 +137,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'zksync_era',
         infura: 'zksync-mainnet',
         alchemy: 'zksync-mainnet',
+        drpc: 'zksync',
       },
       {
         chain: CHAINS.ZKSYNC_SEPOLIA,
@@ -129,6 +145,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'zksync_era_sepolia',
         infura: 'zksync-sepolia',
         alchemy: 'zksync-sepolia',
+        drpc: 'zksync-sepolia',
       },
       {
         // https://docs.polygon.technology/pos/reference/rpc-endpoints/#mainnet
@@ -137,6 +154,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'polygon',
         infura: 'polygon-mainnet',
         alchemy: 'polygon-mainnet',
+        drpc: 'polygon',
       },
       {
         chain: CHAINS.POLYGON_AMOY,
@@ -144,6 +162,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'polygon_amoy',
         infura: 'polygon-amoy',
         alchemy: 'polygon-amoy',
+        drpc: 'polygon-amoy',
       },
       {
         // https://docs.polygon.technology/zkEVM/get-started/quick-start/#manually-add-network-to-wallet
@@ -151,12 +170,14 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         rpc: 'https://zkevm-rpc.com',
         ankr: 'polygon_zkevm',
         alchemy: 'polygonzkevm-mainnet',
+        drpc: 'polygon-zkevm',
       },
       {
         chain: CHAINS.ZKEVM_CARDONA,
         rpc: 'https://rpc.cardona.zkevm-rpc.com',
         ankr: 'polygon_zkevm_cardona',
         alchemy: 'polygonzkevm-cardona',
+        drpc: 'polygon-zkevm-cardona',
       },
       {
         // https://docs.linea.build/developers/quickstart/info-contracts
@@ -164,24 +185,28 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         rpc: 'https://rpc.linea.build',
         infura: 'linea-mainnet',
         //alchemy: 'linea-mainnet', // 20240901: linea_getProof doesn't work
+        drpc: 'linea',
       },
       {
         chain: CHAINS.LINEA_SEPOLIA,
         rpc: 'https://rpc.sepolia.linea.build',
         infura: 'linea-sepolia',
         //alchemy: 'linea-sepolia', // 20241111: no linea_getProof
+        drpc: 'linea-sepolia',
       },
       {
         // https://docs.frax.com/fraxtal/network/network-information#fraxtal-mainnet
         chain: CHAINS.FRAXTAL,
         rpc: 'https://rpc.frax.com',
         //alchemy: 'frax-mainnet', // 20240901: eth_getProof doesn't work
+        drpc: 'frax',
       },
       {
         // https://docs.zora.co/zora-network/network#zora-network-mainnet
         chain: CHAINS.ZORA,
         rpc: 'https://rpc.zora.energy',
         alchemy: 'zora-mainnet',
+        drpc: 'zora',
       },
       {
         // https://docs.blast.io/building/network-information#blast-mainnet
@@ -190,16 +215,19 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'blast',
         infura: 'blast-mainnet',
         alchemy: 'blast-mainnet',
+        drpc: 'blast',
       },
       {
         // https://docs-v2.mantle.xyz/devs/dev-guides/tools/endpoints
         chain: CHAINS.MANTLE,
         rpc: 'https://rpc.mantle.xyz', // wss://wss.mantle.xyz
+        drpc: 'mantle',
       },
       {
         // https://docs.mode.network/general-info/network-details#mode-mainnet
         chain: CHAINS.MODE,
         rpc: 'https://mainnet.mode.network/',
+        drpc: 'mode',
       },
       {
         // https://docs.cyber.co/build-on-cyber/connecting-wallet
@@ -234,29 +262,34 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         alchemy: 'bnb-mainnet',
         alchemyPremium: true,
         ankr: 'bsc',
+        drpc: 'bsc',
       },
       {
         // https://docs.bnbchain.org/bnb-opbnb/get-started/network-info/
         chain: CHAINS.OP_BNB,
         rpc: 'https://opbnb-mainnet-rpc.bnbchain.org',
         infura: 'opbnb-mainnet',
+        drpc: 'opbnb',
       },
       {
         // https://docs.celo.org/network#celo-alfajores
         chain: CHAINS.CELO_ALFAJORES,
         rpc: 'https://alfajores-forno.celo-testnet.org',
         //infura: 'celo-alfajores', // 20241002: eth_getProof doesn't work
+        drpc: 'celo-alfajores',
       },
       {
         // https://docs.worldcoin.org/world-chain/quick-start/info
         chain: CHAINS.WORLD,
         rpc: 'https://worldchain-mainnet.g.alchemy.com/public',
         alchemy: 'worldchain-mainnet',
+        drpc: 'worldchain',
       },
       {
         chain: CHAINS.WORLD_SEPOLIA,
         rpc: 'https://worldchain-sepolia.g.alchemy.com/public',
         alchemy: 'worldchain-sepolia',
+        drpc: 'worldchain-sepolia',
       },
       // https://docs.apechain.com/metamask
       // https://apechain.hub.caldera.xyz/
@@ -265,26 +298,31 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         rpc: 'https://rpc.apechain.com/http',
         // wss://rpc.apechain.com/ws
         // https://apechain.calderachain.xyz/http
+        drpc: 'apechain',
       },
       // https://docs.zero.network/build-on-zero/network-information#zer%CE%B8-network
       {
         chain: CHAINS.ZERO,
         rpc: 'https://rpc.zerion.io/v1/zero',
+        drpc: 'zero',
       },
       {
         chain: CHAINS.ZERO_SEPOLIA,
         rpc: 'https://rpc.zerion.io/v1/zero-sepolia',
+        drpc: 'zero-sepolia',
       },
       // https://docs.inkonchain.com/quick-start/get-connected
       {
         chain: CHAINS.INK_SEPOLIA,
         rpc: 'https://rpc-qnd-sepolia.inkonchain.com', // wss://rpc-qnd-sepolia.inkonchain.com
+        drpc: 'ink-sepolia',
       },
       // https://docs.unichain.org/docs/technical-information/network-information#unichain-sepolia-testnet
       {
         chain: CHAINS.UNICHAIN_SEPOLIA,
         rpc: 'https://sepolia.unichain.org',
         alchemy: 'unichain-sepolia',
+        drpc: 'unichain-sepolia',
       },
       // https://docs.morphl2.io/docs/build-on-morph/developer-resources/contracts
       {
@@ -296,6 +334,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         chain: CHAINS.SONEIUM_MINATO,
         rpc: 'https://rpc.minato.soneium.org/',
         alchemy: 'soneium-minato',
+        drpc: 'soneium-minato',
       },
     ] satisfies RPCInfo[]
   ).map((x) => [x.chain, x])
@@ -331,6 +370,14 @@ function decideProvider(chain: Chain) {
       info,
       type: 'ankr',
       url: `https://rpc.ankr.com/${info.ankr}/${apiKey}`,
+      apiKey,
+    };
+  }
+  if (info.drpc && (apiKey = process.env.DRPC_KEY)) {
+    return {
+      info,
+      type: 'drpc',
+      url: `https://lb.drpc.org/ogrpc?network=${info.drpc}&dkey=${apiKey}`,
       apiKey,
     };
   }
