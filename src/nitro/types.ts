@@ -4,6 +4,7 @@ import { Interface } from 'ethers/abi';
 export const ROLLUP_ABI = new Interface([
   `function latestConfirmed() view returns (uint64)`,
   `function latestNodeCreated() view returns (uint64)`,
+  `function countStakedZombies(uint64 nodeNum) view returns (uint256)`,
   `function getNode(uint64 nodeNum) view returns ((
     bytes32 stateHash,
     bytes32 challengeHash,

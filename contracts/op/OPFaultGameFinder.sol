@@ -44,10 +44,7 @@ contract OPFaultGameFinder {
         uint256 gameTypeBitMask,
         uint256 gameCount
     ) external view virtual returns (uint256) {
-        if (gameTypeBitMask == 0) {
-            gameTypeBitMask = 1 << portal.respectedGameType();
-            if (gameTypeBitMask == 0) revert InvalidGameTypeBitMask();
-        }
+        gameTypeBitMask = _gameTypeBitMask(portal, gameTypeBitMask);
         IDisputeGameFactory factory = portal.disputeGameFactory();
         if (gameCount == 0) gameCount = factory.gameCount();
         while (gameCount > 0) {
@@ -88,10 +85,7 @@ contract OPFaultGameFinder {
             bytes32 rootClaim
         )
     {
-        if (gameTypeBitMask == 0) {
-            gameTypeBitMask = 1 << portal.respectedGameType();
-            if (gameTypeBitMask == 0) revert InvalidGameTypeBitMask();
-        }
+        gameTypeBitMask = _gameTypeBitMask(portal, gameTypeBitMask);
         IDisputeGameFactory factory = portal.disputeGameFactory();
         (gameType, created, gameProxy) = factory.gameAtIndex(gameIndex);
         if (
@@ -118,6 +112,7 @@ contract OPFaultGameFinder {
         uint256 minAgeSec
     ) internal view returns (bool) {
         if (gameTypeBitMask & (1 << gameType) == 0) return false;
+        // https://specs.optimism.io/fault-proof/stage-one/bridge-integration.html#blacklisting-disputegames
         if (portal.disputeGameBlacklist(gameProxy)) return false;
         if (minAgeSec == 0) {
             return gameProxy.status() == DEFENDER_WINS;
@@ -126,5 +121,17 @@ contract OPFaultGameFinder {
                 created <= block.timestamp - minAgeSec &&
                 gameProxy.status() != CHALLENGER_WINS;
         }
+    }
+
+    function _gameTypeBitMask(
+        IOptimismPortal portal,
+        uint256 mask
+    ) internal view returns (uint256) {
+        if (mask == 0) {
+            // use respected game type
+            mask = 1 << portal.respectedGameType();
+            if (mask == 0) revert InvalidGameTypeBitMask();
+        }
+        return mask;
     }
 }

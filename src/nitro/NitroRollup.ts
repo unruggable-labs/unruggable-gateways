@@ -74,10 +74,19 @@ export class NitroRollup
     return !!this.minAgeBlocks;
   }
 
+  private async _getNode(index: bigint): Promise<ABINodeTuple> {
+    return this.Rollup.getNode(index);
+  }
+  private async _countStakedZombies(index: bigint): Promise<bigint> {
+    return this.Rollup.countStakedZombies(index);
+  }
   private async _ensureUsableNode(index: bigint) {
     for (; index; index--) {
-      const node: ABINodeTuple = await this.Rollup.getNode(index);
-      if (node.stakerCount) break;
+      const [node, zombies] = await Promise.all([
+        this._getNode(index),
+        this._countStakedZombies(index),
+      ]);
+      if (node.stakerCount > zombies) break;
     }
     return index;
   }
@@ -98,9 +107,10 @@ export class NitroRollup
     }
   }
   async fetchNodeData(index: bigint) {
-    const [{ createdAtBlock, stakerCount, prevNum }, [event]] =
+    const [{ createdAtBlock, stakerCount, prevNum }, zombies, [event]] =
       await Promise.all([
-        this.Rollup.getNode(index) as Promise<ABINodeTuple>,
+        this._getNode(index),
+        this.unfinalized ? this._countStakedZombies(index) : 0n,
         this.Rollup.queryFilter(
           this.unfinalized
             ? this.Rollup.filters.NodeCreated(index)
@@ -108,11 +118,11 @@ export class NitroRollup
         ),
       ]);
     if (!createdAtBlock) throw new Error('unknown node');
-    if (!stakerCount) throw new Error('no stakers');
     if (!(event instanceof EventLog)) throw new Error('no node event');
     let blockHash: HexString32;
     let sendRoot: HexString32;
     if (this.unfinalized) {
+      if (stakerCount <= zombies) throw new Error('no stakers');
       // ethers bug: named abi parsing doesn't propagate through event tuples
       // [4][1][0][0] == event.args.afterState.globalState.bytes32Vals[0];
       [blockHash, sendRoot] = event.args[4][1][0][0];

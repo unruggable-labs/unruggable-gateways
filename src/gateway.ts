@@ -132,11 +132,8 @@ export class Gateway<R extends Rollup> extends EZCCIP {
     index: bigint,
     cacheMs?: number
   ): Promise<CachedCommit<R>> {
-    // see if we already have this commit
     const cached = await this.commitCacheMap.peek(index);
-    // if we do, check if it's still valid
     if (cached && !(await cached.valid.get())) {
-      // invalid, so nuke it, and request it again
       this.commitCacheMap.delete(index);
     }
     return this.commitCacheMap.get(

@@ -23,5 +23,6 @@ struct Node {
 interface IRollupCore {
     function latestConfirmed() external view returns (uint64);
     function latestNodeCreated() external view returns (uint64);
+    function countStakedZombies(uint64 nodeNum) external view returns (uint256);
     function getNode(uint64 nodeNum) external view returns (Node memory);
 }

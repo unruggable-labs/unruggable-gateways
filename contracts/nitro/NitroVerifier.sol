@@ -30,7 +30,7 @@ contract NitroVerifier is AbstractVerifier {
         uint256 b = block.number - _minBlocks;
         while (true) {
             Node memory node = _rollup.getNode(i);
-            if (node.createdAtBlock <= b && _isNodeUsable(node)) {
+            if (node.createdAtBlock <= b && _isNodeUsable(i, node)) {
                 return abi.encode(i);
             }
             if (i == 0) break;
@@ -66,10 +66,10 @@ contract NitroVerifier is AbstractVerifier {
             );
     }
 
-    function _isNodeUsable(Node memory node) internal pure returns (bool) {
+    function _isNodeUsable(uint64 index, Node memory node) internal view returns (bool) {
         // http://web.archive.org/web/20240615020011/https://docs.arbitrum.io/how-arbitrum-works/inside-arbitrum-nitro
         // TODO: challengeHash check from F-10?
-        return node.stakerCount > 0;
+        return node.stakerCount > _rollup.countStakedZombies(index);
     }
 
     function _verifyNode(
@@ -87,7 +87,7 @@ contract NitroVerifier is AbstractVerifier {
                 }
                 require(node1.prevNum == nodeNum, 'Nitro: not finalized');
             } else {
-                require(_isNodeUsable(node1), 'Nitro: not usable');
+                require(_isNodeUsable(nodeNum, node1), 'Nitro: not usable');
             }
         }
     }
