@@ -8,6 +8,7 @@ import { isEthersError } from '../utils.js';
 
 export type OPConfig = {
   L2OutputOracle: HexAddress; // sometimes called L2OutputOracleProxy
+  minAgeSec?: number; // if falsy, requires finalization
 };
 
 export type OPCommit = AbstractOPCommit & { output: ABIOutputTuple };
@@ -105,6 +106,7 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
   };
 
   readonly L2OutputOracle: Contract;
+  readonly minAgeSec: number;
   constructor(providers: ProviderPair, config: OPConfig) {
     super(providers);
     this.L2OutputOracle = new Contract(
@@ -112,6 +114,11 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
       ORACLE_ABI,
       providers.provider1
     );
+    this.minAgeSec = config.minAgeSec ?? 0;
+  }
+
+  override get unfinalized() {
+    return !!this.minAgeSec; // nonzero => unfinalized
   }
 
   async fetchOutput(index: bigint): Promise<ABIOutputTuple | undefined> {
@@ -125,12 +132,69 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
   }
 
   override async fetchLatestCommitIndex(): Promise<bigint> {
-    return this.L2OutputOracle.latestOutputIndex({
-      blockTag: this.latestBlockTag,
-    });
+    // Retrieve finalization parameters from the oracle.
+    const latestIndex: bigint = await this.L2OutputOracle.latestOutputIndex();
+    const finalizationPeriod: bigint =
+      await this.L2OutputOracle.finalizationPeriodSeconds();
+    const submissionInterval: bigint =
+      await this.L2OutputOracle.submissionInterval();
+    const l2BlockTime: bigint = await this.L2OutputOracle.l2BlockTime();
+
+    // If we want finalized commitments, step back by finalizationPeriod
+    // Otherwise we use the passed config value, minAgeSec
+    const minAgeToUse =
+      BigInt(this.minAgeSec) === 0n
+        ? finalizationPeriod
+        : BigInt(this.minAgeSec);
+
+    // The offset of what we estimate to be the latest appropiate commit
+    // Assumes proposers are doing what they should be
+    let indexOffset: bigint = minAgeToUse / (submissionInterval * l2BlockTime);
+
+    const currentTimestamp = BigInt(Math.floor(Date.now() / 1000));
+    // The timestamp before which a commit fits our requirements
+    const validTimestamp = currentTimestamp - minAgeToUse;
+
+    let lastValidIndex: bigint | null = null;
+
+    while (indexOffset <= latestIndex) {
+      // Get the approximate output index
+      const index = latestIndex - indexOffset;
+      if (index === 0n) break; // Prevent underflow
+
+      const output = await this.L2OutputOracle.getL2Output(index);
+      const outputTimestamp = BigInt(output.timestamp);
+
+      // If this output is valid
+      if (outputTimestamp <= validTimestamp) {
+        // Track the most recent valid output
+        lastValidIndex = index;
+
+        // As we are working with estimates we move closer to head and check again
+        if (index < latestIndex) {
+          indexOffset--;
+          continue;
+        } else {
+          break; // We are already at the latest, return now
+        }
+      } else {
+        // Output too recent
+        // If we previously found a valid output, return it now
+        if (lastValidIndex !== null) {
+          return lastValidIndex;
+        }
+
+        // Move further back to find a valid output
+        indexOffset++;
+      }
+    }
+
+    throw new Error('OP: no valid output found');
   }
+
   protected override async _fetchCommit(index: bigint) {
     const output = await this.fetchOutput(index);
+
     if (!output) throw new Error('invalid output');
     const commit = await this.createCommit(index, output.l2BlockNumber);
     return { ...commit, output };

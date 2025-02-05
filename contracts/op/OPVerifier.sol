@@ -10,6 +10,9 @@ interface IL2OutputOracle {
     function getL2Output(
         uint256 outputIndex
     ) external view returns (Types.OutputProposal memory);
+    function finalizationPeriodSeconds() external view returns (uint256);
+    function submissionInterval() external view returns (uint256);
+    function l2BlockTime() external view returns (uint256);
 }
 
 contract OPVerifier is AbstractVerifier {
@@ -28,17 +31,53 @@ contract OPVerifier is AbstractVerifier {
     }
 
     function getLatestContext() external view returns (bytes memory) {
-        uint256 i = _oracle.latestOutputIndex();
-        uint256 t = block.timestamp - _minAgeSec;
-        while (true) {
-            Types.OutputProposal memory output = _oracle.getL2Output(i);
-            if (output.timestamp <= t) {
-                return abi.encode(i);
+        // Retrieve finalization parameters from the oracle
+        uint256 latestIndex = _oracle.latestOutputIndex();
+        uint256 finalizationPeriod = _oracle.finalizationPeriodSeconds();
+        uint256 submissionInterval = _oracle.submissionInterval();
+        uint256 l2BlockTime = _oracle.l2BlockTime();
+
+        // Determine minimum age required for finalization
+        uint256 minAgeToUse = _minAgeSec == 0 ? finalizationPeriod : _minAgeSec;
+
+        // Estimate how far back to check
+        uint256 indexOffset = minAgeToUse / (submissionInterval * l2BlockTime);
+        uint256 validTimestamp = block.timestamp - minAgeToUse;
+
+        uint256 lastValidIndex = type(uint256).max;
+
+        // Use a bounded condition to prevent infinite loops
+        while (indexOffset <= latestIndex) {
+            // Get approximate output index
+            uint256 index = latestIndex - indexOffset;
+            if (index == 0) break; // Prevent underflow
+
+            Types.OutputProposal memory output = _oracle.getL2Output(index);
+
+            // If this output is valid
+            if (output.timestamp <= validTimestamp) {
+                // Track the most recent valid output
+                lastValidIndex = index;
+
+                // Move forward to check if a more recent one is also valid
+                if (index < latestIndex) {
+                    indexOffset--; // Move closer to head and check again
+                    continue;
+                } else {
+                    break; // Already at the latest valid index, return
+                }
+            } else {
+                // If a previous valid output exists, return it
+                if (lastValidIndex != type(uint256).max) {
+                    return abi.encode(lastValidIndex);
+                }
+
+                // Move further back to find a valid output
+                indexOffset++;
             }
-            if (i == 0) break;
-            --i;
         }
-		revert('OP: no output');
+
+        revert("OP: no valid output found");
     }
 
     struct GatewayProof {

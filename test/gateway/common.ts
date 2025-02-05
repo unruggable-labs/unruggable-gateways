@@ -92,31 +92,34 @@ export function testOP(
   config: RollupDeployment<OPConfig>,
   opts: TestOptions & { minAgeSec?: number }
 ) {
-  describe.skipIf(shouldSkip(opts))(testName(config), async () => {
-    const rollup = new OPRollup(createProviderPair(config), config);
-    const foundry = await Foundry.launch({
-      fork: providerURL(config.chain1),
-      infoLog: !!opts.log,
-    });
-    afterAll(foundry.shutdown);
-    const gateway = new Gateway(rollup);
-    const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
-    afterAll(ccip.shutdown);
-    const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
-    const hooks = await foundry.deploy({ file: 'EthVerifierHooks' });
-    const verifier = await foundry.deploy({
-      file: 'OPVerifier',
-      args: [
-        [ccip.endpoint],
-        rollup.defaultWindow,
-        hooks,
-        rollup.L2OutputOracle,
-        opts.minAgeSec ?? 0,
-      ],
-      libs: { GatewayVM },
-    });
-    await setupTests(verifier, opts);
-  });
+  describe.skipIf(shouldSkip(opts))(
+    testName(config, { unfinalized: !!config.minAgeSec }),
+    async () => {
+      const rollup = new OPRollup(createProviderPair(config), config);
+      const foundry = await Foundry.launch({
+        fork: providerURL(config.chain1),
+        infoLog: !!opts.log,
+      });
+      afterAll(foundry.shutdown);
+      const gateway = new Gateway(rollup);
+      const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
+      afterAll(ccip.shutdown);
+      const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
+      const hooks = await foundry.deploy({ file: 'EthVerifierHooks' });
+      const verifier = await foundry.deploy({
+        file: 'OPVerifier',
+        args: [
+          [ccip.endpoint],
+          rollup.defaultWindow,
+          hooks,
+          rollup.L2OutputOracle,
+          rollup.minAgeSec ?? 0,
+        ],
+        libs: { GatewayVM },
+      });
+      await setupTests(verifier, opts);
+    }
+  );
 }
 
 export function testOPFault(

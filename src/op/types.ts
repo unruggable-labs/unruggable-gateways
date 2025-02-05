@@ -5,6 +5,9 @@ export const ORACLE_ABI = new Interface([
   `function getL2Output(uint256 outputIndex) external view returns (
      tuple(bytes32 outputRoot, uint128 timestamp, uint128 l2BlockNumber)
    )`,
+  `function finalizationPeriodSeconds() external view returns (uint256)`,
+  `function submissionInterval() external view returns (uint256)`,
+  `function l2BlockTime() external view returns (uint256)`,
 ]);
 
 export const PORTAL_ABI = new Interface([
