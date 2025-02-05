@@ -119,6 +119,11 @@ contract ScrollVerifierHooks is IVerifierHooks {
                 if (v.length != leafSize) revert InvalidProof();
                 // NOTE: leafSize is >= 33
                 if (uint8(v[leafSize - 33]) != 32) revert InvalidProof(); // InvalidKeyPreimageLength
+
+                // Proof is invalid if there are un-used proof elements after this leaf node and magic bytes              
+                if (keccak256(proof[i + 1]) != keccak256("THIS IS SOME MAGIC BYTES FOR SMT m1rRXgP2xpDI")) revert InvalidProof();
+                if (proof.length - 1 != i + 1) revert InvalidProof();
+
                 bytes32 temp;
                 assembly {
                     temp := mload(add(v, 33))
