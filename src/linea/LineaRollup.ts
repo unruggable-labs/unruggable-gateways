@@ -42,6 +42,9 @@ export class LineaRollup extends AbstractRollup<LineaCommit> {
     L1MessageService: '0xd19d4B5d358258f05D7B411E21A1460D11B0876F',
     // https://github.com/Consensys/linea-ens/blob/main/packages/linea-ens-resolver/deployments/mainnet/SparseMerkleProof.json
     SparseMerkleProof: '0xBf8C454Af2f08fDD90bB7B029b0C2c07c2a7b4A3',
+    // deploy: https://etherscan.io/tx/0x9ec6d0ac71da8691a84352a38be79dcee841d9440ce536452ad50cd380bd31b1
+    // commit: https://etherscan.io/tx/0xc6b2c65a7b69276e191d11802d5cda28d8feb4736afd7d47695b9cd9ea3ceb81
+    firstCommitV3: 13377143n,
   };
   static readonly sepoliaConfig: RollupDeployment<LineaConfig> = {
     chain1: CHAINS.SEPOLIA,

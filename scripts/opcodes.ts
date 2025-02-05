@@ -32,6 +32,8 @@ try {
     } catch (err) {
       if (err instanceof Error && /^unknown op: \d+$/.test(err.message)) {
         throw err;
+      } else {
+        console.error('An unexpected error occurred:', err); // Log unexpected errors
       }
     }
   }

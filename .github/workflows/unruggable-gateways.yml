@@ -30,7 +30,7 @@ jobs:
           git submodule update --init --recursive
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1.2.0
+        uses: foundry-rs/foundry-toolchain@v1.3.1
               
       - name: Install Dependencies
         run: bun install
@@ -39,6 +39,7 @@ jobs:
         run: |
           touch .env
           echo ALCHEMY_KEY=${{ secrets.ALCHEMY_KEY }} >> .env
+          echo INFURA_KEY=${{ secrets.INFURA_KEY }} >> .env
           echo IS_CI=true >> .env
           cat .env
 
