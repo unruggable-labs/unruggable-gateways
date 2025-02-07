@@ -1,6 +1,6 @@
 import { AbiCoder } from 'ethers/abi';
 import { id as keccakStr } from 'ethers/hash';
-import type { EthersError } from 'ethers/utils';
+import type { CallExceptionError, EthersError } from 'ethers/utils';
 import type { Provider, BigNumberish, HexString } from './types.js';
 import type { RPCEthGetBlock } from './eth/types.js';
 
@@ -90,6 +90,10 @@ export async function fetchBlockTag(
 
 export function isEthersError(err: any): err is EthersError {
   return err instanceof Error && 'code' in err && 'shortMessage' in err;
+}
+
+export function isRevert(err: any): err is CallExceptionError {
+  return isEthersError(err) && err.code === 'CALL_EXCEPTION';
 }
 
 export function isRPCError(err: any, code: number): err is EthersError {

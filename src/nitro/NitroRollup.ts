@@ -25,7 +25,6 @@ import { encodeRlpBlock } from '../rlp.js';
 
 export type NitroConfig = {
   Rollup: HexAddress;
-  minAgeBlocks?: number;
 };
 
 export type NitroCommit = RollupCommit<EthProver> & {
@@ -63,11 +62,13 @@ export class NitroRollup
   };
 
   readonly Rollup: Contract;
-  readonly minAgeBlocks;
-  constructor(providers: ProviderPair, config: NitroConfig) {
+  constructor(
+    providers: ProviderPair,
+    config: NitroConfig,
+    public minAgeBlocks = 0
+  ) {
     super(providers);
     this.Rollup = new Contract(config.Rollup, ROLLUP_ABI, this.provider1);
-    this.minAgeBlocks = config.minAgeBlocks ?? 0;
   }
 
   override get unfinalized() {

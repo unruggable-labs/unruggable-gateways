@@ -23,6 +23,7 @@ import {
   toUnpaddedHex,
   toPaddedHex,
   LATEST_BLOCK_TAG,
+  isRevert,
 } from './utils.js';
 import { CachedMap, LRU } from './cached.js';
 import { GATEWAY_OP as OP } from './ops.js';
@@ -938,8 +939,8 @@ export abstract class AbstractProver {
           if (!can) this.readBytesAtSupported.set(target, true);
           return v;
         } catch (err) {
-          // TODO: only update this on CALL_EXCEPTION?
-          if (!can) this.readBytesAtSupported.set(target, false);
+          if (!can && isRevert(err))
+            this.readBytesAtSupported.set(target, false);
         }
       }
       const { value } = await this.getStorageBytes(target, slot, true);

@@ -46,12 +46,14 @@ export class DoubleNitroRollup extends AbstractRollup<DoubleNitroCommit> {
   constructor(
     readonly rollup12: NitroRollup,
     provider3: Provider,
-    config: NitroConfig
+    config: NitroConfig,
+    minAgeBlocks23 = rollup12.minAgeBlocks
   ) {
     super({ provider1: rollup12.provider1, provider2: provider3 });
     this.rollup23 = new NitroRollup(
       { provider1: rollup12.provider2, provider2: provider3 },
-      config
+      config,
+      minAgeBlocks23
     );
     this.rollup23.latestBlockTag = 'latest';
     this.nodeRequest = createNodeRequest(

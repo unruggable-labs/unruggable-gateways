@@ -32,8 +32,6 @@ try {
     } catch (err) {
       if (err instanceof Error && /^unknown op: \d+$/.test(err.message)) {
         throw err;
-      } else {
-        console.error('An unexpected error occurred:', err); // Log unexpected errors
       }
     }
   }
@@ -42,7 +40,7 @@ try {
     const name = `PUSH_${i}`;
     expect(solMap.get(name), name).toEqual(i);
   }
-  if (process.argv.length == 2) {
+  if (process.argv.pop() !== 'quiet') {
     console.log(Object.fromEntries([...jsMap]));
   }
 } finally {

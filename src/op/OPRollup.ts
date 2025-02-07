@@ -1,14 +1,36 @@
 import type { RollupDeployment } from '../rollup.js';
 import type { HexAddress, HexString32, ProviderPair } from '../types.js';
-import { ORACLE_ABI } from './types.js';
-import { Contract } from 'ethers/contract';
-import { CHAINS } from '../chains.js';
 import { AbstractOPRollup, type AbstractOPCommit } from './AbstractOPRollup.js';
-import { isEthersError } from '../utils.js';
+import { CHAINS } from '../chains.js';
+import { isRevert } from '../utils.js';
+import { Contract } from 'ethers/contract';
+import { Interface } from 'ethers/abi';
+
+// export const PORTAL_ABI = new Interface([
+//   `function l2Oracle() view returns (address)`,
+// ]);
+
+// export const ORACLE_ABI = new Interface([
+//   `function latestOutputIndex() view returns (uint256)`,
+//   `function getL2Output(uint256 outputIndex) view returns (
+//      (bytes32 outputRoot, uint128 timestamp, uint128 l2BlockNumber)
+//    )`,
+//   `function finalizationPeriodSeconds() view returns (uint256)`,
+//   `function submissionInterval() view returns (uint256)`,
+//   `function l2BlockTime() view returns (uint256)`,
+// ]);
+
+export const OUTPUT_FINDER_ABI = new Interface([
+  `error OutputNotFound()`,
+  `function findOutputIndex(address portal, uint256 minAgeSec) view returns (uint256)`,
+  `function getOutput(address portal, uint256 outputIndex) view returns (
+     (bytes32 outputRoot, uint128 timestamp, uint128 l2BlockNumber)
+   )`,
+]);
 
 export type OPConfig = {
-  L2OutputOracle: HexAddress; // sometimes called L2OutputOracleProxy
-  minAgeSec?: number; // if falsy, requires finalization
+  OptimismPortal: HexAddress; // sometimes called OptimismPortalProxy
+  OutputFinder: HexAddress;
 };
 
 export type OPCommit = AbstractOPCommit & { output: ABIOutputTuple };
@@ -19,47 +41,66 @@ type ABIOutputTuple = {
   l2BlockNumber: bigint;
 };
 
+const OUTPUT_FINDER_MAINNET = '0xFe75ecc04DB4f46762126924d21Ae3d35087c482';
+const OUTPUT_FINDER_HOLESKY = '0x35FF17ae0a5ac38F66E7994401a3c304023881Ad';
+const OUTPUT_FINDER_OP_BNB = '0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05';
+
 export class OPRollup extends AbstractOPRollup<OPCommit> {
-  // 20241030: base changed to fault proofs
+  // 20241030: changed to fault proofs
+  // https://x.com/base/status/1851672364439814529
   // static readonly baseMainnetConfig: RollupDeployment<OPConfig> = {
   //   chain1: CHAINS.MAINNET,
   //   chain2: CHAINS.BASE,
   //   L2OutputOracle: '0x56315b90c40730925ec5485cf004d835058518A0',
   // };
 
+  // 20250130: changed to fault proofs
+  // https://x.com/world_chain_/status/1880364416400838733
+  // https://docs.worldcoin.org/world-chain/developers/world-chain-contracts
+  // static readonly worldMainnetConfig: RollupDeployment<OPConfig> = {
+  //   chain1: CHAINS.MAINNET,
+  //   chain2: CHAINS.WORLD,
+  //   L2OutputOracle: '0x19A6d1E9034596196295CF148509796978343c5D',
+  // };
+
   // https://docs.blast.io/building/contracts#mainnet
   static readonly blastMainnnetConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.BLAST,
-    L2OutputOracle: '0x826D1B0D4111Ad9146Eb8941D7Ca2B6a44215c76',
+    OptimismPortal: '0x0Ec68c5B10F21EFFb74f2A5C61DFe6b08C0Db6Cb',
+    OutputFinder: OUTPUT_FINDER_MAINNET,
   };
 
   // https://docs.frax.com/fraxtal/addresses/fraxtal-contracts#mainnet
   static readonly fraxtalMainnetConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.FRAXTAL,
-    L2OutputOracle: '0x66CC916Ed5C6C2FA97014f7D1cD141528Ae171e4',
+    OptimismPortal: '0x36cb65c1967A0Fb0EEE11569C51C2f2aA1Ca6f6D',
+    OutputFinder: OUTPUT_FINDER_MAINNET,
   };
 
   // https://docs.zora.co/zora-network/network#zora-network-mainnet-1
   static readonly zoraMainnetConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.ZORA,
-    L2OutputOracle: '0x9E6204F750cD866b299594e2aC9eA824E2e5f95c',
+    OptimismPortal: '0x1a0ad011913A150f69f6A19DF447A0CfD9551054',
+    OutputFinder: OUTPUT_FINDER_MAINNET,
   };
 
-  // https://docs-v2.mantle.xyz/intro/system-components/on-chain-system
+  // https://docs.mantle.xyz/network/system-information/on-chain-system/key-l1-contract-address
   static readonly mantleMainnetConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.MANTLE,
-    L2OutputOracle: '0x31d543e7BE1dA6eFDc2206Ef7822879045B9f481',
+    OptimismPortal: '0x31d543e7BE1dA6eFDc2206Ef7822879045B9f481',
+    OutputFinder: OUTPUT_FINDER_MAINNET,
   };
 
   // https://docs.mode.network/general-info/mainnet-contract-addresses/l1-l2-contracts
   static readonly modeMainnetConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.MODE,
-    L2OutputOracle: '0x4317ba146D4933D889518a3e5E11Fe7a53199b04',
+    OptimismPortal: '0xc54cb22944F2bE476E02dECfCD7e3E7d3e15A8Fb',
+    OutputFinder: OUTPUT_FINDER_MAINNET,
   };
 
   // https://docs.cyber.co/build-on-cyber/addresses-mainnet
@@ -67,54 +108,56 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
   static readonly cyberMainnetConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.CYBER,
-    L2OutputOracle: '0xa669A743b065828682eE16109273F5CFeF5e676d',
+    OptimismPortal: '0x1d59bc9fcE6B8E2B1bf86D4777289FFd83D24C99',
+    OutputFinder: OUTPUT_FINDER_MAINNET,
   };
 
   // https://redstone.xyz/docs/contract-addresses
   static readonly redstoneMainnetConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.REDSTONE,
-    L2OutputOracle: '0xa426A052f657AEEefc298b3B5c35a470e4739d69',
+    OptimismPortal: '0xa426A052f657AEEefc298b3B5c35a470e4739d69',
+    OutputFinder: OUTPUT_FINDER_MAINNET,
   };
 
   // https://docs.shape.network/documentation/technical-details/contract-addresses#mainnet
   static readonly shapeMainnetConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.SHAPE,
-    L2OutputOracle: '0x6Ef8c69CfE4635d866e3E02732068022c06e724D',
+    OptimismPortal: '0xEB06fFa16011B5628BaB98E29776361c83741dd3',
+    OutputFinder: OUTPUT_FINDER_MAINNET,
   };
 
   // https://docs.bnbchain.org/bnb-opbnb/core-concepts/opbnb-protocol-addresses/
   static readonly opBNBMainnetConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.BSC,
     chain2: CHAINS.OP_BNB,
-    L2OutputOracle: '0x153CAB79f4767E2ff862C94aa49573294B13D169',
+    OptimismPortal: '0x4386C8ABf2009aC0c263462Da568DD9d46e52a31',
+    OutputFinder: OUTPUT_FINDER_OP_BNB,
   };
 
   // https://storage.googleapis.com/cel2-rollup-files/alfajores/deployment-l1.json
   static readonly celoAlfajoresConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.HOLESKY,
     chain2: CHAINS.CELO_ALFAJORES,
-    L2OutputOracle: '0x4a2635e9e4f6e45817b1D402ac4904c1d1752438',
+    OptimismPortal: '0x82527353927d8D069b3B452904c942dA149BA381',
+    OutputFinder: OUTPUT_FINDER_HOLESKY,
   };
 
-  // https://docs.worldcoin.org/world-chain/developers/world-chain-contracts
-  static readonly worldMainnetConfig: RollupDeployment<OPConfig> = {
-    chain1: CHAINS.MAINNET,
-    chain2: CHAINS.WORLD,
-    L2OutputOracle: '0x19A6d1E9034596196295CF148509796978343c5D',
-  };
-
-  readonly L2OutputOracle: Contract;
-  readonly minAgeSec: number;
-  constructor(providers: ProviderPair, config: OPConfig) {
+  readonly OptimismPortal: HexAddress;
+  readonly OutputFinder: Contract;
+  constructor(
+    providers: ProviderPair,
+    config: OPConfig,
+    public minAgeSec = 0
+  ) {
     super(providers);
-    this.L2OutputOracle = new Contract(
-      config.L2OutputOracle,
-      ORACLE_ABI,
+    this.OptimismPortal = config.OptimismPortal;
+    this.OutputFinder = new Contract(
+      config.OutputFinder,
+      OUTPUT_FINDER_ABI,
       providers.provider1
     );
-    this.minAgeSec = config.minAgeSec ?? 0;
   }
 
   override get unfinalized() {
@@ -123,78 +166,23 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
 
   async fetchOutput(index: bigint): Promise<ABIOutputTuple | undefined> {
     try {
-      // this panics with ARRAY_RANGE_ERROR when out of bounds
-      return await this.L2OutputOracle.getL2Output(index);
+      return await this.OutputFinder.getOutput(this.OptimismPortal, index);
     } catch (err) {
-      if (isEthersError(err) && err.code === 'CALL_EXCEPTION') return;
+      if (isRevert(err) && err.revert?.name === 'OutputNotFound') return;
       throw err;
     }
   }
 
   override async fetchLatestCommitIndex(): Promise<bigint> {
-    // Retrieve finalization parameters from the oracle.
-    const latestIndex: bigint = await this.L2OutputOracle.latestOutputIndex();
-    const finalizationPeriod: bigint =
-      await this.L2OutputOracle.finalizationPeriodSeconds();
-    const submissionInterval: bigint =
-      await this.L2OutputOracle.submissionInterval();
-    const l2BlockTime: bigint = await this.L2OutputOracle.l2BlockTime();
-
-    // If we want finalized commitments, step back by finalizationPeriod
-    // Otherwise we use the passed config value, minAgeSec
-    const minAgeToUse =
-      BigInt(this.minAgeSec) === 0n
-        ? finalizationPeriod
-        : BigInt(this.minAgeSec);
-
-    // The offset of what we estimate to be the latest appropiate commit
-    // Assumes proposers are doing what they should be
-    let indexOffset: bigint = minAgeToUse / (submissionInterval * l2BlockTime);
-
-    const currentTimestamp = BigInt(Math.floor(Date.now() / 1000));
-    // The timestamp before which a commit fits our requirements
-    const validTimestamp = currentTimestamp - minAgeToUse;
-
-    let lastValidIndex: bigint | null = null;
-
-    while (indexOffset <= latestIndex) {
-      // Get the approximate output index
-      const index = latestIndex - indexOffset;
-      if (index === 0n) break; // Prevent underflow
-
-      const output = await this.L2OutputOracle.getL2Output(index);
-      const outputTimestamp = BigInt(output.timestamp);
-
-      // If this output is valid
-      if (outputTimestamp <= validTimestamp) {
-        // Track the most recent valid output
-        lastValidIndex = index;
-
-        // As we are working with estimates we move closer to head and check again
-        if (index < latestIndex) {
-          indexOffset--;
-          continue;
-        } else {
-          break; // We are already at the latest, return now
-        }
-      } else {
-        // Output too recent
-        // If we previously found a valid output, return it now
-        if (lastValidIndex !== null) {
-          return lastValidIndex;
-        }
-
-        // Move further back to find a valid output
-        indexOffset++;
-      }
-    }
-
-    throw new Error('OP: no valid output found');
+    return this.OutputFinder.findOutputIndex(
+      this.OptimismPortal,
+      this.minAgeSec,
+      { blockTag: this.latestBlockTag }
+    );
   }
 
   protected override async _fetchCommit(index: bigint) {
     const output = await this.fetchOutput(index);
-
     if (!output) throw new Error('invalid output');
     const commit = await this.createCommit(index, output.l2BlockNumber);
     return { ...commit, output };
@@ -202,7 +190,7 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
   override async isCommitStillValid(commit: OPCommit): Promise<boolean> {
     // see: L2OutputOracle.deleteL2Outputs()
     const output = await this.fetchOutput(commit.index);
-    if (!output) return false; // out-of-bounds => deleted
+    if (!output) return false; // undefined => deleted
     return output.outputRoot === commit.output.outputRoot; // unequal => replaced
   }
 

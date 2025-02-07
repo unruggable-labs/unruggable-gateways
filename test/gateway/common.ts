@@ -93,9 +93,13 @@ export function testOP(
   opts: TestOptions & { minAgeSec?: number }
 ) {
   describe.skipIf(shouldSkip(opts))(
-    testName(config, { unfinalized: !!config.minAgeSec }),
+    testName(config, { unfinalized: !!opts.minAgeSec }),
     async () => {
-      const rollup = new OPRollup(createProviderPair(config), config);
+      const rollup = new OPRollup(
+        createProviderPair(config),
+        config,
+        opts.minAgeSec
+      );
       const foundry = await Foundry.launch({
         fork: providerURL(config.chain1),
         infoLog: !!opts.log,
@@ -112,8 +116,9 @@ export function testOP(
           [ccip.endpoint],
           rollup.defaultWindow,
           hooks,
-          rollup.L2OutputOracle,
-          rollup.minAgeSec ?? 0,
+          rollup.OptimismPortal,
+          rollup.OutputFinder,
+          rollup.minAgeSec,
         ],
         libs: { GatewayVM },
       });
@@ -124,12 +129,16 @@ export function testOP(
 
 export function testOPFault(
   config: RollupDeployment<OPFaultConfig>,
-  opts: TestOptions
+  opts: TestOptions & { minAgeSec?: number }
 ) {
   describe.skipIf(shouldSkip(opts))(
-    testName(config, { unfinalized: !!config.minAgeSec }),
+    testName(config, { unfinalized: !!opts.minAgeSec }),
     async () => {
-      const rollup = new OPFaultRollup(createProviderPair(config), config);
+      const rollup = new OPFaultRollup(
+        createProviderPair(config),
+        config,
+        opts.minAgeSec
+      );
       const foundry = await Foundry.launch({
         fork: providerURL(config.chain1),
         infoLog: !!opts.log,
@@ -353,18 +362,23 @@ export function testTaiko(
 export function testDoubleNitro(
   config12: RollupDeployment<NitroConfig>,
   config23: RollupDeployment<NitroConfig>,
-  opts: TestOptions
+  opts: TestOptions & { minAgeBlocks12?: number; minAgeBlocks23?: number }
 ) {
   describe.skipIf(shouldSkip(opts))(
     testName(
       { ...config12, chain3: config23.chain2 },
-      { unfinalized: !!config12.minAgeBlocks || !!config23.minAgeBlocks }
+      { unfinalized: !!opts.minAgeBlocks12 || !!opts.minAgeBlocks23 }
     ),
     async () => {
       const rollup = new DoubleNitroRollup(
-        new NitroRollup(createProviderPair(config12), config12),
+        new NitroRollup(
+          createProviderPair(config12),
+          config12,
+          opts.minAgeBlocks12
+        ),
         createProvider(config23.chain2),
-        config23
+        config23,
+        opts.minAgeBlocks23
       );
       const foundry = await Foundry.launch({
         fork: providerURL(config12.chain1),

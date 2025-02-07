@@ -34,10 +34,10 @@ interface IDisputeGame {
 uint256 constant CHALLENGER_WINS = 1;
 uint256 constant DEFENDER_WINS = 2;
 
-contract OPFaultGameFinder {
-    error GameNotFound();
-    error InvalidGameTypeBitMask();
+error GameNotFound();
+error InvalidGameTypeBitMask();
 
+contract OPFaultGameFinder {
     function findGameIndex(
         IOptimismPortal portal,
         uint256 minAgeSec,

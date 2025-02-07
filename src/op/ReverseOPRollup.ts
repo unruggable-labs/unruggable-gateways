@@ -10,18 +10,21 @@ import type {
   ProviderPair,
   ProofSequence,
 } from '../types.js';
-import { L1_BLOCK_ABI } from './types.js';
 import { CHAINS } from '../chains.js';
 import { ABI_CODER, EVM_BLOCKHASH_DEPTH, MAINNET_BLOCK_SEC } from '../utils.js';
 import { EthProver } from '../eth/EthProver.js';
 import { encodeRlpBlock } from '../rlp.js';
 import { dataSlice } from 'ethers/utils';
 import { Contract } from 'ethers/contract';
+import { Interface } from 'ethers/abi';
+
+export const L1_BLOCK_ABI = new Interface([
+  `function number() view returns (uint256)`,
+]);
 
 export type OPReverseConfig = {
   L1Block?: HexAddress;
   //storageSlot?: bigint;
-  commitStep?: number;
 };
 
 // https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/src/L2/L1Block.sol
@@ -63,7 +66,11 @@ export class ReverseOPRollup extends AbstractRollup<ReverseOPCommit> {
   readonly L1Block: Contract;
   readonly commitStep: bigint;
   //readonly storageSlot: bigint; // using const SLOT_* instead
-  constructor(providers: ProviderPair, config: OPReverseConfig) {
+  constructor(
+    providers: ProviderPair,
+    config: OPReverseConfig,
+    commitStep = 1
+  ) {
     super(providers);
     //this.latestBlockTag = 'latest'; // 20240922: not necessary
     this.L1Block = new Contract(
@@ -71,7 +78,7 @@ export class ReverseOPRollup extends AbstractRollup<ReverseOPCommit> {
       L1_BLOCK_ABI,
       this.provider2
     );
-    this.commitStep = BigInt(config.commitStep ?? 1);
+    this.commitStep = BigInt(commitStep);
   }
 
   private align(index: bigint) {
