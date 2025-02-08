@@ -6,20 +6,6 @@ import { isRevert } from '../utils.js';
 import { Contract } from 'ethers/contract';
 import { Interface } from 'ethers/abi';
 
-// export const PORTAL_ABI = new Interface([
-//   `function l2Oracle() view returns (address)`,
-// ]);
-
-// export const ORACLE_ABI = new Interface([
-//   `function latestOutputIndex() view returns (uint256)`,
-//   `function getL2Output(uint256 outputIndex) view returns (
-//      (bytes32 outputRoot, uint128 timestamp, uint128 l2BlockNumber)
-//    )`,
-//   `function finalizationPeriodSeconds() view returns (uint256)`,
-//   `function submissionInterval() view returns (uint256)`,
-//   `function l2BlockTime() view returns (uint256)`,
-// ]);
-
 export const OUTPUT_FINDER_ABI = new Interface([
   `error OutputNotFound()`,
   `function findOutputIndex(address portal, uint256 minAgeSec) view returns (uint256)`,
@@ -29,7 +15,7 @@ export const OUTPUT_FINDER_ABI = new Interface([
 ]);
 
 export type OPConfig = {
-  OptimismPortal: HexAddress; // sometimes called OptimismPortalProxy
+  OptimismPortal: HexAddress; // Implementation behind OptimismPortalProxy
   OutputFinder: HexAddress;
 };
 
