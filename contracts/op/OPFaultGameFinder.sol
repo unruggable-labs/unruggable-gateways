@@ -10,6 +10,8 @@ interface IOptimismPortal {
     function disputeGameBlacklist(
         IDisputeGame game
     ) external view returns (bool);
+    function disputeGameFinalityDelaySeconds() external view returns (uint256);
+    function respectedGameTypeUpdatedAt() external view returns (uint64);
 }
 
 // https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/src/dispute/interfaces/IDisputeGameFactory.sol
@@ -28,6 +30,12 @@ interface IDisputeGame {
     function status() external view returns (uint256);
     function l2BlockNumber() external view returns (uint256);
     function rootClaim() external view returns (bytes32);
+    function resolvedAt() external view returns (uint64);
+}
+
+struct FinalizationParams {
+    uint256 finalityDelay;
+    uint64 gameTypeUpdatedAt;
 }
 
 // https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/src/dispute/lib/Types.sol#L7
@@ -45,6 +53,10 @@ contract OPFaultGameFinder {
         uint256 gameCount
     ) external view virtual returns (uint256) {
         gameTypeBitMask = _gameTypeBitMask(portal, gameTypeBitMask);
+        FinalizationParams memory finalizationParams = FinalizationParams({
+            finalityDelay: portal.disputeGameFinalityDelaySeconds(),
+            gameTypeUpdatedAt: portal.respectedGameTypeUpdatedAt()
+        });
         IDisputeGameFactory factory = portal.disputeGameFactory();
         if (gameCount == 0) gameCount = factory.gameCount();
         while (gameCount > 0) {
@@ -60,7 +72,8 @@ contract OPFaultGameFinder {
                     gameType,
                     created,
                     gameTypeBitMask,
-                    minAgeSec
+                    minAgeSec,
+                    finalizationParams
                 )
             ) {
                 return gameCount;
@@ -86,6 +99,10 @@ contract OPFaultGameFinder {
         )
     {
         gameTypeBitMask = _gameTypeBitMask(portal, gameTypeBitMask);
+        FinalizationParams memory finalizationParams = FinalizationParams({
+            finalityDelay: portal.disputeGameFinalityDelaySeconds(),
+            gameTypeUpdatedAt: portal.respectedGameTypeUpdatedAt()
+        });
         IDisputeGameFactory factory = portal.disputeGameFactory();
         (gameType, created, gameProxy) = factory.gameAtIndex(gameIndex);
         if (
@@ -95,7 +112,8 @@ contract OPFaultGameFinder {
                 gameType,
                 created,
                 gameTypeBitMask,
-                minAgeSec
+                minAgeSec,
+                finalizationParams
             )
         ) {
             l2BlockNumber = gameProxy.l2BlockNumber();
@@ -109,13 +127,17 @@ contract OPFaultGameFinder {
         uint256 gameType,
         uint256 created,
         uint256 gameTypeBitMask,
-        uint256 minAgeSec
+        uint256 minAgeSec,
+        FinalizationParams memory finalizationParams
     ) internal view returns (bool) {
         if (gameTypeBitMask & (1 << gameType) == 0) return false;
         // https://specs.optimism.io/fault-proof/stage-one/bridge-integration.html#blacklisting-disputegames
         if (portal.disputeGameBlacklist(gameProxy)) return false;
         if (minAgeSec == 0) {
-            return gameProxy.status() == DEFENDER_WINS;
+            if (created > finalizationParams.gameTypeUpdatedAt && gameProxy.status() == DEFENDER_WINS) {
+                return ((block.timestamp - gameProxy.resolvedAt()) > finalizationParams.finalityDelay);
+            }
+            return false;
         } else {
             return
                 created <= block.timestamp - minAgeSec &&

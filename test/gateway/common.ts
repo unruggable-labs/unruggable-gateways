@@ -139,6 +139,7 @@ export function testOPFault(
         config,
         opts.minAgeSec
       );
+      rollup.latestBlockTag = 'latest';
       const foundry = await Foundry.launch({
         fork: providerURL(config.chain1),
         infoLog: !!opts.log,

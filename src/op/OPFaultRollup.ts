@@ -24,7 +24,7 @@ export const GAME_FINDER_ABI = new Interface([
   `error InvalidGameTypeBitMask()`,
   `function findGameIndex(address portal, uint256 minAge, uint256 gameTypeBitMask, uint256 gameCount) view returns (uint256)`,
   `function gameAtIndex(address portal, uint256 minAge, uint256 gameTypeBitMask, uint256 gameIndex) view returns (
-	 uint256 gameType, uint256 created, address gameProxy, uint256 l2BlockNumber
+	 uint256 gameType, uint256 created, address gameProxy, uint256 l2BlockNumber, bytes32 rootClaim
    )`,
 ]);
 
@@ -44,10 +44,11 @@ type ABIFoundGame = {
   created: bigint;
   gameProxy: HexAddress;
   l2BlockNumber: bigint;
+  rootClaim: string;
 };
 
-const GAME_FINDER_MAINNET = '0x475a86934805ef2c52ef61a8fed644d4c9ac91d8';
-const GAME_FINDER_SEPOLIA = '0x4Bf352061FEB81a486A2fd325839d715bDc4038c';
+const GAME_FINDER_MAINNET = '0x728f1ac59A01d07bE3E62940eC9B3F5EF025C38b';
+const GAME_FINDER_SEPOLIA = '0x165386f8699ce2609a8903e25d00e1debd24a277';
 
 export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   // https://docs.optimism.io/chain/addresses
