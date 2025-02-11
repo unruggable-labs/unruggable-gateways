@@ -8,7 +8,7 @@ import {
 } from '../providers.js';
 import { chainName, CHAINS } from '../../src/chains.js';
 import { serve } from '@resolverworks/ezccip/serve';
-import { type DeployedContract, Foundry } from '@adraffy/blocksmith';
+import { type FoundryContract, Foundry } from '@adraffy/blocksmith';
 import { runSlotDataTests } from './tests.js';
 import { type OPConfig, OPRollup } from '../../src/op/OPRollup.js';
 import {
@@ -55,7 +55,7 @@ type TestOptions = {
 };
 
 export async function quickTest(
-  verifier: DeployedContract,
+  verifier: FoundryContract,
   target: HexAddress,
   slot: bigint
 ) {
@@ -68,9 +68,9 @@ export async function quickTest(
 }
 
 export async function setupTests(
-  verifier: DeployedContract,
+  verifier: FoundryContract,
   opts: TestOptions,
-  configure?: (fetcher: DeployedContract) => Promise<void>
+  configure?: (fetcher: FoundryContract) => Promise<void>
 ) {
   const foundry = Foundry.of(verifier);
   const reader = await foundry.deploy({
@@ -251,21 +251,10 @@ export function testTrustedEth(chain2: Chain, opts: TestOptions) {
       const hooks = await foundry.deploy({ file: 'EthVerifierHooks' });
       const verifier = await foundry.deploy({
         file: 'TrustedVerifier',
+        args: [hooks, [ccip.endpoint], [rollup.signerAddress], 60],
         libs: { GatewayVM },
       });
-      await setupTests(verifier, opts, async (fetcher) => {
-        await foundry.confirm(
-          verifier.setConfig(
-            fetcher,
-            [ccip.endpoint],
-            rollup.defaultWindow,
-            hooks
-          )
-        );
-        await foundry.confirm(
-          verifier.setSigner(fetcher, rollup.signerAddress, true)
-        );
-      });
+      await setupTests(verifier, opts);
     }
   );
 }

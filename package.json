@@ -50,7 +50,7 @@
     "contracts/ReadBytesAt.sol"
   ],
   "devDependencies": {
-    "@adraffy/blocksmith": "^0.1.47",
+    "@adraffy/blocksmith": "^0.1.51",
     "@types/bun": "latest",
     "@typescript-eslint/eslint-plugin": "^6.7.4",
     "@typescript-eslint/parser": "^6.7.4",
