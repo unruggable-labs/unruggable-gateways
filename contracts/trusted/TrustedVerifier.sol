@@ -9,7 +9,7 @@ contract TrustedVerifier is LazyTrustedVerifier {
         string[] memory urls,
         address[] memory signers,
         uint256 expSec
-    ) LazyTrustedVerifier() {
+    ) {
         initialize(msg.sender, hooks, urls, signers, expSec);
     }
 }
