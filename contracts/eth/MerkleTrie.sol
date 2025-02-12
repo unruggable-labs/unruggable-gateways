@@ -185,6 +185,10 @@ library MerkleTrie {
                 if (currentKeyIndex == key.length) {
                     // We've hit the end of the key
                     // meaning the value should be within this branch node.
+
+                    // Extra proof elements are not allowed.
+                    require(i == _proof.length - 1, "MerkleTrie: value node must be last node in proof (branch)");
+
                     break;
                 } else {
                     // We're not at the end of the key yet.

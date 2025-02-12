@@ -1,40 +1,56 @@
 import type { RollupDeployment } from '../rollup.js';
 import type { HexAddress, HexString32, ProviderPair } from '../types.js';
 import { Contract } from 'ethers/contract';
-import { PORTAL_ABI, GAME_FINDER_ABI, GAME_ABI } from './types.js';
+import { Interface } from 'ethers/abi';
 import { CHAINS } from '../chains.js';
 import { isEthersError } from '../utils.js';
 import {
   AbstractOPRollup,
   hashOutputRootProof,
-  type OPCommit,
+  type AbstractOPCommit,
 } from './AbstractOPRollup.js';
 
 // https://docs.optimism.io/chain/differences
 // https://specs.optimism.io/fault-proof/stage-one/bridge-integration.html
 
+export const PORTAL_ABI = new Interface([
+  `function disputeGameFactory() view returns (address)`,
+  `function respectedGameType() view returns (uint32)`,
+  `function disputeGameBlacklist(address game) view returns (bool)`,
+]);
+
+export const GAME_FINDER_ABI = new Interface([
+  `error GameNotFound()`,
+  `error InvalidGameTypeBitMask()`,
+  `function findGameIndex(address portal, uint256 minAge, uint256 gameTypeBitMask, uint256 gameCount) view returns (uint256)`,
+  `function gameAtIndex(address portal, uint256 minAge, uint256 gameTypeBitMask, uint256 gameIndex) view returns (
+	 uint256 gameType, uint256 created, address gameProxy, uint256 l2BlockNumber, bytes32 rootClaim
+   )`,
+]);
+
+export const GAME_ABI = new Interface([
+  `function rootClaim() view returns (bytes32)`,
+]);
+
 export type OPFaultConfig = {
   OptimismPortal: HexAddress;
   GameFinder: HexAddress;
-  gameTypes?: number[]; // if empty, dynamically uses respectedGameType()
-  minAgeSec?: number; // if falsy, requires finalization
 };
+
+export type OPFaultCommit = AbstractOPCommit & { game: ABIFoundGame };
 
 type ABIFoundGame = {
   gameType: bigint;
   created: bigint;
   gameProxy: HexAddress;
   l2BlockNumber: bigint;
+  rootClaim: string;
 };
 
-const GAME_FINDER_MAINNET = '0x475a86934805ef2c52ef61a8fed644d4c9ac91d8';
-const GAME_FINDER_SEPOLIA = '0x4Bf352061FEB81a486A2fd325839d715bDc4038c';
+const GAME_FINDER_MAINNET = '0x728f1ac59A01d07bE3E62940eC9B3F5EF025C38b';
+const GAME_FINDER_SEPOLIA = '0x165386f8699ce2609a8903e25d00e1debd24a277';
 
-function maskFromGameTypes(gameTypes: number[] = []) {
-  return gameTypes.reduce((a, x) => a | (1 << x), 0);
-}
-
-export class OPFaultRollup extends AbstractOPRollup {
+export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   // https://docs.optimism.io/chain/addresses
   static readonly mainnetConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.MAINNET,
@@ -88,12 +104,23 @@ export class OPFaultRollup extends AbstractOPRollup {
     GameFinder: GAME_FINDER_SEPOLIA,
   };
 
+  // https://docs.worldcoin.org/world-chain/developers/world-chain-contracts
+  static readonly worldMainnetConfig: RollupDeployment<OPFaultConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.WORLD,
+    OptimismPortal: '0xd5ec14a83B7d95BE1E2Ac12523e2dEE12Cbeea6C',
+    GameFinder: GAME_FINDER_MAINNET,
+  };
+
   // 20240917: delayed constructor not needed
   readonly OptimismPortal: Contract;
   readonly GameFinder: Contract;
-  readonly gameTypeBitMask: number;
-  readonly minAgeSec: number;
-  constructor(providers: ProviderPair, config: OPFaultConfig) {
+  gameTypes: number[] = []; // if empty, dynamically uses respectedGameType()
+  constructor(
+    providers: ProviderPair,
+    config: OPFaultConfig,
+    public minAgeSec = 0
+  ) {
     super(providers);
     this.OptimismPortal = new Contract(
       config.OptimismPortal,
@@ -105,12 +132,14 @@ export class OPFaultRollup extends AbstractOPRollup {
       GAME_FINDER_ABI,
       providers.provider1
     );
-    this.minAgeSec = config.minAgeSec ?? 0;
-    this.gameTypeBitMask = maskFromGameTypes(config.gameTypes);
+  }
+
+  get gameTypeBitMask() {
+    return this.gameTypes.reduce((a, x) => a | (1 << x), 0);
   }
 
   override get unfinalized() {
-    return !!this.minAgeSec;
+    return !!this.minAgeSec; // nonzero => unfinalized
   }
 
   async fetchRespectedGameType(): Promise<bigint> {
@@ -164,7 +193,7 @@ export class OPFaultRollup extends AbstractOPRollup {
     );
   }
   protected override async _fetchParentCommitIndex(
-    commit: OPCommit
+    commit: OPFaultCommit
   ): Promise<bigint> {
     return this._ensureRootClaim(
       await this.GameFinder.findGameIndex(
@@ -176,6 +205,7 @@ export class OPFaultRollup extends AbstractOPRollup {
     );
   }
   protected override async _fetchCommit(index: bigint) {
+    // note: GameFinder checks isCommitStillValid()
     const game: ABIFoundGame = await this.GameFinder.gameAtIndex(
       this.OptimismPortal.target,
       this.minAgeSec,
@@ -190,7 +220,12 @@ export class OPFaultRollup extends AbstractOPRollup {
       const computed = hashOutputRootProof(commit);
       if (expected !== computed) throw new Error(`invalid root claim`);
     }
-    return commit;
+    return { ...commit, game };
+  }
+  override async isCommitStillValid(commit: OPFaultCommit): Promise<boolean> {
+    return !(await this.OptimismPortal.disputeGameBlacklist(
+      commit.game.gameProxy
+    ));
   }
 
   override windowFromSec(sec: number): number {

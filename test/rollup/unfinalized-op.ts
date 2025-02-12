@@ -2,10 +2,7 @@ import { createProviderPair } from '../providers.js';
 import { OPFaultRollup } from '../../src/op/OPFaultRollup.js';
 
 const config = OPFaultRollup.mainnetConfig;
-const rollup = new OPFaultRollup(createProviderPair(config), {
-  ...config,
-  minAgeSec: 3600,
-});
+const rollup = new OPFaultRollup(createProviderPair(config), config, 3600);
 
 console.log({
   OptimismPortal: rollup.OptimismPortal.target,

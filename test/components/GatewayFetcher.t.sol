@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import {GatewayFetcher, GatewayRequest} from '../../contracts/GatewayFetcher.sol';
-import {GatewayVM, ProofSequence} from '../../contracts/GatewayVM.sol';
+import {GatewayVM, ProofSequence, InvalidStackIndex} from '../../contracts/GatewayVM.sol';
 
 import 'forge-std/Test.sol';
 
@@ -29,6 +29,16 @@ contract TestGatewayFetcher is Test {
         evalRequest(R(1).swap());
         vm.expectRevert();
         evalRequest(R(1).pushStack(0));
+    }
+
+    function test_invalidStackIndex() external {
+        vm.expectRevert(abi.encodePacked(InvalidStackIndex.selector, uint256(0), uint256(0), uint256(0)));
+        evalRequest(R(0).pushStack(0));
+    }
+
+    function test_invalidStackIndex_reversed() external {
+        vm.expectRevert(abi.encodePacked(InvalidStackIndex.selector, uint256(0), uint256(0), uint256(1)));
+        evalRequest(R(0).dup(0));
     }
 
     // math

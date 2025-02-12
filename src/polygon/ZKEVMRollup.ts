@@ -66,11 +66,6 @@ export class ZKEVMRollup extends AbstractRollup<ZKEVMCommit> {
       blockTag: this.latestBlockTag,
     });
   }
-  protected override async _fetchParentCommitIndex(
-    commit: ZKEVMCommit
-  ): Promise<bigint> {
-    return commit.index - 1n;
-  }
   private fetchBatchStateRoot(batchIndex: bigint): Promise<HexString32> {
     return this.RollupManager.getRollupBatchNumToStateRoot(
       this.rollupID,

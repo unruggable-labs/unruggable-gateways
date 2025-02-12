@@ -143,8 +143,12 @@ export default {
               gateway.commitCacheMap.cachedValue(i)
             )
           )) {
-            if (p.status === 'fulfilled' && p.value && p.value !== commit) {
-              commits.push(p.value);
+            if (
+              p.status === 'fulfilled' &&
+              p.value &&
+              p.value.commit !== commit
+            ) {
+              commits.push(p.value.commit);
             }
           }
         }
@@ -350,34 +354,31 @@ function createSelfGateway(chain: Chain) {
   return new Gateway(new EthSelfRollup(createProvider(chain) /*, 25*/));
 }
 
-function createOPGateway(config: RollupDeployment<OPConfig>) {
-  return new Gateway(new OPRollup(createProviderPair(config), config));
+function createOPGateway(
+  config: RollupDeployment<OPConfig>,
+  unfinalized?: boolean
+) {
+  return new Gateway(
+    new OPRollup(createProviderPair(config), config, unfinalized ? 1 : 0)
+  );
 }
 
 function createOPFaultGateway(
   config: RollupDeployment<OPFaultConfig>,
   unfinalized?: boolean
 ) {
-  if (typeof unfinalized === 'boolean') {
-    config = {
-      ...config,
-      minAgeSec: unfinalized ? 1 : 0,
-    };
-  }
-  return new Gateway(new OPFaultRollup(createProviderPair(config), config));
+  return new Gateway(
+    new OPFaultRollup(createProviderPair(config), config, unfinalized ? 1 : 0)
+  );
 }
 
 function createNitroGateway(
   config: RollupDeployment<NitroConfig>,
   unfinalized?: boolean
 ) {
-  if (typeof unfinalized === 'boolean') {
-    config = {
-      ...config,
-      minAgeBlocks: unfinalized ? 1 : 0,
-    };
-  }
-  return new Gateway(new NitroRollup(createProviderPair(config), config));
+  return new Gateway(
+    new NitroRollup(createProviderPair(config), config, unfinalized ? 1 : 0)
+  );
 }
 
 function createScrollGateway(config: RollupDeployment<ScrollConfig>) {

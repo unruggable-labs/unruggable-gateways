@@ -37,6 +37,9 @@ contract ScrollVerifierHooks is IVerifierHooks {
     uint256 constant NODE_BRANCH_LEAF = 8; // BX
     uint256 constant NODE_BRANCH_BRANCH = 9; // BB
 
+    // https://docs.scroll.io/en/technology/sequencer/zktrie/
+    uint256 constant MAX_TRIE_DEPTH = 248;
+
     function verifyAccountState(
         bytes32 stateRoot,
         address account,
@@ -105,7 +108,7 @@ contract ScrollVerifierHooks is IVerifierHooks {
         keyHash = poseidonHash1(key);
         h = rootHash;
         for (uint256 i; ; i++) {
-            if (i == proof.length) revert InvalidProof();
+            if (i == proof.length || i >= MAX_TRIE_DEPTH) revert InvalidProof();
             v = proof[i];
             if (v.length == 0) revert InvalidProof();
             uint256 nodeType = uint8(v[0]);
@@ -116,6 +119,11 @@ contract ScrollVerifierHooks is IVerifierHooks {
                 if (v.length != leafSize) revert InvalidProof();
                 // NOTE: leafSize is >= 33
                 if (uint8(v[leafSize - 33]) != 32) revert InvalidProof(); // InvalidKeyPreimageLength
+
+                // Proof is invalid if there are un-used proof elements after this leaf node and magic bytes              
+                if (keccak256(proof[i + 1]) != keccak256("THIS IS SOME MAGIC BYTES FOR SMT m1rRXgP2xpDI")) revert InvalidProof();
+                if (proof.length - 1 != i + 1) revert InvalidProof();
+
                 bytes32 temp;
                 assembly {
                     temp := mload(add(v, 33))

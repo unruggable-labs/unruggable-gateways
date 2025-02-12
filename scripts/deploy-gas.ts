@@ -20,10 +20,19 @@ await foundry.deploy({
   libs: { SparseMerkleProof: A },
 });
 
+// finders
+await foundry.deploy({ file: 'OPFaultGameFinder' });
+await foundry.deploy({ file: 'OPOutputFinder' });
+
 // few examples
 await foundry.deploy({
-  file: 'OPVerifier',
+  file: 'NitroVerifier',
   args: [[], 0, A, A, 0],
+  libs: { GatewayVM },
+});
+await foundry.deploy({
+  file: 'OPVerifier',
+  args: [[], 0, A, A, A, 0],
   libs: { GatewayVM },
 });
 await foundry.deploy({
@@ -46,15 +55,18 @@ await foundry.shutdown();
 console.log(new Date());
 console.log(report);
 
-// 2024-10-29T20:39:17.608Z
+// 2025-02-07T14:27:06.637Z
 // {
-//  GatewayVM: 1875116n,
-//  EthVerifierHooks: 1280832n,
-//  ScrollVerifierHooks: 550613n,
-//  ZKSyncVerifierHooks: 323789n,
-//  LineaVerifierHooks: 817863n,
-//  OPVerifier: 1131805n,
-//  OPFaultVerifier: 1247548n,
-//  ReverseOPVerifier: 1486827n,
-//  TrustedVerifier: 1232904n,
+//   GatewayVM: 1905202n,
+//   EthVerifierHooks: 1309379n,
+//   ScrollVerifierHooks: 564033n,
+//   ZKSyncVerifierHooks: 323789n,
+//   LineaVerifierHooks: 817863n,
+//   OPFaultGameFinder: 467662n,
+//   OPOutputFinder: 374663n,
+//   NitroVerifier: 1732136n,
+//   OPVerifier: 1090490n,
+//   OPFaultVerifier: 1247548n,
+//   ReverseOPVerifier: 1486839n,
+//   TrustedVerifier: 1223497n,
 // }

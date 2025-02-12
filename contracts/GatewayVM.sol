@@ -15,14 +15,15 @@ struct ProofSequence {
     IVerifierHooks hooks;
 }
 
-library GatewayVM {
-    error InvalidRequest();
-    error InvalidStackIndex(uint256 index);
-    error InvalidOutputIndex(uint256 index);
-    error StackOverflow();
+error InvalidRequest();
+error InvalidStackIndex(uint256 index, uint256 count, bool reversed);
+error InvalidOutputIndex(uint256 index, uint256 count);
+error StackOverflow();
 
-    // current limit is 256 because of stackBits
-    uint256 constant MAX_STACK = 256;
+// current limit is 256 because of stackBits
+uint256 constant MAX_STACK = 256;
+
+library GatewayVM {
 
     function dump(Machine memory vm, string memory label) internal view {
         console.log('DEBUG(%s)', label);
@@ -93,9 +94,11 @@ library GatewayVM {
     function pushBoolean(Machine memory vm, bool x) internal pure {
         vm.pushUint256(x ? 1 : 0);
     }
+
     function pushUint256(Machine memory vm, uint256 x) internal pure {
         vm.push(x, true);
     }
+
     function pushBytes(Machine memory vm, bytes memory v) internal pure {
         uint256 x;
         assembly {
@@ -103,18 +106,21 @@ library GatewayVM {
         }
         vm.push(x, false);
     }
+
     function push(Machine memory vm, uint256 x, bool raw) internal pure {
         if (vm.stackSize == MAX_STACK) revert StackOverflow();
         uint256 i = vm.stackSize++;
         if (vm.isStackRaw(i) != raw) vm.stackBits ^= 1 << i;
         vm.stack[i] = x;
     }
+
     function isStackRaw(
         Machine memory vm,
         uint256 i
     ) internal pure returns (bool) {
         return (vm.stackBits & (1 << i)) != 0;
     }
+
     function isStackZeros(
         Machine memory vm,
         uint256 i
@@ -124,6 +130,7 @@ library GatewayVM {
                 ? vm.stackAsUint256(i) == 0
                 : isZeros(vm.stackAsBytes(i));
     }
+
     function stackAsUint256(
         Machine memory vm,
         uint256 i
@@ -140,6 +147,7 @@ library GatewayVM {
             }
         }
     }
+
     function stackAsBytes(
         Machine memory vm,
         uint256 i
@@ -157,11 +165,13 @@ library GatewayVM {
     function popAsUint256(Machine memory vm) internal pure returns (uint256) {
         return vm.stackAsUint256(vm.pop());
     }
+
     function popAsBytes(
         Machine memory vm
     ) internal pure returns (bytes memory) {
         return vm.stackAsBytes(vm.pop());
     }
+
     function pop(Machine memory vm) internal pure returns (uint256) {
         return vm.stackSize = vm.checkBack(0);
     }
@@ -171,13 +181,13 @@ library GatewayVM {
         uint256 back
     ) internal pure returns (uint256) {
         if (back >= vm.stackSize) {
-            uint256 index = vm.stackSize - 1 - back;
-            revert InvalidStackIndex(index);
+            revert InvalidStackIndex(back, vm.stackSize, true);
         }
         unchecked {
             return vm.stackSize - 1 - back;
         }
     }
+
     function checkRead(
         Machine memory vm,
         uint256 n
@@ -198,6 +208,7 @@ library GatewayVM {
             i := shr(248, mload(src)) // read one byte
         }
     }
+
     function readUint(
         Machine memory vm,
         uint256 n
@@ -209,6 +220,7 @@ library GatewayVM {
             x := shr(shl(3, sub(32, n)), mload(src)) // remove right pad
         }
     }
+
     function readBytes(
         Machine memory vm,
         uint256 n
@@ -216,6 +228,7 @@ library GatewayVM {
         v = Bytes.slice(vm.buf, vm.pos, n); // throws on overflow
         vm.pos += n;
     }
+
     function readProof(Machine memory vm) internal pure returns (bytes memory) {
         ProofSequence memory p = vm.proofs;
         return p.proofs[uint8(p.order[p.index++])];
@@ -237,6 +250,7 @@ library GatewayVM {
                 )
             );
     }
+
     function proveSlots(
         Machine memory vm,
         uint256 count
@@ -250,6 +264,7 @@ library GatewayVM {
             }
         }
     }
+
     function proveBytes(
         Machine memory vm
     ) internal view returns (bytes memory v) {
@@ -275,6 +290,7 @@ library GatewayVM {
             }
         }
     }
+
     function proveArray(
         Machine memory vm,
         uint256 step
@@ -343,7 +359,9 @@ library GatewayVM {
                 vm.slot = 0;
             } else if (op == GatewayOP.SET_OUTPUT) {
                 uint256 i = vm.popAsUint256();
-                if (i >= outputs.length) revert InvalidOutputIndex(i); // rhs evaluates BEFORE lhs
+                if (i >= outputs.length) {
+                    revert InvalidOutputIndex(i, outputs.length);
+                }
                 outputs[i] = vm.popAsBytes();
             } else if (op == GatewayOP.ASSERT) {
                 uint8 exitCode = vm.readByte();
@@ -371,11 +389,15 @@ library GatewayVM {
                 );
             } else if (op == GatewayOP.PUSH_STACK) {
                 uint256 i = vm.popAsUint256();
-                if (i >= vm.stackSize) revert InvalidStackIndex(i);
+                if (i >= vm.stackSize) {
+                    revert InvalidStackIndex(i, vm.stackSize, false);
+                }
                 vm.push(vm.stack[i], vm.isStackRaw(i));
             } else if (op == GatewayOP.PUSH_OUTPUT) {
                 uint256 i = vm.popAsUint256();
-                if (i >= outputs.length) revert InvalidOutputIndex(i);
+                if (i >= outputs.length) {
+                    revert InvalidOutputIndex(i, outputs.length);
+                }
                 vm.pushBytes(outputs[i]);
             } else if (op == GatewayOP.GET_SLOT) {
                 vm.pushUint256(vm.slot);
