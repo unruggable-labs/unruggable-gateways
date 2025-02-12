@@ -93,7 +93,8 @@ export function testOP(
   opts: TestOptions & { minAgeSec?: number }
 ) {
   describe.skipIf(shouldSkip(opts))(testName(config), async () => {
-    const rollup = new OPRollup(createProviderPair(config), config);
+    const providerPair = createProviderPair(config);
+    const rollup = new OPRollup(providerPair, config);
     const foundry = await Foundry.launch({
       fork: providerURL(config.chain1),
       infoLog: !!opts.log,
@@ -126,7 +127,16 @@ export function testOPFault(
   describe.skipIf(shouldSkip(opts))(
     testName(config, { unfinalized: !!config.minAgeSec }),
     async () => {
-      const rollup = new OPFaultRollup(createProviderPair(config), config);
+      const providerPair = createProviderPair(config);
+      console.log(
+        'provider1',
+        providerURL(providerPair.provider1._network.chainId)
+      );
+      console.log(
+        'provider2',
+        providerURL(providerPair.provider2._network.chainId)
+      );
+      const rollup = new OPFaultRollup(providerPair, config);
       const foundry = await Foundry.launch({
         fork: providerURL(config.chain1),
         infoLog: !!opts.log,
