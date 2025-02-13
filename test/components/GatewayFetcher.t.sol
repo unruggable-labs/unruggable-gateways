@@ -52,13 +52,25 @@ contract TestGatewayFetcher is Test {
             evalUint256(R(1).push(a).push(b).times(), a * b);
         }
     }
+    // https://book.getfoundry.sh/cheatcodes/expect-revert
+    // https://book.getfoundry.sh/forge/forge-std?highlight=panic#standard-libraries
     function testFuzz_divide(uint256 a, uint256 b) external {
-        if (b == 0) vm.expectRevert();
-        evalUint256(R(1).push(a).push(b).divide(), a / b);
+        GatewayRequest memory r = R(1).push(a).push(b).divide();
+        if (b == 0) {
+            vm.expectRevert(stdError.divisionError);
+            evalRequest(r.setOutput(0));
+        } else {
+            evalUint256(r, a/b);
+        }
     }
     function testFuzz_mod(uint256 a, uint256 b) external {
-        if (b == 0) vm.expectRevert();
-        evalUint256(R(1).push(a).push(b).mod(), a % b);
+        GatewayRequest memory r = R(1).push(a).push(b).mod();
+        if (b == 0) {
+            vm.expectRevert(stdError.divisionError);
+            evalRequest(r.setOutput(0));
+        } else {
+            evalUint256(r, a % b);
+        }
     }
     function testFuzz_pow(uint256 a, uint256 b) external view {
         unchecked {
