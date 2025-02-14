@@ -10,8 +10,8 @@ import { FoundryBase } from '@adraffy/blocksmith';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import pkg from '../package.json';
-import tsc from '../tsconfig.json'; // parses json comments
+import pkg from '../package.json' with { type: 'json' };
+import tsc from '../tsconfig.json' with { type: 'json' }; // parses json comments
 
 const baseDir = fileURLToPath(new URL('../', import.meta.url));
 const distDir = join(baseDir, 'dist');

@@ -35,5 +35,7 @@ describe.skipIf(!!process.env.IS_CI)(testName(config), async () => {
   await setupTests(verifier, {
     // https://polygonscan.com/address/0x5BBf0fD3Dd8252Ee03bA9C03cF92F33551584361#code
     slotDataContract: '0x5BBf0fD3Dd8252Ee03bA9C03cF92F33551584361',
+    // https://polygonscan.com/address/0x8e40F7Aa288E703A8D01c84d52dE7f1B7321e14e#code
+    slotDataPointer: '0x8e40F7Aa288E703A8D01c84d52dE7f1B7321e14e',
   });
 });

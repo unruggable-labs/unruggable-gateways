@@ -2,6 +2,7 @@ import { Foundry } from '@adraffy/blocksmith';
 import { CHAINS } from '../../src/chains.js';
 import { EthProver } from '../../src/eth/EthProver.js';
 import { createProvider, providerURL } from '../providers.js';
+import { ScrollRollup } from '../../src/scroll/ScrollRollup.js';
 import { ZeroAddress } from 'ethers/constants';
 
 // <empty> https://sepolia.scrollscan.com/address/0x6f390C35b8b96dfDF42281Cec36f1226eEd87c6B#code
@@ -27,7 +28,7 @@ const foundry = await Foundry.launch({
 
 const verifier = await foundry.deploy({
   file: 'ScrollVerifierHooks',
-  args: ['0x3508174Fa966e75f70B15348209E33BC711AE63e'], // Poseidon
+  args: [ScrollRollup.mainnetConfig.poseidon],
 });
 
 try {

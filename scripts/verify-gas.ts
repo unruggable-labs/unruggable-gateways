@@ -226,9 +226,6 @@ for (const setup of setups) {
         .read()
         .setOutput(0)
     ).catch((err) => {
-      // 20240921: this shouldn't happen but theres some verifier issues
-      // scroll cant prove a zero
-      // linea cant prove some zeros
       return err.shortMessage ?? err.message ?? 'unknown error';
     });
 
@@ -252,39 +249,39 @@ for (const setup of setups) {
   await foundry?.shutdown();
 }
 
-// 2024-12-05T22:44:43.396Z
+// 2024-12-11T19:51:00.382Z
 // {
 //   name: "OP",
-//   rollup: 78428n,
-//   account: 336287n,
-//   storage1: 269206n,
-//   storage0: 222387n,
+//   rollup: 79326n,
+//   account: 336239n,
+//   storage1: 269136n,
+//   storage0: 253343n,
 // }
 // {
 //   name: "LINEA",
 //   rollup: 48843n,
-//   account: 1438072n,
-//   storage1: 1366423n,
-//   storage0: 2665546n,
+//   account: 1438024n,
+//   storage1: 1366327n,
+//   storage0: 2665510n,
 // }
 // {
 //   name: "ZKSYNC",
-//   rollup: 58872n,
-//   account: 13046242n,
-//   storage1: 13048742n,
+//   rollup: 58860n,
+//   account: 13046266n,
+//   storage1: 13048730n,
 //   storage0: 13054036n,
 // }
 // {
 //   name: "SCROLL",
-//   rollup: 48754n,
-//   account: 1231437n,
-//   storage1: 819610n,
-//   storage0: 793344n,
+//   rollup: 48730n,
+//   account: 1231470n,
+//   storage1: 819619n,
+//   storage0: 855067n,
 // }
 // {
 //   name: "TAIKO",
 //   rollup: 64182n,
-//   account: 292304n,
-//   storage1: 285443n,
-//   storage0: 257192n,
+//   account: 292983n,
+//   storage1: 285388n,
+//   storage0: 257136n,
 // }

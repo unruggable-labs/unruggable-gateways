@@ -28,6 +28,7 @@ type ABIOutputTuple = {
 };
 
 const OUTPUT_FINDER_MAINNET = '0xFe75ecc04DB4f46762126924d21Ae3d35087c482';
+const OUTPUT_FINDER_SEPOLIA = ''; //to deploy
 const OUTPUT_FINDER_HOLESKY = '0x35FF17ae0a5ac38F66E7994401a3c304023881Ad';
 const OUTPUT_FINDER_OP_BNB = '0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05';
 
@@ -128,6 +129,73 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     chain2: CHAINS.CELO_ALFAJORES,
     OptimismPortal: '0x82527353927d8D069b3B452904c942dA149BA381',
     OutputFinder: OUTPUT_FINDER_HOLESKY,
+  };
+
+  // https://docs.worldcoin.org/world-chain/developers/world-chain-contracts
+  static readonly worldMainnetConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.WORLD,
+    OptimismPortal: '0xd5ec14a83B7d95BE1E2Ac12523e2dEE12Cbeea6C',
+    OutputFinder: OUTPUT_FINDER_MAINNET,
+  };
+
+  // https://docs.zircuit.com/smart-contracts/contract_addresses
+  static readonly zircuitMainnetConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.ZIRCUIT,
+    OptimismPortal: '0x17bfAfA932d2e23Bd9B909Fd5B4D2e2a27043fb1',
+    OutputFinder: OUTPUT_FINDER_MAINNET,
+  };
+  // https://docs.zircuit.com/testnet/contract_addresses
+  static readonly zircuitSepoliaConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.SEPOLIA,
+    chain2: CHAINS.ZIRCUIT_SEPOLIA,
+    OptimismPortal: '0x787f1C8c5924178689E0560a43D848bF8E54b23e',
+    OutputFinder: OUTPUT_FINDER_SEPOLIA,
+  };
+
+  // https://docs.lisk.com/about-lisk/contracts
+  static readonly liskMainnetConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.LISK,
+    OptimismPortal: '0x26dB93F8b8b4f7016240af62F7730979d353f9A7',
+    OutputFinder: OUTPUT_FINDER_MAINNET,
+  };
+  static readonly liskSepoliaConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.SEPOLIA,
+    chain2: CHAINS.LISK_SEPOLIA,
+    OptimismPortal: '0xe3d90F21490686Ec7eF37BE788E02dfC12787264',
+    OutputFinder: OUTPUT_FINDER_SEPOLIA,
+  };
+
+  // https://docs.mintchain.io/deploy/contracts#l1-contract-addresses
+  static readonly mintMainnetConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.MINT,
+    OptimismPortal: '0x59625d1FE0Eeb8114a4d13c863978F39b3471781',
+    OutputFinder: OUTPUT_FINDER_MAINNET,
+    //commitFreqSec: 12 * 60 * 60 // 12hr
+  };
+  static readonly mintSepoliaConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.SEPOLIA,
+    chain2: CHAINS.MINT_SEPOLIA,
+    OptimismPortal: '0x0f598aFc1c303BF2d0Ee82435b58c7b47BC56Ed1',
+    OutputFinder: OUTPUT_FINDER_SEPOLIA,
+  };
+
+  // https://docs.gobob.xyz/learn/reference/contracts/#ethereum-l1
+  static readonly bobMainnetConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.BOB,
+    OptimismPortal: '0x994e3B01D130944a3E67BFd3B8Fc73069b959FEc',
+    OutputFinder: OUTPUT_FINDER_MAINNET,
+    // commitFreqSec: 12hr
+  };
+  static readonly bobSepoliaConfig: RollupDeployment<OPConfig> = {
+    chain1: CHAINS.SEPOLIA,
+    chain2: CHAINS.BOB_SEPOLIA,
+    OptimismPortal: '0x7FA8cA1ED6F50D829cD960aE398949B5Bc339615',
+    OutputFinder: OUTPUT_FINDER_SEPOLIA,
   };
 
   readonly OptimismPortal: HexAddress;

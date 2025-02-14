@@ -1,8 +1,11 @@
 import { LineaRollup } from '../../src/linea/LineaRollup.js';
-import { createProviderPair } from '../providers.js';
+import { createProviderPair, providerURL } from '../providers.js';
 
 const config = LineaRollup.mainnetConfig;
 const rollup = new LineaRollup(createProviderPair(config), config);
+
+console.log('provider1', providerURL(rollup.provider1._network.chainId));
+console.log('provider2', providerURL(rollup.provider2._network.chainId));
 
 console.log({
   L1MessageService: rollup.L1MessageService.target,

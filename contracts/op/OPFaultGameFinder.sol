@@ -130,6 +130,7 @@ contract OPFaultGameFinder {
         uint256 minAgeSec,
         FinalizationParams memory finalizationParams
     ) internal view returns (bool) {
+        if (gameType > 255) return false;
         if (gameTypeBitMask & (1 << gameType) == 0) return false;
         // https://specs.optimism.io/fault-proof/stage-one/bridge-integration.html#blacklisting-disputegames
         if (portal.disputeGameBlacklist(gameProxy)) return false;
