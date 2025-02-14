@@ -38,6 +38,12 @@ export class MorphRollup extends AbstractRollup<MorphCommit> {
     Rollup: '0x759894ced0e6af42c26668076ffa84d02e3cef60',
     poseidon: '0x3508174Fa966e75f70B15348209E33BC711AE63e',
   };
+  static readonly holeskyConfig: RollupDeployment<MorphConfig> = {
+    chain1: CHAINS.HOLESKY,
+    chain2: CHAINS.MORPH_HOLESKY,
+    Rollup: '0x759894ced0e6af42c26668076ffa84d02e3cef60',
+    poseidon: '0x3508174Fa966e75f70B15348209E33BC711AE63e',
+  };
 
   readonly Rollup: Contract;
   readonly poseidon: HexAddress;

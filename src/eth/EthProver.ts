@@ -17,10 +17,10 @@ export class EthProver extends BlockProver {
   override async isContract(target: HexAddress): Promise<boolean> {
     target = target.toLowerCase();
     if (this.fast) {
-      return this.cache.get(target, async () => {
+      return this.cache.get(target, async (a) => {
         // note: this actually reverts when the block is bad
         // eg. {"code": -32602, "message": "Unknown block number"}
-        const code = await this.provider.getCode(target, this.block);
+        const code = await this.provider.getCode(a, this.block);
         return code.length > 2;
       });
     }

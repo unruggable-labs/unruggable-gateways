@@ -14,9 +14,7 @@ import type { RPCEthGetBlock } from '../eth/types.js';
 import { type ABIHeaderTuple, ROOT_CHAIN_ABI } from './types.js';
 import { ZeroHash } from 'ethers/constants';
 import { Contract } from 'ethers/contract';
-import { Log } from 'ethers/providers';
 import { id as keccakStr } from 'ethers/hash';
-import { getBytes, hexlify } from 'ethers/utils';
 import { CHAINS } from '../chains.js';
 import { EthProver } from '../eth/EthProver.js';
 import { ABI_CODER, toUnpaddedHex } from '../utils.js';
@@ -36,16 +34,12 @@ export type PolygonPoSConfig = {
 
 export type PolygonPoSCommit = RollupCommit<EthProver> &
   ABIHeaderTuple & {
-    readonly rlpEncodedProof: Uint8Array;
-    readonly rlpEncodedBlock: Uint8Array;
+    readonly rlpEncodedProof: HexString;
+    readonly rlpEncodedBlock: HexString;
   };
 
-function extractPrevBlockHash(event: Log): HexString32 {
-  return event.topics[1];
-}
-
 export class PolygonPoSRollup extends AbstractRollup<PolygonPoSCommit> {
-  // // https://docs.polygon.technology/pos/reference/contracts/genesis-contracts/
+  // https://docs.polygon.technology/pos/reference/contracts/genesis-contracts/
   static readonly mainnetConfig: RollupDeployment<PolygonPoSConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.POLYGON_POS,
@@ -133,14 +127,14 @@ export class PolygonPoSRollup extends AbstractRollup<PolygonPoSCommit> {
   //     v.subarray(i << 5, (i + 1) << 5)
   //   );
   // }
-  async fetchAPIReceiptProof(txHash: HexString32) {
+  async fetchAPIReceiptProof(txHash: HexString32): Promise<HexString> {
     const url = new URL(
       `./exit-payload/${txHash}?eventSignature=${this.poster.topicHash}`,
       this.apiURL
     );
     const json = await this.fetchJSON(url);
     if (json.error) throw new Error(`receipt proof: ${json.message}`);
-    return getBytes(json.result);
+    return json.result;
   }
   override async fetchLatestCommitIndex(): Promise<bigint> {
     // find the end range of the last header
@@ -173,9 +167,9 @@ export class PolygonPoSRollup extends AbstractRollup<PolygonPoSCommit> {
       fromBlock: l2BlockNumberStart,
       toBlock: l2BlockNumberEnd,
     });
-    if (!events.length) throw new Error(`no poster`);
+    if (!events.length) throw new Error('no poster');
     const event = events[events.length - 1];
-    const prevBlockHash = extractPrevBlockHash(event);
+    const prevBlockHash: HexString32 = event.topics[1];
     // rlpEncodedProof:
     // 1. checkpoint index
     // 2. fast-merkle-proof => block in checkpoint
@@ -192,7 +186,7 @@ export class PolygonPoSRollup extends AbstractRollup<PolygonPoSCommit> {
       ]) as Promise<RPCEthGetBlock | null>,
     ]);
     if (!prevBlock) throw new Error('no prevBlock');
-    const rlpEncodedBlock = getBytes(encodeRlpBlock(prevBlock));
+    const rlpEncodedBlock = encodeRlpBlock(prevBlock);
     // if (ethers.keccak256(rlpEncodedBlock) !== prevBlockHash) {
     //   throw new Error('block hash mismatch`);
     // }
@@ -212,7 +206,7 @@ export class PolygonPoSRollup extends AbstractRollup<PolygonPoSCommit> {
     proofSeq: ProofSequence
   ): HexString {
     return ABI_CODER.encode(
-      ['tuple(bytes, bytes, bytes[], bytes)'],
+      ['(bytes, bytes, bytes[], bytes)'],
       [
         [
           commit.rlpEncodedProof,
@@ -236,8 +230,8 @@ export class PolygonPoSRollup extends AbstractRollup<PolygonPoSCommit> {
       l2BlockNumber: commit.prover.block,
       l2BlockNumberStart: toUnpaddedHex(commit.l2BlockNumberStart),
       l2BlockNumberEnd: toUnpaddedHex(commit.l2BlockNumberEnd),
-      rlpEncodedBlock: hexlify(commit.rlpEncodedBlock),
-      rlpEncodedProof: hexlify(commit.rlpEncodedProof),
+      rlpEncodedBlock: commit.rlpEncodedBlock,
+      rlpEncodedProof: commit.rlpEncodedProof,
       rootHash: commit.rootHash,
     };
   }
@@ -247,8 +241,8 @@ export class PolygonPoSRollup extends AbstractRollup<PolygonPoSCommit> {
       prover: new EthProver(this.provider2, json.l2BlockNumber),
       l2BlockNumberStart: BigInt(json.l2BlockNumberStart),
       l2BlockNumberEnd: BigInt(json.l2BlockNumberEnd),
-      rlpEncodedProof: getBytes(json.rlpEncodedProof),
-      rlpEncodedBlock: getBytes(json.rlpEncodedBlock),
+      rlpEncodedProof: json.rlpEncodedProof,
+      rlpEncodedBlock: json.rlpEncodedBlock,
       rootHash: json.rootHash,
     };
     this.configure?.(commit);

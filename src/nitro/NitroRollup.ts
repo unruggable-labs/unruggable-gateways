@@ -46,7 +46,7 @@ export class NitroRollup
   static readonly arb1SepoliaConfig: RollupDeployment<NitroConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.ARB_SEPOLIA,
-    Rollup: '0xd80810638dbDF9081b72C1B33c65375e807281C8',
+    Rollup: '0x042B2E6C5E99d4c521bd49beeD5E99651D9B0Cf4',
   };
   static readonly arbNovaMainnetConfig: RollupDeployment<NitroConfig> = {
     chain1: CHAINS.MAINNET,
