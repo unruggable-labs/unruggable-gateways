@@ -41,14 +41,20 @@ export abstract class AbstractRollup<C extends RollupCommit<AbstractProver>> {
   }
 
   // abstract interface
-  abstract fetchLatestCommitIndex(): Promise<bigint>;
-  protected abstract _fetchParentCommitIndex(commit: C): Promise<bigint>;
   protected abstract _fetchCommit(index: bigint): Promise<C>;
+  abstract fetchLatestCommitIndex(): Promise<bigint>;
   abstract encodeWitness(commit: C, proofSeq: ProofSequence): HexString;
   abstract windowFromSec(sec: number): number;
 
+  // default interface
   get unfinalized() {
-    return false; // all rollups are finalized by default
+    return false; // all rollups are finalized
+  }
+  protected async _fetchParentCommitIndex(commit: C): Promise<bigint> {
+    return commit.index - 1n; // immediate previous
+  }
+  async isCommitStillValid(_commit: C) {
+    return true; // always valid
   }
 
   // abstract wrappers

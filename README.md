@@ -8,6 +8,10 @@ This repository provides an end-to-end solution for proving data from rollup cha
 
 ![Unruggable Gateways CI](https://github.com/unruggable-labs/unruggable-gateways/actions/workflows/unruggable-gateways.yml/badge.svg)
 
+## Audits
+
+The codebase has been audited. Details of our audits can be found [here](./audits/audits.md).
+
 ## Quickstart
 
 `npm i @unruggable/gateways` [&check;](https://www.npmjs.com/package/@unruggable/unruggable-gateways)

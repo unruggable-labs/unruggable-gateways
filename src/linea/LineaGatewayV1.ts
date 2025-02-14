@@ -21,8 +21,8 @@ export class LineaGatewayV1 extends GatewayV1<LineaRollup> {
     const witness = ABI_CODER.encode(
       [
         'uint256',
-        'tuple(address, uint256, tuple(bytes, bytes[]))',
-        'tuple(bytes32, uint256, tuple(bytes32, bytes[]), bool)[]',
+        '(address, uint256, (bytes, bytes[]))',
+        '(bytes32, uint256, (bytes32, bytes[]), bool)[]',
       ],
       [
         commit.index,

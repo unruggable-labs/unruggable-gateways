@@ -11,10 +11,7 @@ const config = NitroRollup.arb1MainnetConfig;
 describe.skipIf(!!process.env.IS_CI)(
   testName(config, { unfinalized: true }),
   async () => {
-    const rollup = new NitroRollup(createProviderPair(config), {
-      ...config,
-      minAgeBlocks: 300,
-    });
+    const rollup = new NitroRollup(createProviderPair(config), config, 300);
     const foundry = await Foundry.launch({
       fork: providerURL(config.chain1),
       infoLog: false,

@@ -7,6 +7,18 @@ import { createProvider, createProviderPair } from '../providers.js';
 //console.log(createProvider(1n)._getConnection())
 
 if (1) {
+	const config = { ...OPRollup.blastMainnnetConfig, minAgeSec: 3600 }
+	const rollup = new OPRollup(createProviderPair(config), config);
+	console.log("latestCommitIndex1", await rollup.fetchLatestCommitIndex());
+	rollup.latestBlockTag = await fetchBlockNumber(rollup.provider1) - 20000n;
+	console.log("-------------");
+	console.log("latestCommitIndex2", await rollup.fetchLatestCommitIndex());
+	throw 1;
+}
+
+process.exit();
+
+if (1) {
 	const config = TaikoRollup.mainnetConfig;
 	const rollup = await TaikoRollup.create(createProviderPair(config), config);
 	console.log(await rollup.fetchLatestCommitIndex());

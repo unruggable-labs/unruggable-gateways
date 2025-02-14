@@ -92,51 +92,54 @@ export function testOP(
   config: RollupDeployment<OPConfig>,
   opts: TestOptions & { minAgeSec?: number }
 ) {
-  describe.skipIf(shouldSkip(opts))(testName(config), async () => {
-    const providerPair = createProviderPair(config);
-    const rollup = new OPRollup(providerPair, config);
-    const foundry = await Foundry.launch({
-      fork: providerURL(config.chain1),
-      infoLog: !!opts.log,
-    });
-    afterAll(foundry.shutdown);
-    const gateway = new Gateway(rollup);
-    const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
-    afterAll(ccip.shutdown);
-    const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
-    const hooks = await foundry.deploy({ file: 'EthVerifierHooks' });
-    const verifier = await foundry.deploy({
-      file: 'OPVerifier',
-      args: [
-        [ccip.endpoint],
-        opts.window ?? rollup.defaultWindow,
-        hooks,
-        rollup.L2OutputOracle,
-        opts.minAgeSec ?? 0,
-      ],
-      libs: { GatewayVM },
-    });
-    await setupTests(verifier, opts);
-  });
+  describe.skipIf(shouldSkip(opts))(
+    testName(config, { unfinalized: !!opts.minAgeSec }),
+    async () => {
+      const rollup = new OPRollup(
+        createProviderPair(config),
+        config,
+        opts.minAgeSec
+      );
+      const foundry = await Foundry.launch({
+        fork: providerURL(config.chain1),
+        infoLog: !!opts.log,
+      });
+      afterAll(foundry.shutdown);
+      const gateway = new Gateway(rollup);
+      const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
+      afterAll(ccip.shutdown);
+      const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
+      const hooks = await foundry.deploy({ file: 'EthVerifierHooks' });
+      const verifier = await foundry.deploy({
+        file: 'OPVerifier',
+        args: [
+          [ccip.endpoint],
+          rollup.defaultWindow,
+          hooks,
+          rollup.OptimismPortal,
+          rollup.OutputFinder,
+          rollup.minAgeSec,
+        ],
+        libs: { GatewayVM },
+      });
+      await setupTests(verifier, opts);
+    }
+  );
 }
 
 export function testOPFault(
   config: RollupDeployment<OPFaultConfig>,
-  opts: TestOptions
+  opts: TestOptions & { minAgeSec?: number }
 ) {
   describe.skipIf(shouldSkip(opts))(
-    testName(config, { unfinalized: !!config.minAgeSec }),
+    testName(config, { unfinalized: !!opts.minAgeSec }),
     async () => {
-      const providerPair = createProviderPair(config);
-      console.log(
-        'provider1',
-        providerURL(providerPair.provider1._network.chainId)
+      const rollup = new OPFaultRollup(
+        createProviderPair(config),
+        config,
+        opts.minAgeSec
       );
-      console.log(
-        'provider2',
-        providerURL(providerPair.provider2._network.chainId)
-      );
-      const rollup = new OPFaultRollup(providerPair, config);
+      rollup.latestBlockTag = 'latest';
       const foundry = await Foundry.launch({
         fork: providerURL(config.chain1),
         infoLog: !!opts.log,
@@ -402,18 +405,23 @@ export function testTaiko(
 export function testDoubleNitro(
   config12: RollupDeployment<NitroConfig>,
   config23: RollupDeployment<NitroConfig>,
-  opts: TestOptions
+  opts: TestOptions & { minAgeBlocks12?: number; minAgeBlocks23?: number }
 ) {
   describe.skipIf(shouldSkip(opts))(
     testName(
       { ...config12, chain3: config23.chain2 },
-      { unfinalized: !!config12.minAgeBlocks || !!config23.minAgeBlocks }
+      { unfinalized: !!opts.minAgeBlocks12 || !!opts.minAgeBlocks23 }
     ),
     async () => {
       const rollup = new DoubleNitroRollup(
-        new NitroRollup(createProviderPair(config12), config12),
+        new NitroRollup(
+          createProviderPair(config12),
+          config12,
+          opts.minAgeBlocks12
+        ),
         createProvider(config23.chain2),
-        config23
+        config23,
+        opts.minAgeBlocks23
       );
       const foundry = await Foundry.launch({
         fork: providerURL(config12.chain1),

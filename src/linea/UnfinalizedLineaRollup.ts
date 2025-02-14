@@ -40,13 +40,13 @@ export class UnfinalizedLineaRollup extends AbstractRollup<UnfinalizedLineaCommi
     const l1BlockInfo = await fetchBlock(this.provider1, this.latestBlockTag);
     const l1BlockNumber = parseInt(l1BlockInfo.number) - this.minAgeBlocks;
     const step = this.getLogsStepSize;
-    for (let i = l1BlockNumber; i > 0n; i -= step) {
+    for (let i = l1BlockNumber; i >= 0; i -= step) {
       const logs = await this.provider1.getLogs({
         address: this.L1MessageService.target,
         topics: [
           this.L1MessageService.filters.DataSubmittedV2.fragment.topicHash,
         ],
-        fromBlock: i < step ? 0n : i + 1 - step,
+        fromBlock: i < step ? 0 : i + 1 - step,
         toBlock: i,
       });
       if (logs.length) return BigInt(logs[logs.length - 1].blockNumber);

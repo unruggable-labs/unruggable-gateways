@@ -2,10 +2,7 @@ import { NitroRollup } from '../../src/nitro/NitroRollup.js';
 import { createProviderPair } from '../providers.js';
 
 const config = NitroRollup.arb1MainnetConfig;
-const rollup = new NitroRollup(createProviderPair(config), {
-  ...config,
-  minAgeBlocks: 300, // 1 hr / (12 sec/block)
-});
+const rollup = new NitroRollup(createProviderPair(config), config, 300); // 1 hr / (12 sec/block)
 
 console.log({
   L2Rollup: rollup.Rollup.target,

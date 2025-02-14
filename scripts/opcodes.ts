@@ -40,7 +40,7 @@ try {
     const name = `PUSH_${i}`;
     expect(solMap.get(name), name).toEqual(i);
   }
-  if (process.argv.length == 2) {
+  if (process.argv.pop() !== 'quiet') {
     console.log(Object.fromEntries([...jsMap]));
   }
 } finally {
