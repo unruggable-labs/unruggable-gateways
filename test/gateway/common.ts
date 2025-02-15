@@ -31,6 +31,7 @@ import { EthSelfRollup } from '../../src/eth/EthSelfRollup.js';
 import { TrustedRollup } from '../../src/TrustedRollup.js';
 import { EthProver } from '../../src/eth/EthProver.js';
 import { randomBytes, SigningKey } from 'ethers/crypto';
+import { ZeroAddress } from 'ethers/constants';
 import { afterAll } from 'bun:test';
 import { describe } from '../bun-describe-fix.js';
 
@@ -67,20 +68,16 @@ export async function quickTest(
   return reader.readSlot(slot, { enableCcipRead: true });
 }
 
-export async function setupTests(
-  verifier: FoundryContract,
-  opts: TestOptions,
-  configure?: (fetcher: FoundryContract) => Promise<void>
-) {
+export async function setupTests(verifier: FoundryContract, opts: TestOptions) {
   const foundry = Foundry.of(verifier);
   const reader = await foundry.deploy({
     file: 'SlotDataReader',
-    args: [verifier, opts.slotDataContract],
+    args: [
+      verifier,
+      opts.slotDataContract,
+      opts.slotDataPointer ?? ZeroAddress,
+    ],
   });
-  if (opts.slotDataPointer) {
-    await foundry.confirm(reader.setPointer(opts.slotDataPointer));
-  }
-  await configure?.(reader);
   runSlotDataTests(reader, !!opts.slotDataPointer);
 }
 
@@ -286,19 +283,7 @@ export function testTrustedEth(chain2: Chain, opts: TestOptions) {
         args: [hooks, [ccip.endpoint], [rollup.signerAddress], 60],
         libs: { GatewayVM },
       });
-      await setupTests(verifier, opts, async (fetcher) => {
-        await foundry.confirm(
-          verifier.setConfig(
-            fetcher,
-            [ccip.endpoint],
-            opts.window ?? rollup.defaultWindow,
-            hooks
-          )
-        );
-        await foundry.confirm(
-          verifier.setSigner(fetcher, rollup.signerAddress, true)
-        );
-      });
+      await setupTests(verifier, opts);
     }
   );
 }

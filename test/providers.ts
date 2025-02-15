@@ -1,6 +1,6 @@
 /* eslint-disable prettier/prettier */
 import type { Chain, ChainPair, Provider, ProviderPair } from '../src/types.js';
-import { CHAINS } from '../src/chains.js';
+import { CHAINS, chainName } from '../src/chains.js';
 import { FetchRequest } from 'ethers/utils';
 import { GatewayProvider } from '../src/GatewayProvider.js';
 
@@ -178,12 +178,14 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         publicHTTP: 'https://rpc.linea.build',
         infura: 'linea-mainnet',
         //alchemy: 'linea-mainnet', // 20240901: linea_getProof doesn't work
+        drpc: 'linea',
       },
       {
         chain: CHAINS.LINEA_SEPOLIA,
         publicHTTP: 'https://rpc.sepolia.linea.build',
         infura: 'linea-sepolia',
         //alchemy: 'linea-sepolia', // 20241111: no linea_getProof
+        drpc: 'linea-sepolia',
       },
       {
         // https://docs.frax.com/fraxtal/network/network-information#fraxtal-mainnet
@@ -512,7 +514,7 @@ function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
       }
     }
   }
-  throw new Error(`unsupported chain: ${chain}`);
+  throw new Error(`${chainName(chain)} unsupported by ${order}`);
 }
 
 export function providerURL(chain: Chain): string {
