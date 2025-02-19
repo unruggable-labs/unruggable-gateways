@@ -12,13 +12,10 @@ contract SlotDataReader is GatewayFetchTarget, Ownable {
     address public _target;
     address public _pointer;
 
-    constructor(IGatewayVerifier verifier, address target) Ownable(msg.sender) {
+    constructor(IGatewayVerifier verifier, address target, address pointer) Ownable(msg.sender) {
         _verifier = verifier;
         _target = target;
-    }
-
-    function setPointer(address a) external {
-        _pointer = a;
+        _pointer = pointer;
     }
 
     function debugCallback(
