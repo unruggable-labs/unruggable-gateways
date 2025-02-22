@@ -11,8 +11,10 @@ import { Gateway } from '../src/gateway.js';
 import { type OPConfig, OPRollup } from '../src/op/OPRollup.js';
 import { type OPFaultConfig, OPFaultRollup } from '../src/op/OPFaultRollup.js';
 import { ReverseOPRollup } from '../src/op/ReverseOPRollup.js';
-import { type NitroConfig, NitroRollup } from '../src/nitro/NitroRollup.js';
-import { DoubleNitroRollup } from '../src/nitro/DoubleNitroRollup.js';
+import type { ArbitrumConfig } from '../src/arbitrum/ArbitrumRollup.js';
+import { NitroRollup } from '../src/arbitrum/NitroRollup.js';
+import { BoLDRollup } from '../src/arbitrum/BoLDRollup.js';
+import { DoubleArbitrumRollup } from '../src/arbitrum/DoubleArbitrumRollup.js';
 import { type ScrollConfig, ScrollRollup } from '../src/scroll/ScrollRollup.js';
 import { type TaikoConfig, TaikoRollup } from '../src/taiko/TaikoRollup.js';
 import { LineaRollup } from '../src/linea/LineaRollup.js';
@@ -279,12 +281,14 @@ async function createGateway(name: string, unfinalized: boolean) {
     case 'ink-sepolia':
       return createOPFaultGateway(OPFaultRollup.inkSepoliaConfig, unfinalized);
     case 'arb1':
-      return createNitroGateway(NitroRollup.arb1MainnetConfig, unfinalized);
+      return createArbitrumGateway(BoLDRollup.arb1MainnetConfig, unfinalized);
     case 'arb1-sepolia':
-      return createNitroGateway(NitroRollup.arb1SepoliaConfig, unfinalized);
+      return createArbitrumGateway(BoLDRollup.arb1SepoliaConfig, unfinalized);
+    case 'ape-L2':
+      return createArbitrumGateway(NitroRollup.apeMainnetConfig, unfinalized);
     case 'ape': {
       const config12 = {
-        ...NitroRollup.arb1MainnetConfig,
+        ...BoLDRollup.arb1MainnetConfig,
         minAgeBlocks: unfinalized ? 1 : 0,
       };
       const config23 = {
@@ -292,8 +296,8 @@ async function createGateway(name: string, unfinalized: boolean) {
         minAgeBlocks: unfinalized ? 1 : 0,
       };
       return new Gateway(
-        new DoubleNitroRollup(
-          new NitroRollup(createProviderPair(config12), config12),
+        new DoubleArbitrumRollup(
+          new BoLDRollup(createProviderPair(config12), config12),
           createProvider(config23.chain2),
           config23
         )
@@ -411,12 +415,16 @@ function createOPFaultGateway(
   );
 }
 
-function createNitroGateway(
-  config: RollupDeployment<NitroConfig>,
+function createArbitrumGateway(
+  config: RollupDeployment<ArbitrumConfig>,
   unfinalized?: boolean
 ) {
   return new Gateway(
-    new NitroRollup(createProviderPair(config), config, unfinalized ? 1 : 0)
+    new (config.isBoLD ? BoLDRollup : NitroRollup)(
+      createProviderPair(config),
+      config,
+      unfinalized ? 1 : 0
+    )
   );
 }
 

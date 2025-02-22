@@ -1,8 +1,9 @@
 import { createProvider, createProviderPair } from '../providers.js';
-import { NitroRollup } from '../../src/nitro/NitroRollup.js';
-import { DoubleNitroRollup } from '../../src/nitro/DoubleNitroRollup.js';
+import { NitroRollup } from '../../src/arbitrum/NitroRollup.js';
+import { BoLDRollup } from '../../src/arbitrum/BoLDRollup.js';
+import { DoubleArbitrumRollup } from '../../src/arbitrum/DoubleArbitrumRollup.js';
 
-const config12 = NitroRollup.arb1MainnetConfig;
+const config12 = BoLDRollup.arb1MainnetConfig;
 const config23 = NitroRollup.apeMainnetConfig;
 
 const provider12 = createProviderPair(config12);
@@ -18,8 +19,8 @@ const ages = [
 ];
 
 for (const [age12, age23] of ages) {
-  const rollup = new DoubleNitroRollup(
-    new NitroRollup(provider12, config12, age12),
+  const rollup = new DoubleArbitrumRollup(
+    new BoLDRollup(provider12, config12, age12),
     provider3,
     config23,
     age23

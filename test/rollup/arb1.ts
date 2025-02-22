@@ -1,11 +1,11 @@
-import { NitroRollup } from '../../src/nitro/NitroRollup.js';
+import { BoLDRollup } from '../../src/arbitrum/BoLDRollup.js';
 import { createProviderPair } from '../providers.js';
 
-const config = NitroRollup.arb1MainnetConfig;
-const rollup = new NitroRollup(createProviderPair(config), config);
+const config = BoLDRollup.arb1MainnetConfig;
+const rollup = new BoLDRollup(createProviderPair(config), config, 1);
 
 console.log({
-  L2Rollup: rollup.Rollup.target,
+  Rollup: rollup.Rollup.target,
   defaultWindow: rollup.defaultWindow,
 });
 
@@ -15,5 +15,7 @@ const v = commits.map((x) => Number(x.index));
 console.log(v);
 console.log(v.slice(1).map((x, i) => v[i] - x));
 
-// [ 16132, 16131, 16130, 16129, 16128, 16127, 16126, 16125, 16124, 16123 ]
-// [ 1, 1, 1, 1, 1, 1, 1, 1, 1 ]
+console.log(await rollup.fetchGenesisCommit());
+
+// [ 21900293, 21899994, 21899696, 21899399, 21899100, 21898801, 21898503, 21898205, 21897905, 21897608 ]
+// [ 299, 298, 297, 299, 299, 298, 298, 300, 297 ]

@@ -108,6 +108,13 @@ export class Gateway<R extends Rollup> extends EZCCIP {
   async getLatestCommit(): Promise<RollupCommitType<R>> {
     return (await this._updateLatest()).commit;
   }
+  async getParentCommit(
+    commit: RollupCommitType<R>
+  ): Promise<RollupCommitType<R>> {
+    const cached = await this.cachedCommit(commit.index);
+    const parent = await this.cachedCommit(await cached.parent.get());
+    return parent.commit;
+  }
   async getRecentCommit(index: bigint): Promise<RollupCommitType<R>> {
     const latest = await this._updateLatest();
     let cursor = latest;

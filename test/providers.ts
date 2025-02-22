@@ -19,6 +19,7 @@ export type RPCInfo = {
 // need to scrape all of the slugs and test rpc functionality and proof depth
 // https://docs.metamask.io/services/get-started/endpoints/
 // https://dashboard.alchemy.com/chains
+// https://drpc.org/chainlist
 export const RPC_INFO = new Map<Chain, RPCInfo>(
   (
     [
@@ -71,7 +72,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         //ankr: 'base', // 202405XX: eth_getProof depth is 10000
         //infura: 'base-mainnet', // 20250214: eth_getProof depth is still insufficient
         alchemy: 'base-mainnet', // 20250107 eth_getProof depth now seems OK
-        //drpc: 'base', // 20250115: no eth_getProof
+        drpc: 'base', // 20250115: no eth_getProof
       },
       {
         // https://docs.base.org/docs/network-information#base-testnet-sepolia
@@ -80,7 +81,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'base_sepolia',
         infura: 'base-sepolia',
         alchemy: 'base-sepolia', // 20250107 eth_getProof depth now seems OK
-        //drpc: 'base-sepolia', // 20250115: no eth_getProof
+        drpc: 'base-sepolia', // 20250115: no eth_getProof
       },
       {
         // https://docs.arbitrum.io/build-decentralized-apps/reference/node-providers#arbitrum-public-rpc-endpoints
@@ -89,12 +90,14 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'arbitrum',
         infura: 'arbitrum-mainnet',
         alchemy: 'arb-mainnet',
+        drpc: 'arbitrum',
       },
       {
         chain: CHAINS.ARB_NOVA,
         publicHTTP: 'https://nova.arbitrum.io/rpc',
         ankr: 'arbitrumnova',
         alchemy: 'arbnova-mainnet',
+        drpc: 'arbitrum-nova',
       },
       {
         chain: CHAINS.ARB_SEPOLIA,
@@ -102,6 +105,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'arbitrum_sepolia',
         infura: 'arbitrum-sepolia',
         alchemy: 'arb-sepolia',
+        drpc: 'arbitrum-sepolia',
       },
       {
         // https://docs.scroll.io/en/developers/developer-quickstart/#scroll-mainnet
@@ -110,6 +114,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'scroll',
         infura: 'scroll-mainnet',
         alchemy: 'scroll-mainnet',
+        drpc: 'scroll',
       },
       {
         chain: CHAINS.SCROLL_SEPOLIA,
@@ -123,11 +128,13 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         chain: CHAINS.TAIKO,
         publicHTTP: 'https://rpc.mainnet.taiko.xyz',
         ankr: 'taiko',
+        drpc: 'taiko',
       },
       {
         chain: CHAINS.TAIKO_HEKLA,
         publicHTTP: 'https://rpc.hekla.taiko.xyz',
         ankr: 'taiko_hekla',
+        drpc: 'taiko-hekla',
       },
       {
         // https://docs.zksync.io/build/connect-to-zksync#mainnet-network-details
@@ -136,6 +143,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'zksync_era',
         infura: 'zksync-mainnet',
         alchemy: 'zksync-mainnet',
+        drpc: 'zksync',
       },
       {
         chain: CHAINS.ZKSYNC_SEPOLIA,
@@ -143,6 +151,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'zksync_era_sepolia',
         infura: 'zksync-sepolia',
         alchemy: 'zksync-sepolia',
+        drpc: 'zksync-sepolia',
       },
       {
         // https://docs.polygon.technology/pos/reference/rpc-endpoints/#mainnet
