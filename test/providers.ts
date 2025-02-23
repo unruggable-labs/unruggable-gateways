@@ -12,7 +12,7 @@ export type RPCInfo = {
   readonly infura?: string;
   readonly alchemy?: string;
   readonly alchemyPremium?: boolean;
-  readonly drpc?: string;
+  readonly drpc?: string; // TODO: drpcPaid?
 };
 
 // TODO: this list is incomplete!
@@ -25,7 +25,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
     [
       {
         chain: CHAINS.MAINNET,
-        publicHTTP: 'https://rpc.ankr.com/eth/', // https://cloudflare-eth.com is too rate limited
+        publicHTTP: 'https://rpc.ankr.com/eth', // https://cloudflare-eth.com is too rate limited
         ankr: 'eth',
         infura: 'mainnet',
         alchemy: 'eth-mainnet',
@@ -33,7 +33,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       },
       {
         chain: CHAINS.SEPOLIA,
-        publicHTTP: 'https://rpc.ankr.com/eth_sepolia/',
+        publicHTTP: 'https://rpc.ankr.com/eth_sepolia',
         ankr: 'eth_sepolia',
         infura: 'sepolia',
         alchemy: 'eth-sepolia',
@@ -41,7 +41,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       },
       {
         chain: CHAINS.HOLESKY,
-        publicHTTP: 'https://rpc.ankr.com/eth_holesky/', //'https://rpc.holesky.ethpandaops.io',
+        publicHTTP: 'https://rpc.ankr.com/eth_holesky', //'https://rpc.holesky.ethpandaops.io',
         ankr: 'eth_holesky',
         infura: 'holesky',
         alchemy: 'eth-holesky',
@@ -100,7 +100,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         drpc: 'arbitrum-nova',
       },
       {
-        chain: CHAINS.ARB_SEPOLIA,
+        chain: CHAINS.ARB1_SEPOLIA,
         publicHTTP: 'https://sepolia-rollup.arbitrum.io/rpc',
         ankr: 'arbitrum_sepolia',
         infura: 'arbitrum-sepolia',
@@ -156,14 +156,14 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       {
         // https://docs.polygon.technology/pos/reference/rpc-endpoints/#mainnet
         chain: CHAINS.POLYGON_POS,
-        publicHTTP: 'https://polygon-rpc.com/',
+        publicHTTP: 'https://polygon-rpc.com',
         ankr: 'polygon',
         infura: 'polygon-mainnet',
         alchemy: 'polygon-mainnet',
       },
       {
         chain: CHAINS.POLYGON_AMOY,
-        publicHTTP: 'https://rpc-amoy.polygon.technology/',
+        publicHTTP: 'https://rpc-amoy.polygon.technology',
         ankr: 'polygon_amoy',
         infura: 'polygon-amoy',
         alchemy: 'polygon-amoy',
@@ -229,7 +229,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       {
         // https://docs.mode.network/general-info/network-details#mode-mainnet
         chain: CHAINS.MODE,
-        publicHTTP: 'https://mainnet.mode.network/',
+        publicHTTP: 'https://mainnet.mode.network',
       },
       {
         chain: CHAINS.MODE_SEPOLIA,
@@ -238,11 +238,11 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       {
         // https://docs.cyber.co/build-on-cyber/connecting-wallet
         chain: CHAINS.CYBER,
-        publicHTTP: 'https://cyber.alt.technology/',
+        publicHTTP: 'https://cyber.alt.technology',
       },
       {
         chain: CHAINS.CYBER_SEPOLIA,
-        publicHTTP: 'https://cyber-testnet.alt.technology/',
+        publicHTTP: 'https://cyber-testnet.alt.technology',
       },
       {
         // https://redstone.xyz/docs/network-info
@@ -326,10 +326,17 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         publicWS: 'wss://rpc-qnd-sepolia.inkonchain.com',
         alchemy: 'ink-sepolia',
       },
+      // https://docs.unichain.org/docs/technical-information/network-information
       {
-        // https://docs.unichain.org/docs/technical-information/network-information#unichain-sepolia-testnet
+        chain: CHAINS.UNICHAIN,
+        publicHTTP: 'https://mainnet.unichain.org',
+        infura: 'unichain-mainnet',
+        //alchemy: 'unichain-mainnet',
+      },
+      {
         chain: CHAINS.UNICHAIN_SEPOLIA,
         publicHTTP: 'https://sepolia.unichain.org',
+        infura: 'unichain-sepolia',
         alchemy: 'unichain-sepolia',
       },
       {
@@ -344,12 +351,12 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       {
         // https://docs.soneium.org/docs/builders/overview
         chain: CHAINS.SONEIUM,
-        publicHTTP: 'https://rpc.soneium.org/',
+        publicHTTP: 'https://rpc.soneium.org',
         alchemy: 'soneium-mainnet',
       },
       {
         chain: CHAINS.SONEIUM_SEPOLIA,
-        publicHTTP: 'https://rpc.minato.soneium.org/',
+        publicHTTP: 'https://rpc.minato.soneium.org',
         alchemy: 'soneium-minato',
       },
       {
@@ -369,7 +376,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       {
         // https://docs.zircuit.com/dev-tools/rpc-endpoints
         chain: CHAINS.ZIRCUIT,
-        publicHTTP: 'https://zircuit1-mainnet.p2pify.com/',
+        publicHTTP: 'https://zircuit1-mainnet.p2pify.com',
       },
       {
         chain: CHAINS.ZIRCUIT_SEPOLIA,
@@ -384,14 +391,14 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         chain: CHAINS.LISK_SEPOLIA,
         publicHTTP: 'https://rpc.sepolia-api.lisk.com',
       },
-      // https://docs.abs.xyz/connect-to-abstract
       {
+        // https://docs.abs.xyz/connect-to-abstract
         chain: CHAINS.ABSTRACT_SEPOLIA,
         publicHTTP: 'https://api.testnet.abs.xyz',
         publicWS: 'ws://api.testnet.abs.xyz/ws',
       },
-      // https://docs.mintchain.io/build/network
       {
+        // https://docs.mintchain.io/build/network
         chain: CHAINS.MINT,
         publicHTTP: 'https://rpc.mintchain.io',
         publicWS: 'wss://rpc.mintchain.io',
@@ -401,8 +408,8 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         publicHTTP: 'https://sepolia-testnet-rpc.mintchain.io',
         publicWS: 'wss://sepolia-testnet-rpc.mintchain.io',
       },
-      // https://docs.gnosischain.com/about/networks/
       {
+        // https://docs.gnosischain.com/about/networks/
         chain: CHAINS.GNOSIS,
         publicHTTP: 'https://rpc.gnosischain.com',
       },
@@ -424,21 +431,30 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         chain: CHAINS.SWELL,
         publicHTTP: 'https://swell-mainnet.alt.technology',
         ankr: 'swell',
+        infura: 'swellchain-mainnet',
       },
       {
         chain: CHAINS.SWELL_SEPOLIA,
         publicHTTP: 'https://swell-testnet.alt.technology',
         //ankr: 'swell-testnet',
+        infura: 'swellchain-testnet',
       },
       {
+        // https://docs.gobob.xyz/learn/user-guides/networks
         chain: CHAINS.BOB,
-        publicHTTP: 'https://rpc.gobob.xyz/',
+        publicHTTP: 'https://rpc.gobob.xyz',
         publicWS: 'wss://rpc.gobob.xyz',
       },
       {
         chain: CHAINS.BOB_SEPOLIA,
-        publicHTTP: 'https://bob-sepolia.rpc.gobob.xyz/',
+        publicHTTP: 'https://bob-sepolia.rpc.gobob.xyz',
         publicWS: 'wss://bob-sepolia.rpc.gobob.xyz',
+      },
+      {
+        // https://docs.monad.xyz/
+        // (wait... this isn't a rollup?)
+        chain: CHAINS.MONAD_TESTNET,
+        publicHTTP: 'https://testnet-rpc.monad.xyz',
       },
     ] satisfies RPCInfo[]
   ).map((x) => [x.chain, x])

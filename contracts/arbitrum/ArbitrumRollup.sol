@@ -8,9 +8,9 @@ import {IRollupCore_BoLD, RollupProof_BoLD, AssertionNode, AssertionStatus, Mach
 
 library ArbitrumRollup {
     function isBoLD(address rollup) public view returns (bool) {
-        // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=latestConfirmed%28%29&escape=1&encoding=utf8
-        (bool ok, bytes memory v) = rollup.staticcall{gas: 40000}(hex'65f7f80d');
-        return ok && v.length == 32;
+        // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=latestNodeCreated%28%29&escape=1&encoding=utf8
+        (, bytes memory v) = rollup.staticcall{gas: 40000}(hex'7ba9534a');
+        return v.length != 32;
     }
 
     function getLatestContext(
@@ -108,20 +108,24 @@ library ArbitrumRollup {
         uint64 nodeNum1
     ) internal view returns (bytes32 stateRoot, uint64 got, uint64 latest) {
         RollupProof_Nitro memory p = abi.decode(proof, (RollupProof_Nitro));
-        Node memory node1 = rollup.getNode(nodeNum1);
-        latest = node1.createdAtBlock;
         Node memory node = rollup.getNode(p.nodeNum);
         got = node.createdAtBlock;
-        if (minAgeBlocks == 0) {
-            while (node1.prevNum > p.nodeNum) {
-                node1 = rollup.getNode(node1.prevNum);
+        if (p.nodeNum != nodeNum1) {
+            Node memory node1 = rollup.getNode(nodeNum1);
+            latest = node1.createdAtBlock;
+            if (minAgeBlocks == 0) {
+                while (node1.prevNum > p.nodeNum) {
+                    node1 = rollup.getNode(node1.prevNum);
+                }
+                require(node1.prevNum == p.nodeNum, 'Nitro: not finalized');
+            } else {
+                require(
+                    _isNodeUsable(rollup, p.nodeNum, node),
+                    'Nitro: not usable'
+                );
             }
-            require(node1.prevNum == p.nodeNum, 'Nitro: not finalized');
         } else {
-            require(
-                _isNodeUsable(rollup, p.nodeNum, node),
-                'Nitro: not usable'
-            );
+            latest = node.createdAtBlock;
         }
         stateRoot = extractStateRoot_Nitro(p, node.confirmData);
     }

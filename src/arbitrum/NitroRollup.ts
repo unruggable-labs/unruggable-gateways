@@ -108,7 +108,6 @@ export class NitroRollup
     isBoLD: false,
   };
 
-  usableSearchDepth = 10;
   constructor(
     providers: ProviderPair,
     config: ArbitrumConfig,
@@ -125,15 +124,19 @@ export class NitroRollup
   }
   private async _ensureUsableNode(index: bigint) {
     // NOTE: this could use a finder to reduce rpc burden
+    // when rollup is upgraded, stakers are removed, so this loops to genesis
     const start = index;
-    for (let i = 0; index >= 0 && i < this.usableSearchDepth; i++, index--) {
+    for (; index; index--) {
       const [node, zombies] = await Promise.all([
         this._getNode(index),
+        // the following value is CURRENT stakers
+        // but the contract doesn't have access to ARCHIVAL stakers
+        // without supplying another storage proof
         this._countStakedZombies(index),
       ]);
       if (node.stakerCount > zombies) return index;
     }
-    throw new Error(`no usable node: ${index}-${start}`);
+    throw new Error(`no usable node: ${start}`);
   }
   async fetchLatestNode(minAgeBlocks = 0): Promise<bigint> {
     if (minAgeBlocks) {
@@ -199,7 +202,7 @@ export class NitroRollup
     const rlpEncodedBlock = encodeRlpBlock(block);
     const encodedRollupProof = ABI_CODER.encode(
       ['(uint64, bytes32, bytes)'],
-      [[prevNum, sendRoot, rlpEncodedBlock]]
+      [[index, sendRoot, rlpEncodedBlock]]
     );
     const prover = new EthProver(this.provider2, block.number);
     return {

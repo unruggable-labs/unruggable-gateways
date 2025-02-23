@@ -115,7 +115,7 @@ export class BoLDRollup extends ArbitrumRollup<BoLDCommit> {
   };
   static readonly arb1SepoliaConfig: RollupDeployment<BoLDConfig> = {
     chain1: CHAINS.SEPOLIA,
-    chain2: CHAINS.ARB_SEPOLIA,
+    chain2: CHAINS.ARB1_SEPOLIA,
     Rollup: '0x042B2E6C5E99d4c521bd49beeD5E99651D9B0Cf4',
     isBoLD: true,
   };
