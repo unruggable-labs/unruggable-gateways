@@ -27,18 +27,18 @@ contract StarknetVerifierHooks is IVerifierHooks {
 	}
 
     function verifyAccountState(
-        bytes32 stateRoot,
-        address target,
-        bytes memory encodedProof
+        bytes32 /*stateRoot*/,
+        address /*target*/,
+        bytes memory /*encodedProof*/
     ) external pure returns (bytes32) {
 		return 0;
 	}
 
 	function verifyStorageValue(
-        bytes32 storageRoot,
+        bytes32 /*storageRoot*/,
         address,
-        uint256 slot,
-        bytes memory encodedProof
+        uint256 /*slot*/,
+        bytes memory /*encodedProof*/
     ) external pure returns (bytes32) {
 		return 0;
 	}

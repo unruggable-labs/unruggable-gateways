@@ -529,6 +529,12 @@ export abstract class AbstractProver {
 
   constructor(readonly provider: Provider) {}
 
+  abstract get context(): string;
+
+  [Symbol.for('nodejs.util.inspect.custom')]() {
+    return `${this.constructor.name}[${this.context}]`;
+  }
+
   checkProofCount(size: number) {
     if (size > this.maxUniqueProofs) {
       throw new Error(`too many proofs: ${size} > ${this.maxUniqueProofs}`);
@@ -1002,6 +1008,9 @@ export abstract class BlockProver extends AbstractProver {
   constructor(provider: Provider, block: BigNumberish) {
     super(provider);
     this.block = toUnpaddedHex(block);
+  }
+  override get context() {
+    return `block=${this.blockNumber}`;
   }
   get blockNumber() {
     return BigInt(this.block);

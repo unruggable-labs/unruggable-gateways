@@ -1,11 +1,11 @@
-import { BoLDRollup } from '../../src/arbitrum/BoLDRollup.js';
+import { NitroRollup } from '../../src/arbitrum/NitroRollup.js';
 import { createProviderPair } from '../providers.js';
 
-const config = BoLDRollup.arb1MainnetConfig;
-const rollup = new BoLDRollup(createProviderPair(config), config);
+const config = NitroRollup.apeMainnetConfig;
+const rollup = new NitroRollup(createProviderPair(config), config);
 
-// https://etherscan.io/advanced-filter?eladd=0x4dceb440657f21083db8add07665f8ddbe1dcfc0&eltpc=0xfc42829b29c259a7370ab56c8f69fce23b5f351a9ce151da453281993ec0090c
-const blocksPerCommit = 3600 / 12;
+// https://arbiscan.io/advanced-filter?eladd=0x374de579ae15ad59ed0519aeaf1a23f348df259c&eltpc=0x22ef0479a7ff660660d1c2fe35f1b632cf31675c2d9378db8cec95b00d8ffa3c
+const blocksPerCommit = Math.round(3600 / 0.25); // ~hourly w/250ms blocks
 
 console.log({
   Rollup: rollup.Rollup.target,
@@ -26,9 +26,9 @@ const commits = await rollup.fetchRecentCommits(10);
 const v = commits.map((x) => Number(x.index));
 console.log(v.slice(1).map((x, i) => v[i] - x));
 
-// 2025-02-23T05:37:38.457Z
-//      1 21906846n
-//    300 21906548n
-//    600 21906252n
-//      0 21860740n
-// [ 298, 296, 296, 299, 297, 300, 298, 297, 298 ]
+// 2025-02-23T05:33:26.617Z
+//      1 4143n
+//  14400 4142n
+//  28800 4141n
+//      0 3990n
+// [ 1, 1, 1, 1, 1, 1, 1, 1, 1 ]

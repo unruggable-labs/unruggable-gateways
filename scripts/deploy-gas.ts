@@ -25,16 +25,18 @@ await foundry.deploy({
 await foundry.deploy({ file: 'OPFaultGameFinder' });
 await foundry.deploy({ file: 'OPOutputFinder' });
 
+const ArbitrumRollup = await foundry.deploy({ file: 'ArbitrumRollup' });
+
 // various verifiers
 await foundry.deploy({
-  file: 'NitroVerifier',
+  file: 'ArbitrumVerifier',
   args: [U, 1, A, A, 0],
-  libs: { GatewayVM },
+  libs: { GatewayVM, ArbitrumRollup },
 });
 await foundry.deploy({
-  file: 'DoubleNitroVerifier',
-  args: [U, 1, A, A, 0, A, ['0x']],
-  libs: { GatewayVM },
+  file: 'DoubleArbitrumVerifier',
+  args: [U, 1, A, A, 0, ['0x'], true],
+  libs: { GatewayVM, ArbitrumRollup },
 });
 await foundry.deploy({
   file: 'OPVerifier',
@@ -109,17 +111,18 @@ await foundry.shutdown();
 console.log(new Date());
 console.log(report);
 
-// 2025-02-11T00:48:16.776Z
+// 2025-02-22T22:42:08.298Z
 // {
 //   GatewayVM: 1905202n,
 //   EthVerifierHooks: 1309379n,
 //   ScrollVerifierHooks: 564033n,
 //   ZKSyncVerifierHooks: 323789n,
 //   LineaVerifierHooks: 817863n,
-//   OPFaultGameFinder: 607153n,
+//   OPFaultGameFinder: 610611n,
 //   OPOutputFinder: 374675n,
-//   NitroVerifier: 1775745n,
-//   DoubleNitroVerifier: 1904504n,
+//   ArbitrumRollup: 1660086n,
+//   ArbitrumVerifier: 1037691n,
+//   DoubleArbitrumVerifier: 1502215n,
 //   OPVerifier: 1140773n,
 //   OPFaultVerifier: 1291155n,
 //   ReverseOPVerifier: 1530446n,
@@ -130,8 +133,8 @@ console.log(report);
 //   ScrollVerifier: 994363n,
 //   ZKSyncVerifier: 1108496n,
 //   SelfVerifier: 1420183n,
-//   TrustedVerifier: 1368494n,
-//   TrustedVerifierFactory: 1520974n,
+//   TrustedVerifier: 1368482n,
+//   TrustedVerifierFactory: 1520962n,
 //   TrustedVerifierFactoryClone1: 167638n,
 //   TrustedVerifierFactoryClone2: 211020n,
 // }
