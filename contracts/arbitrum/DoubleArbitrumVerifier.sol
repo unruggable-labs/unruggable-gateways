@@ -3,10 +3,8 @@ pragma solidity ^0.8.23;
 
 import {ArbitrumVerifier} from './ArbitrumVerifier.sol';
 import {IVerifierHooks} from '../IVerifierHooks.sol';
-import {ArbitrumRollup, RollupProof_v0, RollupProof_BoLD} from './ArbitrumRollup.sol';
+import {ArbitrumRollup, RollupProof_Nitro, RollupProof_BoLD} from './ArbitrumRollup.sol';
 import {GatewayRequest, GatewayVM, ProofSequence} from '../GatewayVM.sol';
-
-import "forge-std/console2.sol";
 
 contract DoubleArbitrumVerifier is ArbitrumVerifier {
     GatewayRequest _request;
@@ -42,23 +40,28 @@ contract DoubleArbitrumVerifier is ArbitrumVerifier {
             _request,
             ProofSequence(0, stateRoot, ps[0].proofs, ps[0].order, _hooks)
         );
-		console2.logBytes32(stateRoot);
         if (_isBold) {
             // outputs[0] = blockhash
             RollupProof_BoLD memory p = abi.decode(
                 ps[1].rollupProof,
                 (RollupProof_BoLD)
             );
-            stateRoot = ArbitrumRollup.extractStateRoot_BoLD(p, bytes32(outputs[0]));
+            stateRoot = ArbitrumRollup.extractStateRoot_BoLD(
+                p,
+                bytes32(outputs[0])
+            );
         } else {
             // outputs[0] = node
             // outputs[1] = confirmData
             // outputs[2] = createdAtBlock (not used yet)
-            RollupProof_v0 memory p = abi.decode(
+            RollupProof_Nitro memory p = abi.decode(
                 ps[1].rollupProof,
-                (RollupProof_v0)
+                (RollupProof_Nitro)
             );
-            stateRoot = ArbitrumRollup.extractStateRoot_v0(p, bytes32(outputs[1]));
+            stateRoot = ArbitrumRollup.extractStateRoot_Nitro(
+                p,
+                bytes32(outputs[1])
+            );
         }
         return
             GatewayVM.evalRequest(

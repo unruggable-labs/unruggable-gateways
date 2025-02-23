@@ -223,7 +223,12 @@ export default {
           );
           return Response.json({ data }, { headers });
         } catch (err) {
-          const error = String(err);
+          // flatten nested errors
+          const errors = [String(err)];
+          for (let e = err; e instanceof Error && e.cause; e = e.cause) {
+            errors.push(String(e.cause));
+          }
+          const error = errors.join(' <== ');
           console.log(new Date(), error);
           return Response.json({ error }, { headers, status: 500 });
         }
@@ -287,17 +292,15 @@ async function createGateway(name: string, unfinalized: boolean) {
     case 'ape-L2':
       return createArbitrumGateway(NitroRollup.apeMainnetConfig, unfinalized);
     case 'ape': {
-      const config12 = {
-        ...BoLDRollup.arb1MainnetConfig,
-        minAgeBlocks: unfinalized ? 1 : 0,
-      };
-      const config23 = {
-        ...NitroRollup.apeMainnetConfig,
-        minAgeBlocks: unfinalized ? 1 : 0,
-      };
+      const config12 = BoLDRollup.arb1MainnetConfig;
+      const config23 = NitroRollup.apeMainnetConfig;
       return new Gateway(
         new DoubleArbitrumRollup(
-          new BoLDRollup(createProviderPair(config12), config12),
+          new BoLDRollup(
+            createProviderPair(config12),
+            config12,
+            unfinalized ? 1 : 0
+          ),
           createProvider(config23.chain2),
           config23
         )
@@ -348,33 +351,33 @@ async function createGateway(name: string, unfinalized: boolean) {
     case 'zero-sepolia':
       return createZKSyncGateway(ZKSyncRollup.zeroSepoliaConfig);
     case 'blast':
-      return createOPGateway(OPRollup.blastMainnnetConfig);
+      return createOPGateway(OPRollup.blastMainnnetConfig, unfinalized);
     case 'celo-alfajores':
-      return createOPGateway(OPRollup.celoAlfajoresConfig);
+      return createOPGateway(OPRollup.celoAlfajoresConfig, unfinalized);
     case 'cyber':
-      return createOPGateway(OPRollup.cyberMainnetConfig);
+      return createOPGateway(OPRollup.cyberMainnetConfig, unfinalized);
     case 'fraxtal':
-      return createOPGateway(OPRollup.fraxtalMainnetConfig);
+      return createOPGateway(OPRollup.fraxtalMainnetConfig, unfinalized);
     case 'lisk':
-      return createOPGateway(OPRollup.liskMainnetConfig);
+      return createOPGateway(OPRollup.liskMainnetConfig, unfinalized);
     case 'lisk-sepolia':
-      return createOPGateway(OPRollup.liskSepoliaConfig);
+      return createOPGateway(OPRollup.liskSepoliaConfig, unfinalized);
     case 'mantle':
-      return createOPGateway(OPRollup.mantleMainnetConfig);
+      return createOPGateway(OPRollup.mantleMainnetConfig, unfinalized);
     case 'mode':
-      return createOPGateway(OPRollup.modeMainnetConfig);
+      return createOPGateway(OPRollup.modeMainnetConfig, unfinalized);
     case 'opbnb':
-      return createOPGateway(OPRollup.opBNBMainnetConfig);
+      return createOPGateway(OPRollup.opBNBMainnetConfig, unfinalized);
     case 'redstone':
-      return createOPGateway(OPRollup.redstoneMainnetConfig);
+      return createOPGateway(OPRollup.redstoneMainnetConfig, unfinalized);
     case 'shape':
-      return createOPGateway(OPRollup.shapeMainnetConfig);
+      return createOPGateway(OPRollup.shapeMainnetConfig, unfinalized);
     case 'zircuit':
-      return createOPGateway(OPRollup.zircuitMainnetConfig);
+      return createOPGateway(OPRollup.zircuitMainnetConfig, unfinalized);
     case 'zircuit-sepolia':
-      return createOPGateway(OPRollup.zircuitSepoliaConfig);
+      return createOPGateway(OPRollup.zircuitSepoliaConfig, unfinalized);
     case 'zora':
-      return createOPGateway(OPRollup.zoraMainnetConfig);
+      return createOPGateway(OPRollup.zoraMainnetConfig, unfinalized);
     case 'self-eth':
       return createSelfGateway(CHAINS.MAINNET);
     case 'self-sepolia':

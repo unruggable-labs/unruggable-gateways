@@ -15,8 +15,8 @@ import { type NitroCommit, NitroRollup } from './NitroRollup.js';
 import { ABI_CODER } from '../utils.js';
 import { GatewayRequest } from '../vm.js';
 
-export type DoubleArbitrumCommit<C> = RollupCommit<EthProver> & {
-  readonly commit12: C;
+export type DoubleArbitrumCommit<C1> = RollupCommit<EthProver> & {
+  readonly commit12: C1;
   readonly commit23: NitroCommit;
   readonly proofSeq12: ProofSequence;
 };
@@ -97,7 +97,6 @@ export class DoubleArbitrumRollup<
     ]);
     const node = BigInt(outputs[0]);
     const commit23 = await this.rollup23.fetchCommit(node);
-    console.log('StateRoot:', await commit12.prover.fetchStateRoot());
     return {
       index,
       prover: commit23.prover,

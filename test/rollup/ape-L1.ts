@@ -17,16 +17,22 @@ const ages = [
   [1, 0],
   [1, 1],
 ];
+const rollup = new DoubleArbitrumRollup(
+  new BoLDRollup(provider12, config12),
+  provider3,
+  config23
+);
 
 for (const [age12, age23] of ages) {
-  const rollup = new DoubleArbitrumRollup(
-    new BoLDRollup(provider12, config12, age12),
-    provider3,
-    config23,
-    age23
-  );
+  rollup.rollup12.minAgeBlocks = age12;
+  rollup.rollup23.minAgeBlocks = age23;
   const commit = await rollup.fetchLatestCommit();
-  console.log(age12, age23, commit.commit12.index, commit.commit23.index);
+  console.log(
+    age12.toString().padStart(3),
+    age23.toString().padStart(3),
+    commit.commit12.index,
+    commit.commit23.index
+  );
 }
 
 //  L1 L2  Node1 Node2

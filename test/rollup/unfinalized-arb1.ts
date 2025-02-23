@@ -2,29 +2,33 @@ import { BoLDRollup } from '../../src/arbitrum/BoLDRollup.js';
 import { createProviderPair } from '../providers.js';
 
 const config = BoLDRollup.arb1MainnetConfig;
-const rollup = new BoLDRollup(createProviderPair(config), config, 300); // 1 hr / (12 sec/block)
+const rollup = new BoLDRollup(createProviderPair(config), config);
+
+// https://etherscan.io/advanced-filter?eladd=0x4dceb440657f21083db8add07665f8ddbe1dcfc0&eltpc=0xfc42829b29c259a7370ab56c8f69fce23b5f351a9ce151da453281993ec0090c
+const blocksPerCommit = 3600 / 12;
 
 console.log({
-  L2Rollup: rollup.Rollup.target,
+  Rollup: rollup.Rollup.target,
   defaultWindow: rollup.defaultWindow,
 });
 
 console.log(new Date());
-console.log((await rollup.fetchLatestAssertion(1)).blockNumber);
-console.log(await rollup.fetchLatestCommitIndex());
-console.log((await rollup.fetchLatestAssertion(1000)).blockNumber);
-console.log((await rollup.fetchLatestAssertion(0)).blockNumber);
+for (const age of [1, blocksPerCommit, 2 * blocksPerCommit, 0]) {
+  rollup.minAgeBlocks = age;
+  console.log(
+    age.toString().padStart(6),
+    await rollup.fetchLatestCommitIndex()
+  );
+}
 
+rollup.minAgeBlocks = 1;
 const commits = await rollup.fetchRecentCommits(10);
-
 const v = commits.map((x) => Number(x.index));
-console.log(v);
 console.log(v.slice(1).map((x, i) => v[i] - x));
 
-// 2025-02-22T22:05:27.077Z
-// 21904465n
-// 21904167n
-// 21903568n
-// 21858654n
-// [ 21904167, 21903867, 21903568, 21903270, 21902971, 21902673, 21902374, 21902075, 21901778, 21901481 ]
-// [ 300, 299, 298, 299, 298, 299, 299, 297, 297 ]
+// 2025-02-23T05:37:38.457Z
+//      1 21906846n
+//    300 21906548n
+//    600 21906252n
+//      0 21860740n
+// [ 298, 296, 296, 299, 297, 300, 298, 297, 298 ]

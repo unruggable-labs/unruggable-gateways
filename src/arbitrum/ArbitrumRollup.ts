@@ -30,7 +30,7 @@ export abstract class ArbitrumRollup<
     abi: Interface,
     public minAgeBlocks: number
   ) {
-    if (config.isBoLD != isBoLD) throw new TypeError(`isBold mismatch`);
+    if (config.isBoLD != isBoLD) throw new TypeError('isBold mismatch');
     super(providers);
     this.Rollup = new Contract(config.Rollup, abi, this.provider1);
   }

@@ -2,29 +2,33 @@ import { NitroRollup } from '../../src/arbitrum/NitroRollup.js';
 import { createProviderPair } from '../providers.js';
 
 const config = NitroRollup.apeMainnetConfig;
-const rollup = new NitroRollup(createProviderPair(config), config, 3600 / 2);
+const rollup = new NitroRollup(createProviderPair(config), config);
+
+// https://arbiscan.io/advanced-filter?eladd=0x374de579ae15ad59ed0519aeaf1a23f348df259c&eltpc=0x22ef0479a7ff660660d1c2fe35f1b632cf31675c2d9378db8cec95b00d8ffa3c
+const blocksPerCommit = Math.round(3600 / 0.25); // ~hourly w/250ms blocks
 
 console.log({
-  L2Rollup: rollup.Rollup.target,
+  Rollup: rollup.Rollup.target,
   defaultWindow: rollup.defaultWindow,
 });
 
 console.log(new Date());
-console.log(await rollup.fetchLatestNode(1));
-console.log(await rollup.fetchLatestCommitIndex());
-console.log(await rollup.fetchLatestNode(10000));
-console.log(await rollup.fetchLatestNode());
+for (const age of [1, blocksPerCommit, 2 * blocksPerCommit, 0]) {
+  rollup.minAgeBlocks = age;
+  console.log(
+    age.toString().padStart(6),
+    await rollup.fetchLatestCommitIndex()
+  );
+}
 
+rollup.minAgeBlocks = 1;
 const commits = await rollup.fetchRecentCommits(10);
-
 const v = commits.map((x) => Number(x.index));
-console.log(v);
 console.log(v.slice(1).map((x, i) => v[i] - x));
 
-// 2025-02-19T02:57:57.008Z
-// 4045n
-// 4045n
-// 4045n
-// 3892n
-// [ 4045, 4044, 4043, 4042, 4041, 4040, 4039, 4038, 4037, 4036 ]
+// 2025-02-23T05:33:26.617Z
+//      1 4143n
+//  14400 4142n
+//  28800 4141n
+//      0 3990n
 // [ 1, 1, 1, 1, 1, 1, 1, 1, 1 ]

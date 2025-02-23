@@ -93,12 +93,13 @@ export class NitroRollup
   //   chain2: CHAINS.ARB_SEPOLIA,
   //   Rollup: '0x042B2E6C5E99d4c521bd49beeD5E99651D9B0Cf4',
   // };
-  static readonly arbNovaMainnetConfig: RollupDeployment<NitroConfig> = {
-    chain1: CHAINS.MAINNET,
-    chain2: CHAINS.ARB_NOVA,
-    Rollup: '0xFb209827c58283535b744575e11953DCC4bEAD88',
-    isBoLD: false,
-  };
+  // static readonly arbNovaMainnetConfig: RollupDeployment<NitroConfig> = {
+  //   chain1: CHAINS.MAINNET,
+  //   chain2: CHAINS.ARB_NOVA,
+  //   Rollup: '0xFb209827c58283535b744575e11953DCC4bEAD88',
+  //   isBoLD: false,
+  // };
+
   // https://docs.apechain.com/contracts/Mainnet/contract-information
   static readonly apeMainnetConfig: RollupDeployment<NitroConfig> = {
     chain1: CHAINS.ARB1,
@@ -107,6 +108,7 @@ export class NitroRollup
     isBoLD: false,
   };
 
+  usableSearchDepth = 10;
   constructor(
     providers: ProviderPair,
     config: ArbitrumConfig,
@@ -122,14 +124,16 @@ export class NitroRollup
     return this.Rollup.countStakedZombies(index);
   }
   private async _ensureUsableNode(index: bigint) {
-    for (; index; index--) {
+    // NOTE: this could use a finder to reduce rpc burden
+    const start = index;
+    for (let i = 0; index >= 0 && i < this.usableSearchDepth; i++, index--) {
       const [node, zombies] = await Promise.all([
         this._getNode(index),
         this._countStakedZombies(index),
       ]);
-      if (node.stakerCount > zombies) break;
+      if (node.stakerCount > zombies) return index;
     }
-    return index;
+    throw new Error(`no usable node: ${index}-${start}`);
   }
   async fetchLatestNode(minAgeBlocks = 0): Promise<bigint> {
     if (minAgeBlocks) {

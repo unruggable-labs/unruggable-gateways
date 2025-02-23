@@ -3,14 +3,13 @@ pragma solidity ^0.8.0;
 
 import {CommitTooOld, CommitTooNew} from '../IGatewayVerifier.sol';
 import {RLPReader, RLPReaderExt} from '../RLPReaderExt.sol';
-import {IRollupCore_v0, RollupProof_v0, Node} from './IRollupCore_v0.sol';
-import {IRollupCore_BoLD, RollupProof_BoLD, AssertionNode, MachineStatus, ASSERTION_STATUS_CONFIRMED} from './IRollupCore_BoLD.sol';
-
-import "forge-std/console2.sol";
+import {IRollupCore_Nitro, RollupProof_Nitro, Node} from './IRollupCore_Nitro.sol';
+import {IRollupCore_BoLD, RollupProof_BoLD, AssertionNode, AssertionStatus, MachineStatus} from './IRollupCore_BoLD.sol';
 
 library ArbitrumRollup {
     function isBoLD(address rollup) public view returns (bool) {
-        (bool ok, bytes memory v) = rollup.staticcall(hex'353325e0'); // genesisAssertionHash()
+        // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=latestConfirmed%28%29&escape=1&encoding=utf8
+        (bool ok, bytes memory v) = rollup.staticcall{gas: 40000}(hex'65f7f80d');
         return ok && v.length == 32;
     }
 
@@ -21,11 +20,14 @@ library ArbitrumRollup {
         return
             isBoLD(rollup)
                 ? getLatestContext_BoLD(IRollupCore_BoLD(rollup), minAgeBlocks)
-                : getLatestContext_v0(IRollupCore_v0(rollup), minAgeBlocks);
+                : getLatestContext_Nitro(
+                    IRollupCore_Nitro(rollup),
+                    minAgeBlocks
+                );
     }
 
-    function getLatestContext_v0(
-        IRollupCore_v0 rollup,
+    function getLatestContext_Nitro(
+        IRollupCore_Nitro rollup,
         uint256 minAgeBlocks
     ) public view returns (bytes memory) {
         uint64 i;
@@ -48,7 +50,7 @@ library ArbitrumRollup {
         return abi.encode(i, false);
     }
     function _isNodeUsable(
-        IRollupCore_v0 rollup,
+        IRollupCore_Nitro rollup,
         uint64 index,
         Node memory node
     ) internal view returns (bool) {
@@ -67,15 +69,6 @@ library ArbitrumRollup {
             AssertionNode memory node = rollup.getAssertion(assertionHash);
             b = node.createdAtBlock;
         } else {
-            // uint256 n = rollup.stakerCount();
-            // for (uint256 i; i < n; i++) {
-            // 	address staker = rollup.getStakerAddress(i);
-            // 	bytes32 assertionHash = rollup.latestStakedAssertion(staker);
-            // 	AssertionNode memory node = rollup.getAssertion(assertionHash);
-            // 	if (b < node.createdAtBlock) {
-            // 		b = node.createdAtBlock;
-            // 	}
-            // }
             b = block.number - minAgeBlocks;
         }
         return abi.encode(b, true);
@@ -89,7 +82,7 @@ library ArbitrumRollup {
         bytes memory context
     ) external view returns (bytes32 stateRoot) {
         (uint256 latest, bool BoLD) = abi.decode(context, (uint256, bool));
-		uint256 got;
+        uint256 got;
         if (BoLD) {
             (stateRoot, got) = _verifyStateRoot_BoLD(
                 IRollupCore_BoLD(rollup),
@@ -97,8 +90,8 @@ library ArbitrumRollup {
                 proof
             );
         } else {
-            (stateRoot, got, latest) = _verifyStateRoot_v0(
-                IRollupCore_v0(rollup),
+            (stateRoot, got, latest) = _verifyStateRoot_Nitro(
+                IRollupCore_Nitro(rollup),
                 minAgeBlocks,
                 proof,
                 uint64(latest)
@@ -108,13 +101,13 @@ library ArbitrumRollup {
         if (got > latest) revert CommitTooNew(latest, got);
     }
 
-    function _verifyStateRoot_v0(
-        IRollupCore_v0 rollup,
+    function _verifyStateRoot_Nitro(
+        IRollupCore_Nitro rollup,
         uint256 minAgeBlocks,
         bytes memory proof,
         uint64 nodeNum1
     ) internal view returns (bytes32 stateRoot, uint64 got, uint64 latest) {
-        RollupProof_v0 memory p = abi.decode(proof, (RollupProof_v0));
+        RollupProof_Nitro memory p = abi.decode(proof, (RollupProof_Nitro));
         Node memory node1 = rollup.getNode(nodeNum1);
         latest = node1.createdAtBlock;
         Node memory node = rollup.getNode(p.nodeNum);
@@ -130,7 +123,7 @@ library ArbitrumRollup {
                 'Nitro: not usable'
             );
         }
-        stateRoot = extractStateRoot_v0(p, node.confirmData);
+        stateRoot = extractStateRoot_Nitro(p, node.confirmData);
     }
 
     function _verifyStateRoot_BoLD(
@@ -140,7 +133,12 @@ library ArbitrumRollup {
     ) internal view returns (bytes32 stateRoot, uint256 got) {
         RollupProof_BoLD memory p = abi.decode(proof, (RollupProof_BoLD));
         AssertionNode memory node = rollup.getAssertion(p.assertionHash);
-        require(node.status != 0, 'BoLD: no node');
+        require(
+            minAgeBlocks == 0
+                ? node.status == AssertionStatus.Confirmed
+                : node.status != AssertionStatus.NoAssertion,
+            'BoLD: assertionStatus'
+        );
         bytes32 assertionHash = keccak256(
             abi.encodePacked(
                 p.parentAssertionHash,
@@ -149,16 +147,10 @@ library ArbitrumRollup {
             )
         );
         require(assertionHash == p.assertionHash, 'BoLD: assertionHash');
-        if (minAgeBlocks == 0) {
-            require(
-                node.status == ASSERTION_STATUS_CONFIRMED,
-                'BoLD: not confirmed'
-            );
-        }
         got = node.createdAtBlock;
         require(
             p.afterState.machineStatus == MachineStatus.FINISHED,
-            'BoLD: not finished'
+            'BoLD: machineStatus'
         );
         stateRoot = extractStateRoot_BoLD(
             p,
@@ -166,8 +158,8 @@ library ArbitrumRollup {
         );
     }
 
-    function extractStateRoot_v0(
-        RollupProof_v0 memory proof,
+    function extractStateRoot_Nitro(
+        RollupProof_Nitro memory proof,
         bytes32 confirmData
     ) public pure returns (bytes32) {
         require(
@@ -189,7 +181,7 @@ library ArbitrumRollup {
     ) public pure returns (bytes32) {
         require(
             keccak256(proof.rlpEncodedBlock) == blockHash,
-            'BoLD: blockhash'
+            'BoLD: blockHash'
         );
         return _extractStateRoot(proof.rlpEncodedBlock);
     }

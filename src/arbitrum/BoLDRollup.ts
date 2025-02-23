@@ -2,6 +2,7 @@ import type { ProviderPair, HexString32 } from '../types.js';
 import type { RPCEthGetBlock } from '../eth/types.js';
 import { ZeroHash } from 'ethers/constants';
 import { EventLog } from 'ethers/contract';
+import { Log } from 'ethers/providers';
 import { Interface } from 'ethers/abi';
 import { EthProver } from '../eth/EthProver.js';
 import { ABI_CODER, fetchBlockNumber } from '../utils.js';
@@ -16,13 +17,26 @@ import { RollupDeployment } from '../rollup.js';
 import { CHAINS } from '../chains.js';
 
 // https://docs.arbitrum.io/how-arbitrum-works/bold/gentle-introduction
+// https://github.com/OffchainLabs/bold
 
-// https://github.com/OffchainLabs/nitro-contracts/blob/main/src/rollup/AssertionState.sol
+// https://github.com/OffchainLabs/nitro-contracts/blob/94999b3e2d3b4b7f8e771cc458b9eb229620dd8f/src/rollup/Assertion.sol
 const ASSERTION_STATUS_CONFIRMED = 2n;
+
+// https://github.com/OffchainLabs/nitro-contracts/blob/94999b3e2d3b4b7f8e771cc458b9eb229620dd8f/src/state/Machine.sol
+const MACHINE_STATUS_FINISHED = 1n;
 
 export type BoLDCommit = ArbitrumCommit & {
   readonly assertionHash: HexString32;
   readonly parentAssertionHash: HexString32;
+};
+
+type ABIAssertionNode = {
+  firstChildBlock: bigint;
+  secondChildBlock: bigint;
+  createdAtBlock: bigint;
+  isFirstChild: boolean;
+  status: bigint;
+  configHash: HexString32;
 };
 
 const ROLLUP_ABI = new Interface([
@@ -35,11 +49,11 @@ const ROLLUP_ABI = new Interface([
     uint8 status,
     bytes32 configHash
   ))`,
-  `event AssertionConfirmed(
-  	bytes32 indexed assertionHash,
-	bytes32 blockHash,
-	bytes32 sendRoot
-  )`,
+  // `event AssertionConfirmed(
+  //   bytes32 indexed assertionHash,
+  //   bytes32 blockHash,
+  //   bytes32 sendRoot
+  // )`,
   `event AssertionCreated(
     bytes32 indexed assertionHash,
     bytes32 indexed parentAssertionHash,
@@ -81,12 +95,6 @@ const ROLLUP_ABI = new Interface([
   )`,
 ]);
 
-type ABIAssertionTuple = {
-  createdAtBlock: bigint;
-  status: bigint;
-  configHash: HexString32;
-};
-
 // type ABIAssertionState = {
 //   globalState: [
 //     bytes32Vals: [blockHash: HexString32, sendRoot: HexString32],
@@ -111,8 +119,15 @@ export class BoLDRollup extends ArbitrumRollup<BoLDCommit> {
     Rollup: '0x042B2E6C5E99d4c521bd49beeD5E99651D9B0Cf4',
     isBoLD: true,
   };
+  static readonly arbNovaMainnetConfig: RollupDeployment<BoLDConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.ARB_NOVA,
+    Rollup: '0xE7E8cCC7c381809BDC4b213CE44016300707B7Bd',
+    isBoLD: true,
+  };
 
-  private readonly _genesis = new CachedValue(async () => {
+  readonly genesis = new CachedValue(async () => {
+    // i think this is equivalent to genesisAssertionHash()
     const [event] = await this.Rollup.queryFilter(
       this.Rollup.filters.AssertionCreated(null, ZeroHash)
     );
@@ -122,6 +137,7 @@ export class BoLDRollup extends ArbitrumRollup<BoLDCommit> {
       assertionHash: event.args.assertionHash,
     };
   }, Infinity);
+
   constructor(
     providers: ProviderPair,
     config: ArbitrumConfig,
@@ -130,88 +146,103 @@ export class BoLDRollup extends ArbitrumRollup<BoLDCommit> {
     super(providers, true, config, ROLLUP_ABI, minAgeBlocks);
   }
 
-  async fetchGenesisCommit() {
-    return this.fetchCommit((await this._genesis.get()).blockNumber);
-  }
-
-  async fetchLatestAssertion(
-    minAgeBlocks: number
-  ): Promise<{ assertionHash: HexString32; blockNumber: bigint }> {
-    if (!minAgeBlocks) {
-      const assertionHash: HexString32 = await this.Rollup.latestConfirmed({
-        blockTag: this.latestBlockTag,
-      });
-      const [event] = await this.Rollup.queryFilter(
-        this.Rollup.filters.AssertionCreated(assertionHash)
-      );
-      if (!event) throw new Error(`expected assertion`);
-      return {
-        assertionHash,
-        blockNumber: BigInt(event.blockNumber),
-      };
-    }
-    const [{ blockNumber: block0 }, block1] = await Promise.all([
-      this._genesis.get(),
-      fetchBlockNumber(this.provider1, this.latestBlockTag),
-    ]);
+  async fetchLatestAssertion(block: bigint) {
+    const block0 = (await this.genesis.get()).blockNumber;
     const step = BigInt(this.getLogsStepSize);
-    let block = block1 - BigInt(minAgeBlocks);
     while (block >= block0) {
       const prev = block - step;
-      const events = await this.Rollup.queryFilter(
-        this.Rollup.filters.AssertionCreated(),
-        prev < block0 ? block0 : prev + 1n,
-        block
+      const found = await this._findUsableAssertion(
+        await this.Rollup.queryFilter(
+          this.Rollup.filters.AssertionCreated(),
+          prev < block0 ? block0 : prev + 1n,
+          block
+        )
       );
-      if (events.length) {
-        const event = events[events.length - 1] as EventLog;
-        const assertionHash: HexString32 = event.args.assertionHash;
-        return { blockNumber: BigInt(event.blockNumber), assertionHash };
-      }
+      if (found) return found;
       block = prev;
     }
     throw new Error('assertion before genesis');
   }
 
+  // search backwards, find the most recent that fits our criteria
+  private async _findUsableAssertion(events: Log[]) {
+    for (let i = events.length - 1; i >= 0; i--) {
+      const event = events[i];
+      if (
+        event instanceof EventLog &&
+        event.args.assertion.afterState.machineStatus == MACHINE_STATUS_FINISHED
+      ) {
+        const node: ABIAssertionNode = await this.Rollup.getAssertion(
+          event.args.assertionHash
+        );
+        if (!node.status) continue; // impossible?
+        if (node.status !== ASSERTION_STATUS_CONFIRMED) {
+          if (this.minAgeBlocks) {
+            if (node.secondChildBlock) continue; // challenged
+          } else {
+            continue; // not confirmed
+          }
+        }
+        return { event, node };
+      }
+    }
+    return;
+  }
+
   override async fetchLatestCommitIndex(): Promise<bigint> {
-    return (await this.fetchLatestAssertion(this.minAgeBlocks)).blockNumber;
+    if (this.minAgeBlocks) {
+      const block = await fetchBlockNumber(this.provider1, this.latestBlockTag);
+      const { node } = await this.fetchLatestAssertion(
+        block - BigInt(this.minAgeBlocks)
+      );
+      return node.createdAtBlock;
+    } else {
+      const assertionHash: HexString32 = await this.Rollup.latestConfirmed({
+        blockTag: this.latestBlockTag,
+      });
+      const found = await this._findUsableAssertion(
+        await this.Rollup.queryFilter(
+          this.Rollup.filters.AssertionCreated(assertionHash)
+        )
+      );
+      if (!found) throw new Error(`expected assertion`);
+      return BigInt(found.node.createdAtBlock);
+    }
   }
 
   protected override async _fetchParentCommitIndex(
     commit: BoLDCommit
   ): Promise<bigint> {
-    const tuple: ABIAssertionTuple = await this.Rollup.getAssertion(
-      commit.parentAssertionHash
-    );
-    return tuple.status ? tuple.createdAtBlock : -1n;
+    if (this.minAgeBlocks) {
+      const { node } = await this.fetchLatestAssertion(commit.index - 1n);
+      return node.createdAtBlock;
+    } else {
+      const node: ABIAssertionNode = await this.Rollup.getAssertion(
+        commit.parentAssertionHash
+      );
+      return node.status ? node.createdAtBlock : -1n;
+    }
   }
 
   protected override async _fetchCommit(index: bigint): Promise<BoLDCommit> {
-    const [event] = await this.Rollup.queryFilter(
+    const events = await this.Rollup.queryFilter(
       this.Rollup.filters.AssertionCreated(),
       index,
       index
     );
-    if (!(event instanceof EventLog)) throw new Error('no assertion');
-    const assertionHash: HexString32 = event.args.assertionHash;
-    const parentAssertionHash: HexString32 = event.args.parentAssertionHash;
+    if (!events.length) throw new Error('no assertion');
+    const found = await this._findUsableAssertion(events);
+    if (!found) throw new Error('unusable assertion');
+    const assertionHash: HexString32 = found.event.args.assertionHash;
+    const parentAssertionHash: HexString32 =
+      found.event.args.parentAssertionHash;
     const blockHash: HexString32 =
-      event.args.assertion.afterState.globalState[0][0]; // bytes32Vals[0]
-    const [block, tuple] = await Promise.all([
-      this.provider2.send('eth_getBlockByHash', [
-        blockHash,
-        false,
-      ]) as Promise<RPCEthGetBlock | null>,
-      this.unfinalized
-        ? null
-        : (this.Rollup.getAssertion(
-            event.args.assertionHash
-          ) as Promise<ABIAssertionTuple>),
-    ]);
+      found.event.args.assertion.afterState.globalState[0][0]; // bytes32Vals[0]
+    const block: RPCEthGetBlock | null = await this.provider2.send(
+      'eth_getBlockByHash',
+      [blockHash, false]
+    );
     if (!block) throw new Error(`no block: ${blockHash}`);
-    if (tuple && tuple.status !== ASSERTION_STATUS_CONFIRMED) {
-      throw new Error('not confirmed');
-    }
     const encodedRollupProof = ABI_CODER.encode(
       [
         '(bytes32, bytes32, ((bytes32[2], uint64[2]), uint8, bytes32), bytes32, bytes)',
@@ -220,8 +251,8 @@ export class BoLDRollup extends ArbitrumRollup<BoLDCommit> {
         [
           assertionHash,
           parentAssertionHash,
-          event.args.assertion.afterState,
-          event.args.afterInboxBatchAcc,
+          found.event.args.assertion.afterState,
+          found.event.args.afterInboxBatchAcc,
           encodeRlpBlock(block),
         ],
       ]

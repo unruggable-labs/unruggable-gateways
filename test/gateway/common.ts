@@ -430,7 +430,7 @@ export function testDoubleArbitrum(
       });
       const ArbitrumRollup = await foundry.deploy({ file: 'ArbitrumRollup' });
       const verifier = await foundry.deploy({
-        file: 'DoubleNitroVerifier',
+        file: 'DoubleArbitrumVerifier',
         args: [
           [ccip.endpoint],
           opts.window ?? rollup.defaultWindow,

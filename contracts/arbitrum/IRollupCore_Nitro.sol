@@ -20,15 +20,16 @@ struct Node {
     bytes32 nodeHash;
 }
 
-interface IRollupCore_v0 {
+interface IRollupCore_Nitro {
     function latestConfirmed() external view returns (uint64);
     function latestNodeCreated() external view returns (uint64);
     function countStakedZombies(uint64 nodeNum) external view returns (uint256);
     function getNode(uint64 nodeNum) external view returns (Node memory);
 }
 
-struct RollupProof_v0 {
-	uint64 nodeNum;
-	bytes32 sendRoot;
-	bytes rlpEncodedBlock;
+// the data necessary to prove a stateRoot
+struct RollupProof_Nitro {
+    uint64 nodeNum;
+    bytes32 sendRoot;
+    bytes rlpEncodedBlock;
 }
