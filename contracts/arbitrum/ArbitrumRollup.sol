@@ -10,7 +10,7 @@ library ArbitrumRollup {
     function isBoLD(address rollup) public view returns (bool) {
         // https://adraffy.github.io/keccak.js/test/demo.html#algo=evm&s=latestNodeCreated%28%29&escape=1&encoding=utf8
         (, bytes memory v) = rollup.staticcall{gas: 40000}(hex'7ba9534a');
-        return v.length != 32;
+        return v.length == 0;
     }
 
     function getLatestContext(

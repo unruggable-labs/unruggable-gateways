@@ -21,9 +21,9 @@ contract ArbitrumVerifier is AbstractVerifier {
         _minAgeBlocks = minAgeBlocks;
     }
 
-	function isBoLD() external view returns (bool) {
-		return ArbitrumRollup.isBoLD(_rollup);
-	}
+    function isBoLD() external view returns (bool) {
+        return ArbitrumRollup.isBoLD(_rollup);
+    }
 
     function getLatestContext() external view returns (bytes memory) {
         return ArbitrumRollup.getLatestContext(_rollup, _minAgeBlocks);
@@ -40,8 +40,8 @@ contract ArbitrumVerifier is AbstractVerifier {
         GatewayRequest memory req,
         bytes memory proof
     ) external view virtual returns (bytes[] memory, uint8 exitCode) {
-		GatewayProof memory p = abi.decode(proof, (GatewayProof));
-		bytes32 stateRoot = ArbitrumRollup.verifyStateRoot(
+        GatewayProof memory p = abi.decode(proof, (GatewayProof));
+        bytes32 stateRoot = ArbitrumRollup.verifyStateRoot(
             _rollup,
             _minAgeBlocks,
             _window,
