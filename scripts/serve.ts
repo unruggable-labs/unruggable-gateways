@@ -23,14 +23,14 @@ import { UnfinalizedLineaRollup } from '../src/linea/UnfinalizedLineaRollup.js';
 import { type ZKSyncConfig, ZKSyncRollup } from '../src/zksync/ZKSyncRollup.js';
 import { PolygonPoSRollup } from '../src/polygon/PolygonPoSRollup.js';
 import { EthSelfRollup } from '../src/eth/EthSelfRollup.js';
-import { Contract } from 'ethers/contract';
-import { SigningKey } from 'ethers/crypto';
-import { id as keccakStr } from 'ethers/hash';
-import { toUnpaddedHex } from '../src/utils.js';
 import { TrustedRollup } from '../src/TrustedRollup.js';
+import { toUnpaddedHex } from '../src/utils.js';
 import { EthProver } from '../src/eth/EthProver.js';
 //import { LineaProver } from '../src/linea/LineaProver.js';
 import { ZKSyncProver } from '../src/zksync/ZKSyncProver.js';
+import { Contract } from 'ethers/contract';
+import { SigningKey } from 'ethers/crypto';
+import { id as keccakStr } from 'ethers/hash';
 import { execSync } from 'child_process';
 
 const versionIdentifier = (() => {
@@ -133,15 +133,15 @@ const config: Record<string, any> = {
   version: versionIdentifier,
   gateway: gateway.constructor.name,
   rollup: gateway.rollup.constructor.name,
+  unfinalized: gateway.rollup.unfinalized,
   chain1: chainName(gateway.rollup.provider1._network.chainId),
   rpc1: keccakStr(providerURL(gateway.rollup.provider1._network.chainId)),
   chain2: chainName(gateway.rollup.provider2._network.chainId),
   rpc2: keccakStr(providerURL(gateway.rollup.provider2._network.chainId)),
   since: new Date(),
-  unfinalized: gateway.rollup.unfinalized,
   prefetch,
   ...toJSON(gateway),
-  ...toJSON({ ...gateway.rollup, getLogsStepSize: undefined }),
+  ...toJSON(gateway.rollup),
 };
 
 if (gateway.rollup instanceof TrustedRollup) {
@@ -266,31 +266,31 @@ async function createGateway(name: string, unfinalized: boolean) {
   }
   switch (name) {
     case 'op':
-      return createOPFaultGateway(OPFaultRollup.mainnetConfig, unfinalized);
+      return createOPFault(OPFaultRollup.mainnetConfig, unfinalized);
     case 'op-sepolia':
-      return createOPFaultGateway(OPFaultRollup.sepoliaConfig, unfinalized);
+      return createOPFault(OPFaultRollup.sepoliaConfig, unfinalized);
     case 'base':
-      return createOPFaultGateway(OPFaultRollup.baseMainnetConfig, unfinalized);
+      return createOPFault(OPFaultRollup.baseMainnetConfig, unfinalized);
     case 'base-sepolia':
-      return createOPFaultGateway(OPFaultRollup.baseSepoliaConfig, unfinalized);
+      return createOPFault(OPFaultRollup.baseSepoliaConfig, unfinalized);
+    case 'unichain':
+      return createOPFault(OPFaultRollup.unichainMainnetConfig, unfinalized);
     case 'unichain-sepolia':
-      return createOPFaultGateway(
-        OPFaultRollup.unichainSepoliaConfig,
-        unfinalized
-      );
+      return createOPFault(OPFaultRollup.unichainSepoliaConfig, unfinalized);
+    case 'soneium':
+      return createOPFault(OPFaultRollup.soneiumMainnetConfig, unfinalized);
     case 'soneium-minato':
-      return createOPFaultGateway(
-        OPFaultRollup.soneiumMinatoConfig,
-        unfinalized
-      );
+      return createOPFault(OPFaultRollup.soneiumMinatoConfig, unfinalized);
+    case 'ink':
+      return createOPFault(OPFaultRollup.inkMainnetConfig, unfinalized);
     case 'ink-sepolia':
-      return createOPFaultGateway(OPFaultRollup.inkSepoliaConfig, unfinalized);
+      return createOPFault(OPFaultRollup.inkSepoliaConfig, unfinalized);
     case 'arb1':
-      return createArbitrumGateway(BoLDRollup.arb1MainnetConfig, unfinalized);
+      return createArbitrum(BoLDRollup.arb1MainnetConfig, unfinalized);
     case 'arb1-sepolia':
-      return createArbitrumGateway(BoLDRollup.arb1SepoliaConfig, unfinalized);
+      return createArbitrum(BoLDRollup.arb1SepoliaConfig, unfinalized);
     case 'ape-L2':
-      return createArbitrumGateway(NitroRollup.apeMainnetConfig, unfinalized);
+      return createArbitrum(NitroRollup.apeMainnetConfig, unfinalized);
     case 'ape': {
       const config12 = BoLDRollup.arb1MainnetConfig;
       const config23 = NitroRollup.apeMainnetConfig;
@@ -335,21 +335,21 @@ async function createGateway(name: string, unfinalized: boolean) {
       );
     }
     case 'scroll':
-      return createScrollGateway(ScrollRollup.mainnetConfig);
+      return createScroll(ScrollRollup.mainnetConfig);
     case 'scroll-sepolia':
-      return createScrollGateway(ScrollRollup.sepoliaConfig);
+      return createScroll(ScrollRollup.sepoliaConfig);
     case 'taiko':
-      return createTaikoGateway(TaikoRollup.mainnetConfig);
+      return createTaiko(TaikoRollup.mainnetConfig);
     case 'taiko-hekla':
-      return createTaikoGateway(TaikoRollup.heklaConfig);
+      return createTaiko(TaikoRollup.heklaConfig);
     case 'zksync':
-      return createZKSyncGateway(ZKSyncRollup.mainnetConfig);
+      return createZKSync(ZKSyncRollup.mainnetConfig);
     case 'zksync-sepolia':
-      return createZKSyncGateway(ZKSyncRollup.sepoliaConfig);
+      return createZKSync(ZKSyncRollup.sepoliaConfig);
     case 'zero':
-      return createZKSyncGateway(ZKSyncRollup.zeroMainnetConfig);
+      return createZKSync(ZKSyncRollup.zeroMainnetConfig);
     case 'zero-sepolia':
-      return createZKSyncGateway(ZKSyncRollup.zeroSepoliaConfig);
+      return createZKSync(ZKSyncRollup.zeroSepoliaConfig);
     case 'blast':
       return createOPGateway(OPRollup.blastMainnnetConfig, unfinalized);
     case 'celo-alfajores':
@@ -409,7 +409,7 @@ function createOPGateway(
   );
 }
 
-function createOPFaultGateway(
+function createOPFault(
   config: RollupDeployment<OPFaultConfig>,
   unfinalized?: boolean
 ) {
@@ -418,7 +418,7 @@ function createOPFaultGateway(
   );
 }
 
-function createArbitrumGateway(
+function createArbitrum(
   config: RollupDeployment<ArbitrumConfig>,
   unfinalized?: boolean
 ) {
@@ -431,15 +431,15 @@ function createArbitrumGateway(
   );
 }
 
-function createScrollGateway(config: RollupDeployment<ScrollConfig>) {
+function createScroll(config: RollupDeployment<ScrollConfig>) {
   return new Gateway(new ScrollRollup(createProviderPair(config), config));
 }
 
-function createZKSyncGateway(config: RollupDeployment<ZKSyncConfig>) {
+function createZKSync(config: RollupDeployment<ZKSyncConfig>) {
   return new Gateway(new ZKSyncRollup(createProviderPair(config), config));
 }
 
-async function createTaikoGateway(config: RollupDeployment<TaikoConfig>) {
+async function createTaiko(config: RollupDeployment<TaikoConfig>) {
   return new Gateway(
     await TaikoRollup.create(createProviderPair(config), config)
   );
