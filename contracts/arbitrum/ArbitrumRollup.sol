@@ -137,12 +137,17 @@ library ArbitrumRollup {
     ) internal view returns (bytes32 stateRoot, uint256 got) {
         RollupProof_BoLD memory p = abi.decode(proof, (RollupProof_BoLD));
         AssertionNode memory node = rollup.getAssertion(p.assertionHash);
-        require(
-            minAgeBlocks == 0
-                ? node.status == AssertionStatus.Confirmed
-                : node.status != AssertionStatus.NoAssertion,
-            'BoLD: assertionStatus'
-        );
+        if (node.status != AssertionStatus.Confirmed) {
+            require(
+                node.status == AssertionStatus.Pending,
+                'BoLD: no assertion'
+            );
+            if (minAgeBlocks == 0) {
+                revert('BoLD: not finalized');
+            } else {
+                require(node.secondChildBlock == 0, 'BoLD: challenged');
+            }
+        }
         bytes32 assertionHash = keccak256(
             abi.encodePacked(
                 p.parentAssertionHash,
