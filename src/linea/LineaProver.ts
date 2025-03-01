@@ -1,4 +1,4 @@
-import type { HexString, HexString32, ProofRef } from '../types.js';
+import type { HexString, HexString32, ProofRef, Provider } from '../types.js';
 import { BlockProver, makeStorageKey, type TargetNeed } from '../vm.js';
 import { ZeroAddress, ZeroHash } from 'ethers/constants';
 import { withResolvers, toPaddedHex, isRPCError } from '../utils.js';
@@ -15,7 +15,8 @@ export class LineaProver extends BlockProver {
   static readonly isContract = isContract;
   static readonly encodeProof = encodeProof;
   static readonly latest = this._createLatest();
-  stateRoot?: HexString32;
+  shomeiProvider: Provider | undefined;
+  stateRoot: HexString32 | undefined;
   override async fetchStateRoot() {
     if (!this.stateRoot) throw new Error(`unknown stateRoot`);
     return this.stateRoot;
@@ -159,13 +160,15 @@ export class LineaProver extends BlockProver {
   }
   async fetchProofs(target: HexString, slots: bigint[] = []) {
     const ps: Promise<RPCLineaGetProof>[] = [];
+    const provider = this.shomeiProvider ?? this.provider;
     for (let i = 0; ; ) {
       ps.push(
         // 20240825: most cloud providers seem to reject batched getProof
         // since we aren't in control of provider construction (ie. batchMaxSize)
         // sendImmediate is a temporary hack to avoid this issue
         // 20241027: use GatewayProvider
-        this.provider.send('linea_getProof', [
+        // 20240227: add optional separate provider
+        provider.send('linea_getProof', [
           target,
           slots
             .slice(i, (i += this.proofBatchSize))
