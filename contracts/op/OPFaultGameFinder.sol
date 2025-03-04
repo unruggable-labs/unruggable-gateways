@@ -48,8 +48,8 @@ interface IFaultDisputeGame {
 }
 
 // https://github.com/ethereum-optimism/optimism/blob/42acc178b262b4cdcc75f9b3f4f63941c65bcb8a/packages/contracts-bedrock/src/dispute/lib/Types.sol
-uint32 constant GAME_TYPE_CANNON = 1;
-uint32 constant GAME_TYPE_PERMISSIONED_CANNON = 2;
+uint32 constant GAME_TYPE_CANNON = 0;
+uint32 constant GAME_TYPE_PERMISSIONED_CANNON = 1;
 
 error GameNotFound();
 error InvalidGameTypeBitMask();
