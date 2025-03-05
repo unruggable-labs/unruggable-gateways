@@ -1,8 +1,18 @@
 import { BoLDRollup } from '../../src/arbitrum/BoLDRollup.js';
+import { UnfinalizedBoLDRollup } from '../../src/arbitrum/UnfinalizedBoLDRollup.js';
 import { createProviderPair } from '../providers.js';
 
 const config = BoLDRollup.arb1MainnetConfig;
-const rollup = new BoLDRollup(createProviderPair(config), config);
+const rollup = new UnfinalizedBoLDRollup(createProviderPair(config), config);
+rollup.getLogsStepSize = 10000;
+
+console.time('sync');
+const commit0 = await rollup.fetchLatestCommit();
+console.timeEnd('sync');
+console.log({
+  hashes: commit0.assertionHashes.length,
+  proofBytes: commit0.encodedRollupProof.length,
+});
 
 // https://etherscan.io/advanced-filter?eladd=0x4dceb440657f21083db8add07665f8ddbe1dcfc0&eltpc=0xfc42829b29c259a7370ab56c8f69fce23b5f351a9ce151da453281993ec0090c
 const blocksPerCommit = 3600 / 12;
@@ -13,22 +23,38 @@ console.log({
 });
 
 console.log(new Date());
-for (const age of [1, blocksPerCommit, 2 * blocksPerCommit, 0]) {
+for (const age of [
+  1,
+  blocksPerCommit,
+  2 * blocksPerCommit,
+  1800,
+  /*confirmPeriodBlocks*/ 45818,
+]) {
   rollup.minAgeBlocks = age;
+  const commit = await rollup.fetchLatestCommit();
   console.log(
     age.toString().padStart(6),
-    await rollup.fetchLatestCommitIndex()
+    commit.index,
+    commit.assertionHashes.length
   );
 }
 
 rollup.minAgeBlocks = 1;
-const commits = await rollup.fetchRecentCommits(10);
+const commits = await rollup.fetchRecentCommits(5);
 const v = commits.map((x) => Number(x.index));
 console.log(v.slice(1).map((x, i) => v[i] - x));
 
-// 2025-02-23T05:37:38.457Z
-//      1 21906846n
-//    300 21906548n
-//    600 21906252n
-//      0 21860740n
-// [ 298, 296, 296, 299, 297, 300, 298, 297, 298 ]
+// {
+//   hashes: 155,
+//   proofBytes: 21698,
+// }
+// {
+//   Rollup: "0x4DCeB440657f21083db8aDd07665f8ddBe1DCfc0",
+//   defaultWindow: 1800,
+// }
+// 2025-03-05T06:49:06.040Z
+//      1 21978805n 155
+//    300 21978508n 154
+//    600 21978209n 153
+//  45818 21933103n 2
+// [ 297, 299, 299, 299 ]

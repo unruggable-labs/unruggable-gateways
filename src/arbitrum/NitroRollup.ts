@@ -1,18 +1,12 @@
-import type { RollupDeployment, RollupWitnessV1 } from '../rollup.js';
+import type { RollupDeployment } from '../rollup.js';
 import {
   type ArbitrumCommit,
   type ArbitrumConfig,
-  ArbitrumRollup,
+  AbstractArbitrumRollup,
 } from './ArbitrumRollup.js';
-import type {
-  HexString,
-  ProviderPair,
-  ProofSequenceV1,
-  HexString32,
-} from '../types.js';
+import type { HexString, ProviderPair, HexString32 } from '../types.js';
 import type { RPCEthGetBlock } from '../eth/types.js';
 import { Interface } from 'ethers/abi';
-import { ZeroHash } from 'ethers/constants';
 import { EventLog } from 'ethers/contract';
 import { EthProver } from '../eth/EthProver.js';
 import { ABI_CODER, fetchBlockNumber } from '../utils.js';
@@ -73,12 +67,7 @@ export type NitroCommit = ArbitrumCommit & {
   readonly rlpEncodedBlock: HexString;
 };
 
-type NitroConfig = ArbitrumConfig & { isBoLD: false };
-
-export class NitroRollup
-  extends ArbitrumRollup<NitroCommit>
-  implements RollupWitnessV1<NitroCommit>
-{
+export class NitroRollup extends AbstractArbitrumRollup<NitroCommit> {
   // [OLD] https://docs.arbitrum.io/build-decentralized-apps/reference/useful-addresses
   // https://docs.arbitrum.io/for-devs/dev-tools-and-resources/chain-info#core-contracts
   // 20250212: changed to BoLD
@@ -101,7 +90,7 @@ export class NitroRollup
   // };
 
   // https://docs.apechain.com/contracts/Mainnet/contract-information
-  static readonly apeMainnetConfig: RollupDeployment<NitroConfig> = {
+  static readonly apeMainnetConfig: RollupDeployment<ArbitrumConfig> = {
     chain1: CHAINS.ARB1,
     chain2: CHAINS.APE,
     Rollup: '0x374de579AE15aD59eD0519aeAf1A23F348Df259c',
@@ -213,17 +202,5 @@ export class NitroRollup
       rlpEncodedBlock,
       prevNum,
     };
-  }
-  encodeWitnessV1(commit: NitroCommit, proofSeq: ProofSequenceV1): HexString {
-    return ABI_CODER.encode(
-      [
-        '(bytes32 version, bytes32 sendRoot, uint64 nodeIndex, bytes rlpEncodedBlock)',
-        '(bytes, bytes[])',
-      ],
-      [
-        [ZeroHash, commit.sendRoot, commit.index, commit.rlpEncodedBlock],
-        [proofSeq.accountProof, proofSeq.storageProofs],
-      ]
-    );
   }
 }

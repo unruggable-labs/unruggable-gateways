@@ -1026,7 +1026,7 @@ export abstract class BlockProver extends AbstractProver {
     accountRef: ProofRef,
     storageRefs: Map<bigint, ProofRef>
   ): Promise<void>;
-  override async prove(needs: Need[]) {
+  override async prove(needs: Need[]): Promise<ProofSequence> {
     // reduce an ordered list of needs into a deduplicated list of proofs
     // provide empty proofs for non-contract slots
     type Bucket = {

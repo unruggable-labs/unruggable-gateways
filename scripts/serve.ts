@@ -32,6 +32,7 @@ import { Contract } from 'ethers/contract';
 import { SigningKey } from 'ethers/crypto';
 import { id as keccakStr } from 'ethers/hash';
 import { execSync } from 'child_process';
+import { createArbitrumRollup } from '../src/arbitrum/constructor.js';
 
 const versionIdentifier = (() => {
   try {
@@ -296,7 +297,7 @@ async function createGateway(name: string, unfinalized: boolean) {
       const config23 = NitroRollup.apeMainnetConfig;
       return new Gateway(
         new DoubleArbitrumRollup(
-          new BoLDRollup(
+          createArbitrumRollup(
             createProviderPair(config12),
             config12,
             unfinalized ? 1 : 0

@@ -1,8 +1,10 @@
 import { EthProver } from '../eth/EthProver.js';
-import { AbstractRollup, type RollupCommit } from '../rollup.js';
+import { RPCEthGetBlock } from '../eth/types.js';
+import { type RollupCommit, AbstractRollup } from '../rollup.js';
 import type {
   HexAddress,
   HexString,
+  HexString32,
   ProofSequence,
   ProviderPair,
 } from '../types.js';
@@ -19,7 +21,7 @@ export type ArbitrumCommit = RollupCommit<EthProver> & {
   readonly encodedRollupProof: HexString;
 };
 
-export abstract class ArbitrumRollup<
+export abstract class AbstractArbitrumRollup<
   C extends ArbitrumCommit,
 > extends AbstractRollup<C> {
   readonly Rollup: Contract;
@@ -53,5 +55,14 @@ export abstract class ArbitrumRollup<
     // finalization time is not on-chain
     // the delta between createdAtBlock is a sufficient proxy
     return Math.ceil(sec / MAINNET_BLOCK_SEC); // units of L1 blocks
+  }
+
+  protected async _fetchL2BlockFromHash(blockHash: HexString32) {
+    const block: RPCEthGetBlock | null = await this.provider2.send(
+      'eth_getBlockByHash',
+      [blockHash, false]
+    );
+    if (!block) throw new Error(`no block: ${blockHash}`);
+    return block;
   }
 }

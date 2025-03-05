@@ -22,8 +22,7 @@ import {
 import { type LineaConfig, LineaRollup } from '../../src/linea/LineaRollup.js';
 import { type TaikoConfig, TaikoRollup } from '../../src/taiko/TaikoRollup.js';
 import type { ArbitrumConfig } from '../../src/arbitrum/ArbitrumRollup.js';
-import { NitroRollup } from '../../src/arbitrum/NitroRollup.js';
-import { BoLDRollup } from '../../src/arbitrum/BoLDRollup.js';
+import { createArbitrumRollup } from '../../src/arbitrum/constructor.js';
 import { DoubleArbitrumRollup } from '../../src/arbitrum/DoubleArbitrumRollup.js';
 import {
   type ZKSyncConfig,
@@ -36,6 +35,8 @@ import { randomBytes, SigningKey } from 'ethers/crypto';
 import { ZeroAddress } from 'ethers/constants';
 import { afterAll } from 'bun:test';
 import { describe } from '../bun-describe-fix.js';
+import { UnfinalizedBoLDRollup } from '../../src/arbitrum/UnfinalizedBoLDRollup.js';
+import { Contract } from 'ethers/contract';
 
 export function testName(
   { chain1, chain2, chain3 }: ChainPair & { chain3?: Chain },
@@ -179,7 +180,7 @@ export function testArbitrum(
   opts: TestOptions & { minAgeBlocks?: number }
 ) {
   describe.skipIf(shouldSkip(opts))(testName(config), async () => {
-    const rollup = new (config.isBoLD ? BoLDRollup : NitroRollup)(
+    const rollup = createArbitrumRollup(
       createProviderPair(config),
       config,
       opts.minAgeBlocks
@@ -206,6 +207,19 @@ export function testArbitrum(
       ],
       libs: { GatewayVM, ArbitrumRollup },
     });
+    if (rollup instanceof UnfinalizedBoLDRollup) {
+      // FIXME: prewarm the cache
+      rollup.getLogsStepSize = 10000;
+      const commit = await rollup.fetchLatestCommit();
+      const contract = new Contract(
+        config.Rollup,
+        rollup.Rollup.interface,
+        foundry.provider
+      );
+      await Promise.all(
+        commit.assertionHashes.map((x) => contract.getAssertion(x))
+      );
+    }
     await setupTests(verifier, opts);
   });
 }
@@ -407,7 +421,7 @@ export function testDoubleArbitrum(
     ),
     async () => {
       const rollup = new DoubleArbitrumRollup(
-        new BoLDRollup(
+        createArbitrumRollup(
           createProviderPair(config12),
           config12,
           opts.minAgeBlocks12
@@ -437,8 +451,8 @@ export function testDoubleArbitrum(
           EthVerifierHooks,
           rollup.rollup12.Rollup,
           rollup.rollup12.minAgeBlocks,
-          rollup.nodeRequest.toTuple(),
-          !!config23.isBoLD,
+          rollup.request.toTuple(),
+          rollup.rollup23.isBoLD,
         ],
         libs: { GatewayVM, ArbitrumRollup },
       });

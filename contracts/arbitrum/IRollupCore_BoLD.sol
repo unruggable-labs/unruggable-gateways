@@ -52,8 +52,7 @@ interface IRollupCore_BoLD {
 // the data necessary to prove a stateRoot
 struct RollupProof_BoLD {
     bytes32 assertionHash;
-    bytes32 parentAssertionHash;
+    bytes encodedAssertionChain;
     AssertionState afterState;
-    bytes32 inboxAcc;
     bytes rlpEncodedBlock;
 }

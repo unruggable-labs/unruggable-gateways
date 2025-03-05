@@ -8,7 +8,7 @@ import {GatewayRequest, GatewayVM, ProofSequence} from '../GatewayVM.sol';
 
 contract DoubleArbitrumVerifier is ArbitrumVerifier {
     GatewayRequest _request;
-    bool immutable _isBold;
+    bool immutable _isBold23;
 
     constructor(
         string[] memory urls,
@@ -17,10 +17,10 @@ contract DoubleArbitrumVerifier is ArbitrumVerifier {
         address rollup12,
         uint256 minAgeBlocks12,
         GatewayRequest memory request,
-        bool isBold
+        bool isBold23
     ) ArbitrumVerifier(urls, window, hooks, rollup12, minAgeBlocks12) {
         _request = request;
-        _isBold = isBold;
+        _isBold23 = isBold23;
     }
 
     function getStorageValues(
@@ -40,7 +40,7 @@ contract DoubleArbitrumVerifier is ArbitrumVerifier {
             _request,
             ProofSequence(0, stateRoot, ps[0].proofs, ps[0].order, _hooks)
         );
-        if (_isBold) {
+        if (_isBold23) {
             // outputs[0] = blockhash
             RollupProof_BoLD memory p = abi.decode(
                 ps[1].rollupProof,

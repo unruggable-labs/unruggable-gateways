@@ -9,7 +9,7 @@ import type {
 import type {
   ArbitrumCommit,
   ArbitrumConfig,
-  ArbitrumRollup,
+  AbstractArbitrumRollup,
 } from './ArbitrumRollup.js';
 import { type NitroCommit, NitroRollup } from './NitroRollup.js';
 import { ABI_CODER } from '../utils.js';
@@ -27,7 +27,7 @@ export type DoubleArbitrumCommit<C1> = RollupCommit<EthProver> & {
 // TODO: implement minAgeBlocks for rollup23
 // TODO: implement BoLD support for rollup23
 
-function createNodeRequest(address: HexAddress, unfinalized = false) {
+function createRequestForNitro(address: HexAddress, unfinalized = false) {
   const SLOT_NODE_STORAGE = 117n;
   const SLOT_NODES_MAP = 118n;
   const SLOT_OFFSET_CONFIRM_DATA = 2n;
@@ -53,15 +53,15 @@ function createNodeRequest(address: HexAddress, unfinalized = false) {
 
 export class DoubleArbitrumRollup<
   C1 extends ArbitrumCommit,
-  R1 extends ArbitrumRollup<C1>,
+  R1 extends AbstractArbitrumRollup<C1>,
 > extends AbstractRollup<DoubleArbitrumCommit<C1>> {
   readonly rollup23: NitroRollup;
-  readonly nodeRequest: GatewayRequest;
+  readonly request: GatewayRequest;
   constructor(
     readonly rollup12: R1,
     provider3: Provider,
     config23: ArbitrumConfig,
-    minAgeBlocks23 = rollup12.minAgeBlocks
+    minAgeBlocks23: number = 0
   ) {
     super({ provider1: rollup12.provider1, provider2: provider3 });
     this.rollup23 = new NitroRollup(
@@ -70,7 +70,7 @@ export class DoubleArbitrumRollup<
       minAgeBlocks23
     );
     this.rollup23.latestBlockTag = 'latest'; // TODO: explain this
-    this.nodeRequest = createNodeRequest(
+    this.request = createRequestForNitro(
       config23.Rollup,
       this.rollup23.unfinalized
     );
@@ -90,7 +90,7 @@ export class DoubleArbitrumRollup<
     index: bigint
   ): Promise<DoubleArbitrumCommit<C1>> {
     const commit12 = await this.rollup12.fetchCommit(index);
-    const state = await commit12.prover.evalRequest(this.nodeRequest);
+    const state = await commit12.prover.evalRequest(this.request);
     const [proofSeq12, outputs] = await Promise.all([
       commit12.prover.prove(state.needs),
       state.resolveOutputs(),

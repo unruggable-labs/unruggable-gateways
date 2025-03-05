@@ -136,35 +136,72 @@ library ArbitrumRollup {
         bytes memory proof
     ) internal view returns (bytes32 stateRoot, uint256 got) {
         RollupProof_BoLD memory p = abi.decode(proof, (RollupProof_BoLD));
-        AssertionNode memory node = rollup.getAssertion(p.assertionHash);
-        if (node.status != AssertionStatus.Confirmed) {
-            require(
-                node.status == AssertionStatus.Pending,
-                'BoLD: no assertion'
+        AssertionNode memory node;
+        if (minAgeBlocks == 0) {
+            bytes32 assertionHash = keccak256(
+                abi.encodePacked(
+                    p.assertionHash,
+                    keccak256(abi.encode(p.afterState)),
+                    bytes32(p.encodedAssertionChain)
+                )
             );
-            if (minAgeBlocks == 0) {
-                revert('BoLD: not finalized');
-            } else {
-                require(node.secondChildBlock == 0, 'BoLD: challenged');
-            }
+            node = rollup.getAssertion(assertionHash);
+            require(
+                node.status == AssertionStatus.Confirmed,
+                'BoLD: not finalized'
+            );
+        } else {
+            bytes32 afterStateHash;
+            (node, afterStateHash) = _verifyAssertionChain(
+                rollup,
+                p.encodedAssertionChain,
+                p.assertionHash
+            );
+            require(
+                keccak256(abi.encode(p.afterState)) == afterStateHash,
+                'BoLD: after state'
+            );
         }
-        bytes32 assertionHash = keccak256(
-            abi.encodePacked(
-                p.parentAssertionHash,
-                keccak256(abi.encode(p.afterState)),
-                p.inboxAcc
-            )
-        );
-        require(assertionHash == p.assertionHash, 'BoLD: assertionHash');
         got = node.createdAtBlock;
-        require(
-            p.afterState.machineStatus == MachineStatus.FINISHED,
-            'BoLD: machineStatus'
-        );
         stateRoot = extractStateRoot_BoLD(
             p,
             p.afterState.globalState.bytes32Vals[0]
         );
+    }
+
+    function _verifyAssertionChain(
+        IRollupCore_BoLD rollup,
+        bytes memory v,
+        bytes32 assertionHash
+    )
+        internal
+        view
+        returns (AssertionNode memory node, bytes32 afterStateHash)
+    {
+        node = rollup.getAssertion(assertionHash);
+        require(
+            node.status == AssertionStatus.Confirmed,
+            'BoLD: not finalized'
+        );
+        require(v.length & 63 == 0, 'BoLD: chain');
+        for (uint256 i; i < v.length; ) {
+            bytes32 inboxAcc;
+            assembly {
+                i := add(i, 32)
+                afterStateHash := mload(add(v, i))
+                i := add(i, 32)
+                inboxAcc := mload(add(v, i))
+            }
+            assertionHash = keccak256(
+                abi.encodePacked(assertionHash, afterStateHash, inboxAcc)
+            );
+            node = rollup.getAssertion(assertionHash);
+            require(
+                node.status == AssertionStatus.Pending,
+                'BoLD: no assertion'
+            );
+            require(node.secondChildBlock == 0, 'BoLD: challenged');
+        }
     }
 
     function extractStateRoot_Nitro(
