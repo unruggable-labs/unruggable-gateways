@@ -140,7 +140,7 @@ export class Gateway<R extends Rollup> extends EZCCIP {
     cacheMs?: number
   ): Promise<CachedCommit<R>> {
     const cached = await this.commitCacheMap.peek(index);
-    if (cached && !(await cached.valid.get())) {
+    if (cached && !(await cached.valid.get().catch(() => {}))) {
       this.commitCacheMap.delete(index);
     }
     return this.commitCacheMap.get(
@@ -171,7 +171,7 @@ export abstract class GatewayV1<R extends Rollup> extends EZCCIP {
     // we only keep the latest commit
     if (
       index !== this.latestCommit?.index ||
-      !(await this.rollup.isCommitStillValid(this.latestCommit))
+      !(await this.rollup.isCommitStillValid(this.latestCommit).catch(() => {}))
     ) {
       this.latestCommit = await this.rollup.fetchCommit(index);
     }

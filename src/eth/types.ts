@@ -57,7 +57,7 @@ export type RPCEthGetBlock<TransactionT = HexString> = {
   blobGasUsed?: HexString;
   excessBlobGas?: HexString;
   parentBeaconBlockRoot?: HexString32;
-  requestsRoot?: HexString32;
+  requestsHash?: HexString32; // https://eips.ethereum.org/EIPS/eip-7685
 };
 
 export function isContract(proof: EthAccountProof) {

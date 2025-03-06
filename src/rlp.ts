@@ -44,6 +44,6 @@ export function encodeRlpBlock(block: RPCEthGetBlock): HexString {
     encodeRlpUint(block.blobGasUsed),
     encodeRlpUint(block.excessBlobGas),
     block.parentBeaconBlockRoot,
-    block.requestsRoot,
+    block.requestsHash,
   ]);
 }

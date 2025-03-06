@@ -24,7 +24,7 @@ import { type ZKSyncConfig, ZKSyncRollup } from '../src/zksync/ZKSyncRollup.js';
 import { PolygonPoSRollup } from '../src/polygon/PolygonPoSRollup.js';
 import { EthSelfRollup } from '../src/eth/EthSelfRollup.js';
 import { TrustedRollup } from '../src/TrustedRollup.js';
-import { toUnpaddedHex } from '../src/utils.js';
+import { LATEST_BLOCK_TAG, toUnpaddedHex } from '../src/utils.js';
 import { EthProver } from '../src/eth/EthProver.js';
 //import { LineaProver } from '../src/linea/LineaProver.js';
 import { ZKSyncProver } from '../src/zksync/ZKSyncProver.js';
@@ -32,7 +32,6 @@ import { Contract } from 'ethers/contract';
 import { SigningKey } from 'ethers/crypto';
 import { id as keccakStr } from 'ethers/hash';
 import { execSync } from 'child_process';
-import { createArbitrumRollup } from '../src/arbitrum/constructor.js';
 
 const versionIdentifier = (() => {
   try {
@@ -77,7 +76,7 @@ const args = process.argv.slice(2).filter((x) => {
   if (x === '--prefetch') {
     prefetch = true;
   } else if (x === '--latest') {
-    latestBlockTag = 'latest';
+    latestBlockTag = LATEST_BLOCK_TAG;
   } else if (x === '--unfinalized') {
     unfinalized = true;
   } else if (x === '--dump') {
@@ -297,7 +296,7 @@ async function createGateway(name: string, unfinalized: boolean) {
       const config23 = NitroRollup.apeMainnetConfig;
       return new Gateway(
         new DoubleArbitrumRollup(
-          createArbitrumRollup(
+          new (config12.isBoLD ? BoLDRollup : NitroRollup)(
             createProviderPair(config12),
             config12,
             unfinalized ? 1 : 0

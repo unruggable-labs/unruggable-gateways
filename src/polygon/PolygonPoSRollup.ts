@@ -10,14 +10,13 @@ import type {
   ProviderPair,
   ProofSequence,
 } from '../types.js';
-import type { RPCEthGetBlock } from '../eth/types.js';
 import { type ABIHeaderTuple, ROOT_CHAIN_ABI } from './types.js';
 import { ZeroHash } from 'ethers/constants';
 import { Contract } from 'ethers/contract';
 import { id as keccakStr } from 'ethers/hash';
 import { CHAINS } from '../chains.js';
 import { EthProver } from '../eth/EthProver.js';
-import { ABI_CODER, toUnpaddedHex } from '../utils.js';
+import { ABI_CODER, fetchBlockFromHash, toUnpaddedHex } from '../utils.js';
 import { encodeRlpBlock } from '../rlp.js';
 
 export type PolygonPoSPoster = {
@@ -180,12 +179,8 @@ export class PolygonPoSRollup extends AbstractRollup<PolygonPoSCommit> {
     // 6. usable stateRoot!
     const [rlpEncodedProof, prevBlock] = await Promise.all([
       this.fetchAPIReceiptProof(event.transactionHash),
-      this.provider2.send('eth_getBlockByHash', [
-        prevBlockHash,
-        false,
-      ]) as Promise<RPCEthGetBlock | null>,
+      fetchBlockFromHash(this.provider2, prevBlockHash),
     ]);
-    if (!prevBlock) throw new Error('no prevBlock');
     const rlpEncodedBlock = encodeRlpBlock(prevBlock);
     // if (ethers.keccak256(rlpEncodedBlock) !== prevBlockHash) {
     //   throw new Error('block hash mismatch`);

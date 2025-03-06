@@ -22,7 +22,8 @@ import {
 import { type LineaConfig, LineaRollup } from '../../src/linea/LineaRollup.js';
 import { type TaikoConfig, TaikoRollup } from '../../src/taiko/TaikoRollup.js';
 import type { ArbitrumConfig } from '../../src/arbitrum/ArbitrumRollup.js';
-import { createArbitrumRollup } from '../../src/arbitrum/constructor.js';
+import { BoLDRollup } from '../../src/arbitrum/BoLDRollup.js';
+import { NitroRollup } from '../../src/arbitrum/NitroRollup.js';
 import { DoubleArbitrumRollup } from '../../src/arbitrum/DoubleArbitrumRollup.js';
 import {
   type ZKSyncConfig,
@@ -35,8 +36,7 @@ import { randomBytes, SigningKey } from 'ethers/crypto';
 import { ZeroAddress } from 'ethers/constants';
 import { afterAll } from 'bun:test';
 import { describe } from '../bun-describe-fix.js';
-import { UnfinalizedBoLDRollup } from '../../src/arbitrum/UnfinalizedBoLDRollup.js';
-import { Contract } from 'ethers/contract';
+import { prefetchBoLD } from '../workarounds/prefetch-BoLD.js';
 
 export function testName(
   { chain1, chain2, chain3 }: ChainPair & { chain3?: Chain },
@@ -139,7 +139,6 @@ export function testOPFault(
         config,
         opts.minAgeSec
       );
-      rollup.latestBlockTag = 'latest';
       const foundry = await Foundry.launch({
         fork: providerURL(config.chain1),
         infoLog: !!opts.log,
@@ -179,49 +178,44 @@ export function testArbitrum(
   config: RollupDeployment<ArbitrumConfig>,
   opts: TestOptions & { minAgeBlocks?: number }
 ) {
-  describe.skipIf(shouldSkip(opts))(testName(config), async () => {
-    const rollup = createArbitrumRollup(
-      createProviderPair(config),
-      config,
-      opts.minAgeBlocks
-    );
-    const foundry = await Foundry.launch({
-      fork: providerURL(config.chain1),
-      infoLog: !!opts.log,
-    });
-    afterAll(foundry.shutdown);
-    const gateway = new Gateway(rollup);
-    const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
-    afterAll(ccip.shutdown);
-    const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
-    const EthVerifierHooks = await foundry.deploy({ file: 'EthVerifierHooks' });
-    const ArbitrumRollup = await foundry.deploy({ file: 'ArbitrumRollup' });
-    const verifier = await foundry.deploy({
-      file: 'ArbitrumVerifier',
-      args: [
-        [ccip.endpoint],
-        opts.window ?? rollup.defaultWindow,
-        EthVerifierHooks,
-        rollup.Rollup,
-        rollup.minAgeBlocks,
-      ],
-      libs: { GatewayVM, ArbitrumRollup },
-    });
-    if (rollup instanceof UnfinalizedBoLDRollup) {
-      // FIXME: prewarm the cache
-      rollup.getLogsStepSize = 10000;
-      const commit = await rollup.fetchLatestCommit();
-      const contract = new Contract(
-        config.Rollup,
-        rollup.Rollup.interface,
-        foundry.provider
+  describe.skipIf(shouldSkip(opts))(
+    testName(config, { unfinalized: !!opts.minAgeBlocks }),
+    async () => {
+      const rollup = new (config.isBoLD ? BoLDRollup : NitroRollup)(
+        createProviderPair(config),
+        config,
+        opts.minAgeBlocks
       );
-      await Promise.all(
-        commit.assertionHashes.map((x) => contract.getAssertion(x))
-      );
+      const foundry = await Foundry.launch({
+        fork: providerURL(config.chain1),
+        infoLog: !!opts.log,
+      });
+      afterAll(foundry.shutdown);
+      const gateway = new Gateway(rollup);
+      const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
+      afterAll(ccip.shutdown);
+      const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
+      const EthVerifierHooks = await foundry.deploy({
+        file: 'EthVerifierHooks',
+      });
+      const ArbitrumRollup = await foundry.deploy({ file: 'ArbitrumRollup' });
+      const verifier = await foundry.deploy({
+        file: 'ArbitrumVerifier',
+        args: [
+          [ccip.endpoint],
+          opts.window ?? rollup.defaultWindow,
+          EthVerifierHooks,
+          rollup.Rollup,
+          rollup.minAgeBlocks,
+        ],
+        libs: { GatewayVM, ArbitrumRollup },
+      });
+      if (rollup instanceof BoLDRollup) {
+        await prefetchBoLD(foundry, rollup);
+      }
+      await setupTests(verifier, opts);
     }
-    await setupTests(verifier, opts);
-  });
+  );
 }
 
 export function testScroll(
@@ -421,7 +415,7 @@ export function testDoubleArbitrum(
     ),
     async () => {
       const rollup = new DoubleArbitrumRollup(
-        createArbitrumRollup(
+        new (config12.isBoLD ? BoLDRollup : NitroRollup)(
           createProviderPair(config12),
           config12,
           opts.minAgeBlocks12
@@ -456,6 +450,9 @@ export function testDoubleArbitrum(
         ],
         libs: { GatewayVM, ArbitrumRollup },
       });
+      if (rollup.rollup12 instanceof BoLDRollup) {
+        await prefetchBoLD(foundry, rollup.rollup12);
+      }
       await setupTests(verifier, opts);
     }
   );

@@ -1,7 +1,12 @@
 import { AbiCoder } from 'ethers/abi';
 import { id as keccakStr } from 'ethers/hash';
 import type { CallExceptionError, EthersError } from 'ethers/utils';
-import type { Provider, BigNumberish, HexString } from './types.js';
+import type {
+  Provider,
+  BigNumberish,
+  HexString,
+  HexString32,
+} from './types.js';
 import type { RPCEthGetBlock } from './eth/types.js';
 
 export const ABI_CODER = AbiCoder.defaultAbiCoder();
@@ -57,6 +62,18 @@ export async function fetchBlock(
   ]);
   if (!json) throw new Error(`no block: ${relBlockTag}`);
   return json;
+}
+
+export async function fetchBlockFromHash(
+  provider: Provider,
+  blockHash: HexString32
+): Promise<RPCEthGetBlock> {
+  const block: RPCEthGetBlock | null = await provider.send(
+    'eth_getBlockByHash',
+    [blockHash, false]
+  );
+  if (!block) throw new Error(`no blockhash: ${blockHash}`);
+  return block;
 }
 
 // avoid an rpc if possible

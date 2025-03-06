@@ -1,5 +1,4 @@
 import { createProvider, createProviderPair } from '../providers.js';
-import { createArbitrumRollup } from '../../src/arbitrum/constructor.js';
 import { BoLDRollup } from '../../src/arbitrum/BoLDRollup.js';
 import { NitroRollup } from '../../src/arbitrum/NitroRollup.js';
 import { DoubleArbitrumRollup } from '../../src/arbitrum/DoubleArbitrumRollup.js';
@@ -19,7 +18,7 @@ const ages = [
   [1, 1],
 ];
 const rollup = new DoubleArbitrumRollup(
-  createArbitrumRollup(provider12, config12),
+  new BoLDRollup(provider12, config12),
   provider3,
   config23
 );

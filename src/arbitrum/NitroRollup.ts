@@ -5,11 +5,10 @@ import {
   AbstractArbitrumRollup,
 } from './ArbitrumRollup.js';
 import type { HexString, ProviderPair, HexString32 } from '../types.js';
-import type { RPCEthGetBlock } from '../eth/types.js';
 import { Interface } from 'ethers/abi';
 import { EventLog } from 'ethers/contract';
 import { EthProver } from '../eth/EthProver.js';
-import { ABI_CODER, fetchBlockNumber } from '../utils.js';
+import { ABI_CODER, fetchBlockFromHash, fetchBlockNumber } from '../utils.js';
 import { encodeRlpBlock } from '../rlp.js';
 import { CHAINS } from '../chains.js';
 
@@ -182,10 +181,7 @@ export class NitroRollup extends AbstractArbitrumRollup<NitroCommit> {
   }
   protected override async _fetchCommit(index: bigint): Promise<NitroCommit> {
     const { prevNum, blockHash, sendRoot } = await this.fetchNodeData(index);
-    const block: RPCEthGetBlock | null = await this.provider2.send(
-      'eth_getBlockByHash',
-      [blockHash, false]
-    );
+    const block = await fetchBlockFromHash(this.provider2, blockHash);
     if (!block) throw new Error(`no block: ${blockHash}`);
     // note: block.sendRoot == sendRoot
     const rlpEncodedBlock = encodeRlpBlock(block);

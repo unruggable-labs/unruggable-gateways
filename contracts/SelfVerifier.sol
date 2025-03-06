@@ -32,6 +32,7 @@ contract SelfVerifier is AbstractVerifier {
         RLPReader.RLPItem[] memory v = RLPReader.readList(p.rlpEncodedBlock);
         uint256 blockNumber = uint256(RLPReaderExt.bytes32FromRLP(v[8]));
         _checkWindow(blockNumber1, blockNumber);
+        // TODO: change this to https://eips.ethereum.org/EIPS/eip-2935
         bytes32 blockHash = blockhash(blockNumber);
         if (blockHash != keccak256(p.rlpEncodedBlock))
             revert('Self: blockhash');
