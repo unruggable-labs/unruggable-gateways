@@ -5,7 +5,6 @@ console.log(new Date());
 
 const config = BoLDRollup.arb1MainnetConfig;
 const rollup = new BoLDRollup(createProviderPair(config), config, 1);
-rollup.getLogsStepSize = 10000;
 
 console.time('sync');
 const commit0 = await rollup.fetchLatestCommit();
@@ -18,7 +17,6 @@ console.log({
 console.log({
   Rollup: rollup.Rollup.target,
   defaultWindow: rollup.defaultWindow,
-  maxAssertions: rollup.maxAssertions,
 });
 
 // https://etherscan.io/advanced-filter?eladd=0x4dceb440657f21083db8add07665f8ddbe1dcfc0&eltpc=0xfc42829b29c259a7370ab56c8f69fce23b5f351a9ce151da453281993ec0090c

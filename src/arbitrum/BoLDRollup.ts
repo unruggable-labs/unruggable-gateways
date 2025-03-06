@@ -14,7 +14,7 @@ import { EthProver } from '../eth/EthProver.js';
 import { ABI_CODER, fetchBlockFromHash, fetchBlockNumber } from '../utils.js';
 import { encodeRlpBlock } from '../rlp.js';
 import { CHAINS } from '../chains.js';
-import { CachedMap, CachedValue } from '../cached.js';
+import { CachedValue } from '../cached.js';
 
 // https://docs.arbitrum.io/how-arbitrum-works/bold/gentle-introduction
 // https://github.com/OffchainLabs/bold
@@ -107,6 +107,7 @@ type KnownAssertion = {
   readonly afterInboxBatchAcc: HexString32;
   readonly createdAtBlock: bigint;
   confirmed: boolean;
+  children: number; // only tracks unfinalized children
 };
 
 function isValidCreatedEvent(event: Log): event is EventLog {
@@ -116,18 +117,24 @@ function isValidCreatedEvent(event: Log): event is EventLog {
   );
 }
 
-function knownAssertionFromCreatedEvent(
-  event: EventLog,
-  confirmed = false
-): KnownAssertion {
+function knownAssertionFromCreatedEvent(event: EventLog): KnownAssertion {
   return {
     createdAtBlock: BigInt(event.blockNumber),
     assertionHash: event.args.assertionHash,
     parentAssertionHash: event.args.parentAssertionHash,
     afterState: event.args.assertion.afterState,
     afterInboxBatchAcc: event.args.afterInboxBatchAcc,
-    confirmed,
+    confirmed: false,
+    children: 0,
   };
+}
+
+function isValidAssertionChain(chain: KnownAssertion[]) {
+  return (
+    chain.length >= 2 &&
+    chain[0].confirmed &&
+    chain.slice(0, -1).every((x) => x.children < 2)
+  );
 }
 
 export type BoLDCommit = ArbitrumCommit & {
@@ -164,16 +171,15 @@ export class BoLDRollup extends AbstractArbitrumRollup<BoLDCommit> {
     super(providers, true, config, ROLLUP_ABI, minAgeBlocks);
   }
 
-  async _getAssertion(assertionHash: HexString32): Promise<ABIAssertionNode> {
+  async _getAssertionNode(
+    assertionHash: HexString32
+  ): Promise<ABIAssertionNode> {
     return this.Rollup.getAssertion(assertionHash);
   }
 
-  maxAssertions = 1000; // only applies to unfinalized
-
   private _lastSync = -1n;
   readonly _assertionMap = new Map<HexString32, KnownAssertion>();
-  readonly _assertionCache = new CachedMap<HexString32, ABIAssertionNode>(30);
-  private readonly _syncGuard = new CachedValue(async () => {
+  readonly unfinalizedGuard = new CachedValue(async () => {
     const block1 = await fetchBlockNumber(this.provider1, this.latestBlockTag);
     let block0 = this._lastSync + 1n;
     if (!block0) {
@@ -198,7 +204,7 @@ export class BoLDRollup extends AbstractArbitrumRollup<BoLDCommit> {
         this.Rollup.filters.AssertionConfirmed().fragment.topicHash,
       ],
     ];
-    // note: this is processed by increasing time
+    // this is processed by increasing time (insertion order for Map)
     const inclusiveStep = BigInt(this.getLogsStepSize - 1);
     while (block <= block1) {
       let next = block + inclusiveStep;
@@ -209,50 +215,37 @@ export class BoLDRollup extends AbstractArbitrumRollup<BoLDCommit> {
           if (e.eventName == 'AssertionCreated') {
             if (isValidCreatedEvent(e)) {
               const known = knownAssertionFromCreatedEvent(e);
+              const parent = this._assertionMap.get(known.parentAssertionHash);
+              if (parent) parent.children++;
               this._assertionMap.set(known.assertionHash, known);
             }
           } else {
             const known = this._assertionMap.get(e.args.assertionHash);
-            if (known) known.confirmed = true;
+            if (known) {
+              known.confirmed = true;
+              // we only need to keep 1 confirmed assertion
+              const iter = this._assertionMap.keys();
+              for (;;) {
+                const key = iter.next().value!;
+                if (key == known.assertionHash) break;
+                this._assertionMap.delete(key);
+              }
+            }
           }
         }
       }
       block = next + 1n;
     }
-    // NOTE: maxAssertions must be large enough to retain 2 confirmed assertions in the cache
-    const iter = this._assertionMap.keys();
-    while (this._assertionMap.size > this.maxAssertions) {
-      this._assertionMap.delete(iter.next().value!);
-    }
   }
 
   private _latestAssertions(fn: (index: bigint) => boolean) {
-    // Map uses insertion order, which follows createdAtBlock
     return Array.from(this._assertionMap.values())
       .filter((x) => fn(x.createdAtBlock))
-      .reverse();
+      .reverse(); // ordered by descending createdAtBlock
   }
 
-  async _isValidAssertionChain(chain: KnownAssertion[]) {
-    return (
-      chain.length >= 2 &&
-      chain[0].confirmed &&
-      (
-        await Promise.all(
-          chain
-            .slice(0, -1) // parents
-            .map((known) =>
-              this._assertionCache.get(known.assertionHash, (x) =>
-                this._getAssertion(x)
-              )
-            )
-        )
-      ).every((x) => !x.secondChildBlock) // must be unchallenged
-    );
-  }
-
-  private async _assembleUnfinalizedAssertionChain(assertionHash: HexString32) {
-    await this._syncGuard.get();
+  async _unfinalizedAssertionChain(assertionHash: HexString32) {
+    await this.unfinalizedGuard.get();
     const chain: KnownAssertion[] = [];
     for (;;) {
       const known = this._assertionMap.get(assertionHash);
@@ -268,13 +261,13 @@ export class BoLDRollup extends AbstractArbitrumRollup<BoLDCommit> {
 
   override async fetchLatestCommitIndex(): Promise<bigint> {
     if (this.minAgeBlocks) {
-      await this._syncGuard.get();
+      await this.unfinalizedGuard.get();
       const block = this._lastSync - BigInt(this.minAgeBlocks);
       for (const known of this._latestAssertions((x) => x <= block)) {
-        const chain = await this._assembleUnfinalizedAssertionChain(
+        const chain = await this._unfinalizedAssertionChain(
           known.assertionHash
         );
-        if (await this._isValidAssertionChain(chain)) {
+        if (isValidAssertionChain(chain)) {
           return known.createdAtBlock;
         }
       }
@@ -282,7 +275,7 @@ export class BoLDRollup extends AbstractArbitrumRollup<BoLDCommit> {
     const assertionHash: HexString32 = await this.Rollup.latestConfirmed({
       blockTag: this.latestBlockTag,
     });
-    const node = await this._getAssertion(assertionHash);
+    const node = await this._getAssertionNode(assertionHash);
     if (node.status == ASSERTION_STATUS_CONFIRMED) {
       return node.createdAtBlock;
     }
@@ -303,12 +296,12 @@ export class BoLDRollup extends AbstractArbitrumRollup<BoLDCommit> {
 
   async _findAssertionChainAtIndex(index: bigint) {
     if (this.minAgeBlocks) {
-      await this._syncGuard.get();
+      await this.unfinalizedGuard.get();
       for (const known of this._latestAssertions((x) => x == index)) {
-        const chain = await this._assembleUnfinalizedAssertionChain(
+        const chain = await this._unfinalizedAssertionChain(
           known.assertionHash
         );
-        if (await this._isValidAssertionChain(chain)) return chain;
+        if (isValidAssertionChain(chain)) return chain;
       }
     }
     const events = await this.Rollup.queryFilter(
@@ -316,11 +309,12 @@ export class BoLDRollup extends AbstractArbitrumRollup<BoLDCommit> {
       index,
       index
     );
+    // most likely there aren't 2+ assertions in 1 block...
     for (let i = events.length - 1; i >= 0; i--) {
       const event = events[i];
       if (isValidCreatedEvent(event)) {
         const [node, [parentEvent]] = await Promise.all([
-          this._getAssertion(event.args.assertionHash),
+          this._getAssertionNode(event.args.assertionHash),
           this.Rollup.queryFilter(
             this.Rollup.filters.AssertionCreated(event.args.parentAssertionHash)
           ),
@@ -329,10 +323,11 @@ export class BoLDRollup extends AbstractArbitrumRollup<BoLDCommit> {
           node.status == ASSERTION_STATUS_CONFIRMED &&
           parentEvent instanceof EventLog
         ) {
-          return [
-            knownAssertionFromCreatedEvent(parentEvent, true),
-            knownAssertionFromCreatedEvent(event, true),
-          ];
+          const parent = knownAssertionFromCreatedEvent(parentEvent);
+          parent.confirmed = true; // by construction
+          const child = knownAssertionFromCreatedEvent(event);
+          child.confirmed = true; // by status assertion
+          return [parent, child];
         }
       }
     }
@@ -368,9 +363,7 @@ export class BoLDRollup extends AbstractArbitrumRollup<BoLDCommit> {
     if (this.minAgeBlocks) {
       // one of the links may have been challenged
       const chain = await this._findAssertionChainAtIndex(commit.index);
-      return (
-        chain && chain.every((x, i) => commit.assertions[i] == x.assertionHash)
-      );
+      return chain.every((x, i) => commit.assertions[i] == x.assertionHash);
     } else {
       return true;
     }
