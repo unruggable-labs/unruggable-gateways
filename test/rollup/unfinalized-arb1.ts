@@ -18,6 +18,7 @@ console.log({
 console.log({
   Rollup: rollup.Rollup.target,
   defaultWindow: rollup.defaultWindow,
+  maxAssertions: rollup.maxAssertions,
 });
 
 // https://etherscan.io/advanced-filter?eladd=0x4dceb440657f21083db8add07665f8ddbe1dcfc0&eltpc=0xfc42829b29c259a7370ab56c8f69fce23b5f351a9ce151da453281993ec0090c
@@ -38,6 +39,13 @@ for (const age of [
   );
 }
 
+// rollup.minAgeBlocks = 0;
+// const final = await rollup.fetchLatestCommit();
+// rollup.minAgeBlocks = 50000;
+// const finalPrev = await rollup.fetchParentCommit(final);
+// console.log(final.index);
+// console.log(finalPrev.index);
+
 rollup.minAgeBlocks = 1;
 const commits = await rollup.fetchRecentCommits(5);
 const v = commits.map((x) => Number(x.index));
@@ -52,6 +60,7 @@ console.log(v.slice(1).map((x, i) => v[i] - x));
 // {
 //   Rollup: "0x4DCeB440657f21083db8aDd07665f8ddBe1DCfc0",
 //   defaultWindow: 1800,
+//   maxAssertions: 1000,
 // }
 //      1 21984464n 154
 //    300 21984166n 153

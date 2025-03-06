@@ -233,23 +233,22 @@ export class BoLDRollup extends AbstractArbitrumRollup<BoLDCommit> {
       .reverse();
   }
 
-  async _isValidAssertionChain(chain: KnownAssertion[] | undefined) {
-    if (chain && chain.length >= 2 && chain[0].confirmed) {
-      const nodes = await Promise.all(
-        chain
-          .slice(1, -1)
-          .map((x) =>
-            this._assertionCache.get(x.assertionHash, (xx) =>
-              this._getAssertion(xx)
+  async _isValidAssertionChain(chain: KnownAssertion[]) {
+    return (
+      chain.length >= 2 &&
+      chain[0].confirmed &&
+      (
+        await Promise.all(
+          chain
+            .slice(0, -1) // parents
+            .map((known) =>
+              this._assertionCache.get(known.assertionHash, (x) =>
+                this._getAssertion(x)
+              )
             )
-          )
-      );
-      // all unconfirmed inner assertions must be unchallenged
-      if (nodes.every((x) => !x.secondChildBlock)) {
-        return true;
-      }
-    }
-    return false;
+        )
+      ).every((x) => !x.secondChildBlock) // must be unchallenged
+    );
   }
 
   private async _assembleUnfinalizedAssertionChain(assertionHash: HexString32) {

@@ -142,14 +142,9 @@ library ArbitrumRollup {
         ) = _verifyAssertionChain(
                 rollup,
                 p.encodedAssertionChain,
-                p.assertionHash
+                p.assertionHash,
+                minAgeBlocks == 0
             );
-        if (minAgeBlocks == 0) {
-            require(
-                node.status == AssertionStatus.Confirmed,
-                'BoLD: not finalized'
-            );
-        }
         require(
             keccak256(abi.encode(p.afterState)) == afterStateHash,
             'BoLD: after state'
@@ -168,7 +163,8 @@ library ArbitrumRollup {
     function _verifyAssertionChain(
         IRollupCore_BoLD rollup,
         bytes memory v,
-        bytes32 assertionHash
+        bytes32 assertionHash,
+        bool finalized
     )
         internal
         view
@@ -179,9 +175,8 @@ library ArbitrumRollup {
             node.status == AssertionStatus.Confirmed,
             'BoLD: parent unfinalized'
         );
-        require(v.length & 63 == 0, 'BoLD: bad chain');
+        require(v.length > 0 && v.length & 63 == 0, 'BoLD: bad chain');
         for (uint256 i; i < v.length; ) {
-            require(i == 0 || node.secondChildBlock == 0, 'BoLD: challenged');
             bytes32 inboxAcc;
             assembly {
                 i := add(i, 32)
@@ -192,11 +187,16 @@ library ArbitrumRollup {
             assertionHash = keccak256(
                 abi.encodePacked(assertionHash, afterStateHash, inboxAcc)
             );
+            bool parentUnchallenged = node.secondChildBlock == 0;
             node = rollup.getAssertion(assertionHash);
-            require(
-                node.status != AssertionStatus.NoAssertion,
-                'BoLD: no assertion'
-            );
+            if (node.status != AssertionStatus.Confirmed) {
+                require(!finalized, 'BoLD: unfinalized');
+                require(parentUnchallenged, 'BoLD: challenged');
+                require(
+                    node.status == AssertionStatus.Pending,
+                    'BoLD: no assertion'
+                );
+            }
         }
     }
 
