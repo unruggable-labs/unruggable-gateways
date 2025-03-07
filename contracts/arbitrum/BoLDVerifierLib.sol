@@ -52,13 +52,12 @@ interface IRollupCore {
 }
 
 library BoLDVerifierLib {
-
-	struct RollupProof {
-		bytes32 assertionHash;
-		bytes encodedAssertionChain;
-		AssertionState afterState;
-		bytes rlpEncodedBlock;
-	}
+    struct RollupProof {
+        bytes32 assertionHash;
+        bytes encodedAssertionChain;
+        AssertionState afterState;
+        bytes rlpEncodedBlock;
+    }
 
     function latestIndex(
         address rollup,
@@ -66,7 +65,9 @@ library BoLDVerifierLib {
     ) external view returns (uint256 index) {
         if (minAgeBlocks == 0) {
             bytes32 assertionHash = IRollupCore(rollup).latestConfirmed();
-            AssertionNode memory node = IRollupCore(rollup).getAssertion(assertionHash);
+            AssertionNode memory node = IRollupCore(rollup).getAssertion(
+                assertionHash
+            );
             index = node.createdAtBlock;
         } else {
             index = block.number - minAgeBlocks;
@@ -97,10 +98,7 @@ library BoLDVerifierLib {
             'BoLD: not finished'
         );
         got = node.createdAtBlock;
-        stateRoot = verifyStateRoot(
-            p,
-            p.afterState.globalState.bytes32Vals[0]
-        );
+        stateRoot = verifyStateRoot(p, p.afterState.globalState.bytes32Vals[0]);
     }
 
     function _verifyAssertionChain(
@@ -151,7 +149,9 @@ library BoLDVerifierLib {
             keccak256(proof.rlpEncodedBlock) == blockHash,
             'BoLD: blockHash'
         );
-		RLPReader.RLPItem[] memory v = RLPReader.readList(proof.rlpEncodedBlock);
+        RLPReader.RLPItem[] memory v = RLPReader.readList(
+            proof.rlpEncodedBlock
+        );
         stateRoot = RLPReaderExt.strictBytes32FromRLP(v[3]);
     }
 }
