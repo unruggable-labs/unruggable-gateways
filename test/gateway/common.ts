@@ -37,6 +37,7 @@ import { ZeroAddress } from 'ethers/constants';
 import { afterAll } from 'bun:test';
 import { describe } from '../bun-describe-fix.js';
 import { prefetchBoLD } from '../workarounds/prefetch-BoLD.js';
+import { LATEST_BLOCK_TAG } from '../../src/utils.js';
 
 export function testName(
   { chain1, chain2, chain3 }: ChainPair & { chain3?: Chain },
@@ -198,7 +199,10 @@ export function testArbitrum(
       const EthVerifierHooks = await foundry.deploy({
         file: 'EthVerifierHooks',
       });
-      const ArbitrumRollup = await foundry.deploy({ file: 'ArbitrumRollup' });
+      const NitroVerifierLib = await foundry.deploy({
+        file: 'NitroVerifierLib',
+      });
+      const BoLDVerifierLib = await foundry.deploy({ file: 'BoLDVerifierLib' });
       const verifier = await foundry.deploy({
         file: 'ArbitrumVerifier',
         args: [
@@ -207,8 +211,9 @@ export function testArbitrum(
           EthVerifierHooks,
           rollup.Rollup,
           rollup.minAgeBlocks,
+          rollup.isBoLD,
         ],
-        libs: { GatewayVM, ArbitrumRollup },
+        libs: { GatewayVM, NitroVerifierLib, BoLDVerifierLib },
       });
       if (rollup instanceof BoLDRollup) {
         await prefetchBoLD(foundry, rollup);
@@ -258,7 +263,8 @@ export function testSelfEth(chain: Chain, opts: TestOptions) {
       infoLog: !!opts.log,
     });
     afterAll(foundry.shutdown);
-    const rollup = new EthSelfRollup(foundry.provider);
+    const rollup = new EthSelfRollup(createProvider(chain));
+    rollup.latestBlockTag = LATEST_BLOCK_TAG;
     const gateway = new Gateway(rollup);
     const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
     afterAll(ccip.shutdown);
@@ -286,7 +292,7 @@ export function testTrustedEth(chain2: Chain, opts: TestOptions) {
         EthProver,
         new SigningKey(randomBytes(32))
       );
-      rollup.latestBlockTag = 'latest';
+      rollup.latestBlockTag = LATEST_BLOCK_TAG;
       afterAll(foundry.shutdown);
       const gateway = new Gateway(rollup);
       const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
@@ -436,7 +442,10 @@ export function testDoubleArbitrum(
       const EthVerifierHooks = await foundry.deploy({
         file: 'EthVerifierHooks',
       });
-      const ArbitrumRollup = await foundry.deploy({ file: 'ArbitrumRollup' });
+      const NitroVerifierLib = await foundry.deploy({
+        file: 'NitroVerifierLib',
+      });
+      const BoLDVerifierLib = await foundry.deploy({ file: 'BoLDVerifierLib' });
       const verifier = await foundry.deploy({
         file: 'DoubleArbitrumVerifier',
         args: [
@@ -445,10 +454,11 @@ export function testDoubleArbitrum(
           EthVerifierHooks,
           rollup.rollup12.Rollup,
           rollup.rollup12.minAgeBlocks,
+          rollup.rollup12.isBoLD,
           rollup.request.toTuple(),
-          rollup.rollup23.isBoLD,
+          //rollup.rollup23.isBoLD,
         ],
-        libs: { GatewayVM, ArbitrumRollup },
+        libs: { GatewayVM, NitroVerifierLib, BoLDVerifierLib },
       });
       if (rollup.rollup12 instanceof BoLDRollup) {
         await prefetchBoLD(foundry, rollup.rollup12);

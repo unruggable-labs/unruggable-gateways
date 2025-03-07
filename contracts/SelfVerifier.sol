@@ -34,8 +34,7 @@ contract SelfVerifier is AbstractVerifier {
         _checkWindow(blockNumber1, blockNumber);
         // TODO: change this to https://eips.ethereum.org/EIPS/eip-2935
         bytes32 blockHash = blockhash(blockNumber);
-        if (blockHash != keccak256(p.rlpEncodedBlock))
-            revert('Self: blockhash');
+        require(blockHash == keccak256(p.rlpEncodedBlock), 'Self: blockhash');
         bytes32 stateRoot = RLPReaderExt.strictBytes32FromRLP(v[3]);
         return verify(req, stateRoot, p.proofs, p.order);
     }

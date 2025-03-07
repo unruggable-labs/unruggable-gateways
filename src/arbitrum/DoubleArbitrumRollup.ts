@@ -61,7 +61,7 @@ export class DoubleArbitrumRollup<
     readonly rollup12: R1,
     provider3: Provider,
     config23: ArbitrumConfig,
-    minAgeBlocks23: number = 0
+    minAgeBlocks23 = 0
   ) {
     super({ provider1: rollup12.provider1, provider2: provider3 });
     this.rollup23 = new NitroRollup(
