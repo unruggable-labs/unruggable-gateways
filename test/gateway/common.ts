@@ -263,8 +263,7 @@ export function testSelfEth(chain: Chain, opts: TestOptions) {
       infoLog: !!opts.log,
     });
     afterAll(foundry.shutdown);
-    const rollup = new EthSelfRollup(createProvider(chain));
-    rollup.latestBlockTag = LATEST_BLOCK_TAG;
+    const rollup = new EthSelfRollup(foundry.provider);
     const gateway = new Gateway(rollup);
     const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
     afterAll(ccip.shutdown);
