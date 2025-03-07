@@ -50,6 +50,10 @@ export class CachedValue<T> {
         return p;
       });
   }
+  async force() {
+    this.clear();
+    return this.get();
+  }
 }
 
 type CacheRow<T> = [exp: number, promise: Promise<T>];
