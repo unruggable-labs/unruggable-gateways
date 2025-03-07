@@ -125,8 +125,9 @@ function isValidAssertionChain(chain: KnownAssertion[]) {
   return (
     chain.length >= 2 &&
     chain[0].confirmed &&
-    chain.slice(0, -1).every((x) => x.children < 2) &&
-    chain[chain.length - 1].afterState.machineStatus == MACHINE_STATUS_FINISHED
+    chain[chain.length - 1].afterState.machineStatus ==
+      MACHINE_STATUS_FINISHED &&
+    chain.slice(0, -1).every((x) => x.children < 2)
   );
 }
 

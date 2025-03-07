@@ -4,7 +4,7 @@ import {
   type ArbitrumConfig,
   AbstractArbitrumRollup,
 } from './ArbitrumRollup.js';
-import type { HexString, ProviderPair, HexString32 } from '../types.js';
+import type { ProviderPair, HexString32 } from '../types.js';
 import { Interface } from 'ethers/abi';
 import { EventLog } from 'ethers/contract';
 import { EthProver } from '../eth/EthProver.js';
@@ -39,9 +39,9 @@ const ROLLUP_ABI = new Interface([
     bytes32 indexed nodeHash,
     bytes32 executionHash,
     (
-    ((bytes32[2] bytes32Vals, uint64[2] u64Vals) globalState, uint8 machineStatus) beforeState,
-    ((bytes32[2] bytes32Vals, uint64[2] u64Vals) globalState, uint8 machineStatus) afterState,
-    uint64 numBlocks
+      ((bytes32[2] bytes32Vals, uint64[2] u64Vals) globalState, uint8 machineStatus) beforeState,
+      ((bytes32[2] bytes32Vals, uint64[2] u64Vals) globalState, uint8 machineStatus) afterState,
+      uint64 numBlocks
     ) assertion,
     bytes32 afterInboxBatchAcc,
     bytes32 wasmModuleRoot,
@@ -62,8 +62,6 @@ type ABINodeTuple = {
 
 export type NitroCommit = ArbitrumCommit & {
   readonly prevNum: bigint;
-  readonly sendRoot: HexString32;
-  readonly rlpEncodedBlock: HexString;
 };
 
 export class NitroRollup extends AbstractArbitrumRollup<NitroCommit> {
@@ -182,20 +180,15 @@ export class NitroRollup extends AbstractArbitrumRollup<NitroCommit> {
   protected override async _fetchCommit(index: bigint): Promise<NitroCommit> {
     const { prevNum, blockHash, sendRoot } = await this.fetchNodeData(index);
     const block = await fetchBlockFromHash(this.provider2, blockHash);
-    if (!block) throw new Error(`no block: ${blockHash}`);
-    // note: block.sendRoot == sendRoot
-    const rlpEncodedBlock = encodeRlpBlock(block);
     const encodedRollupProof = ABI_CODER.encode(
       ['(uint64, bytes32, bytes)'],
-      [[index, sendRoot, rlpEncodedBlock]]
+      [[index, sendRoot, encodeRlpBlock(block)]]
     );
     const prover = new EthProver(this.provider2, block.number);
     return {
       index,
       prover,
       encodedRollupProof,
-      sendRoot,
-      rlpEncodedBlock,
       prevNum,
     };
   }
