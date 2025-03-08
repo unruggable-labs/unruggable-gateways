@@ -529,6 +529,12 @@ export abstract class AbstractProver {
 
   constructor(readonly provider: Provider) {}
 
+  abstract get context(): string;
+
+  [Symbol.for('nodejs.util.inspect.custom')]() {
+    return `${this.constructor.name}[${this.context}]`;
+  }
+
   checkProofCount(size: number) {
     if (size > this.maxUniqueProofs) {
       throw new Error(`too many proofs: ${size} > ${this.maxUniqueProofs}`);
@@ -1003,6 +1009,9 @@ export abstract class BlockProver extends AbstractProver {
     super(provider);
     this.block = toUnpaddedHex(block);
   }
+  override get context() {
+    return `block=${this.blockNumber}`;
+  }
   get blockNumber() {
     return BigInt(this.block);
   }
@@ -1017,7 +1026,7 @@ export abstract class BlockProver extends AbstractProver {
     accountRef: ProofRef,
     storageRefs: Map<bigint, ProofRef>
   ): Promise<void>;
-  override async prove(needs: Need[]) {
+  override async prove(needs: Need[]): Promise<ProofSequence> {
     // reduce an ordered list of needs into a deduplicated list of proofs
     // provide empty proofs for non-contract slots
     type Bucket = {

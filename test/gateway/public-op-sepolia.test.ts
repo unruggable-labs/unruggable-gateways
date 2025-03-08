@@ -3,7 +3,7 @@ import { providerURL } from '../providers.js';
 import { CHAINS } from '../../src/chains.js';
 import { describe } from '../bun-describe-fix.js';
 import { afterAll } from 'bun:test';
-import { runSlotDataTests } from './tests.js';
+import { runSlotDataTests } from './SlotDataTests.js';
 
 describe.skipIf(!!process.env.SKIP_CI)('public: optimism-sepolia', async () => {
   const foundry = await Foundry.launch({

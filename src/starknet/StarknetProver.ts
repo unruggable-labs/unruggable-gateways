@@ -63,7 +63,10 @@ export class StarknetProver extends AbstractProver {
     super(provider);
     this.blockId = { block_number: block };
   }
-  get block() {
+  override get context() {
+    return `block=${this.blockNumber}`;
+  }
+  get blockNumber() {
     return this.blockId.block_number;
   }
   async fetchBlock(): Promise<RPCStarknetBlock> {

@@ -68,6 +68,9 @@ export class ZKSyncProver extends AbstractProver {
   ) {
     super(provider);
   }
+  override get context() {
+    return `batch=${this.batchIndex}`;
+  }
   async fetchBatchDetails(): Promise<
     Omit<RPCZKSyncL1BatchDetails, 'rootHash'> & { rootHash: HexString32 }
   > {

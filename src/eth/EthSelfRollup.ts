@@ -43,7 +43,7 @@ export class EthSelfRollup extends AbstractRollup<EthSelfCommit> {
     proofSeq: ProofSequence
   ): HexString {
     return ABI_CODER.encode(
-      ['tuple(bytes, bytes[], bytes)'],
+      ['(bytes, bytes[], bytes)'],
       [[commit.rlpEncodedBlock, proofSeq.proofs, proofSeq.order]]
     );
   }

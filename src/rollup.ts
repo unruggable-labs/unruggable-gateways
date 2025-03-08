@@ -32,7 +32,7 @@ export abstract class AbstractRollup<C extends RollupCommit<AbstractProver>> {
   // block tag used for "latest" information
   latestBlockTag: BigNumberish = 'finalized';
   // block interval for event scanning
-  getLogsStepSize = 1000; // max might be 10k?
+  getLogsStepSize = 10000;
   readonly provider1: Provider;
   readonly provider2: Provider;
   constructor(providers: ProviderPair) {

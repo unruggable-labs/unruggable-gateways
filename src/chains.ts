@@ -15,8 +15,8 @@ export const CHAINS = {
   BASE: 8453n,
   BASE_SEPOLIA: 84532n,
   ARB1: 42161n,
+  ARB1_SEPOLIA: 421614n,
   ARB_NOVA: 42170n,
-  ARB_SEPOLIA: 421614n,
   TAIKO: 167000n,
   TAIKO_HEKLA: 167009n,
   SCROLL: 534352n,
@@ -50,6 +50,7 @@ export const CHAINS = {
   ZERO_SEPOLIA: 4457845n,
   INK: 57073n,
   INK_SEPOLIA: 763373n,
+  UNICHAIN: 130n,
   UNICHAIN_SEPOLIA: 1301n,
   MORPH: 2818n,
   MORPH_HOLESKY: 2810n,
@@ -70,6 +71,7 @@ export const CHAINS = {
   SWELL_SEPOLIA: 1924n,
   BOB: 60808n,
   BOB_SEPOLIA: 808813n,
+  MONAD_TESTNET: 10143n,
 } as const satisfies Record<string, Chain>;
 
 export function chainName(chain: Chain): string {

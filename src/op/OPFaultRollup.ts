@@ -94,7 +94,13 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     GameFinder: GAME_FINDER_SEPOLIA,
   };
 
-  // https://docs.unichain.org/docs/technical-information/contract-addresses#l1-contracts
+  // https://docs.unichain.org/docs/technical-information/contract-addresses
+  static readonly unichainMainnetConfig: RollupDeployment<OPFaultConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.UNICHAIN,
+    OptimismPortal: '0x0bd48f6B86a26D3a217d0Fa6FfE2B491B956A7a2',
+    GameFinder: GAME_FINDER_MAINNET,
+  };
   static readonly unichainSepoliaConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.UNICHAIN_SEPOLIA,
