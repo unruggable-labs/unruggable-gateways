@@ -68,7 +68,7 @@ If you are interested in building a solution for another chain, please take a lo
 ## Setup
 
 1. [`foundryup`](https://book.getfoundry.sh/getting-started/installation)
-1. `forge install`
+1. `forge i`
 1. `bun i`
 1. create [`.env`](./.env.example)
 
@@ -101,7 +101,6 @@ Commands available include:
 		* [Batched `eth_getProof`](./test/components/proofs.test.ts)
 	* `bun run test-gateways`
 		* [Contract](./test/gateway/SlotDataContract.sol) &rarr; [Reader](./test/gateway/SlotDataReader.sol) &rarr; [Tests](./test/gateway/tests.ts)
-		* ⚠️ Scroll fails [`readZero()`](./test/gateway/tests.ts#L26) test
 		* ⚠️ Polygon has poor `eth_getProof` support
 
 ## Examples

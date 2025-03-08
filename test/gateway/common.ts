@@ -9,7 +9,7 @@ import {
 import { chainName, CHAINS } from '../../src/chains.js';
 import { serve } from '@resolverworks/ezccip/serve';
 import { type FoundryContract, Foundry } from '@adraffy/blocksmith';
-import { runSlotDataTests } from './tests.js';
+import { runSlotDataTests } from './SlotDataTests.js';
 import { type OPConfig, OPRollup } from '../../src/op/OPRollup.js';
 import {
   type OPFaultConfig,

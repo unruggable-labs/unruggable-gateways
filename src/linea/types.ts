@@ -22,22 +22,18 @@ export const ROLLUP_ABI = new Interface([
     bytes32 parentStateRootHash,
     bytes32 finalStateRootHash
   )`,
-  `event DataSubmittedV2(
+  `event DataSubmittedV3(
+    bytes32 parentShnarf,
     bytes32 indexed shnarf,
-    uint256 indexed startBlock,
-    uint256 indexed endBlock
+    bytes32 finalStateRootHash
   )`,
   `function submitBlobs(
     (
-      (
-	    bytes32 finalStateRootHash,
-        uint256 firstBlockInData,
-        uint256 finalBlockInData,
-        bytes32 snarkHash
-      ) submissionData,
       uint256 dataEvaluationClaim,
       bytes kzgCommitment,
-      bytes kzgProof
+      bytes kzgProof,
+      bytes32 finalStateRootHash,
+      bytes32 snarkHash,
     )[] blobSubmissionData,
     bytes32 parentShnarf,
     bytes32 finalBlobShnarf
@@ -91,7 +87,7 @@ export function isContract(accountProof: LineaProof) {
 }
 
 export function encodeProof(proof: LineaProof) {
-  const T = 'tuple(uint256, bytes, bytes[])';
+  const T = '(uint256, bytes, bytes[])';
   return ABI_CODER.encode(
     [T, T],
     isInclusionProof(proof)

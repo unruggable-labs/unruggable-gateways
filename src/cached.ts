@@ -23,7 +23,7 @@ export class CachedValue<T> {
   errorMs = 250;
   constructor(
     readonly fn: () => Promise<T>,
-    public cacheMs: number = 60000
+    public cacheMs = 60000
   ) {}
   clear() {
     this.#value = undefined;
@@ -50,7 +50,7 @@ export class CachedValue<T> {
         return p;
       });
   }
-  async force() {
+  force() {
     this.clear();
     return this.get();
   }
@@ -194,21 +194,23 @@ export class LRU<K, V> {
     return this.#max;
   }
   set max(n: number) {
-    if (!Number.isSafeInteger(n) || n < 0) throw new TypeError('expected size');
+    if (n < 0) throw new TypeError('expected size');
     this.#max = n;
-    const over = this.#map.size - n;
-    if (over > 0) this.#deleteOldest(over);
+    this.deleteOldest(this.#map.size - n);
   }
   #set(key: K, promise: Promise<V>) {
     if (this.#max) {
       this.#map.delete(key);
-      if (this.#map.size == this.#max) this.#deleteOldest(1);
+      if (this.#map.size == this.#max) this.deleteOldest(1);
       this.#map.set(key, promise);
     }
   }
-  #deleteOldest(n: number) {
-    const iter = this.#map.keys();
-    while (n--) this.#map.delete(iter.next().value!);
+  deleteOldest(n: number) {
+    if (n < 1) return;
+    for (const key of this.#map.keys()) {
+      this.#map.delete(key);
+      if (--n < 1) break;
+    }
   }
   keys() {
     return this.#map.keys();
