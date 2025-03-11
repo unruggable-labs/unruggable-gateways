@@ -1,6 +1,54 @@
 import type { HexString, HexString32 } from '../types.js';
+import { Interface } from 'ethers/abi';
 import { ABI_CODER, NULL_CODE_HASH } from '../utils.js';
 import { dataSlice } from 'ethers/utils';
+
+export const ROLLUP_ABI = new Interface([
+  // ZkEvmV2.sol
+  `function currentL2BlockNumber() view returns (uint256)`,
+  `function stateRootHashes(uint256 l2BlockNumber) view returns (bytes32)`,
+  `function shnarfFinalBlockNumbers(bytes32 shnarf) external view returns (uint256)`,
+  // ILineaRollup.sol
+  `event DataFinalized(
+    uint256 indexed lastBlockFinalized,
+    bytes32 indexed startingRootHash,
+    bytes32 indexed finalRootHash,
+    bool withProof
+  )`,
+  `event DataFinalizedV3(
+    uint256 indexed startBlockNumber,
+    uint256 indexed endBlockNumber,
+    bytes32 indexed shnarf,
+    bytes32 parentStateRootHash,
+    bytes32 finalStateRootHash
+  )`,
+  `event DataSubmittedV2(
+    bytes32 indexed shnarf,
+    uint256 indexed startBlock,
+    uint256 indexed endBlock
+  )`,
+  `function submitBlobs(
+    (
+      (
+	    bytes32 finalStateRootHash,
+        uint256 firstBlockInData,
+        uint256 finalBlockInData,
+        bytes32 snarkHash
+      ) submissionData,
+      uint256 dataEvaluationClaim,
+      bytes kzgCommitment,
+      bytes kzgProof
+    )[] blobSubmissionData,
+    bytes32 parentShnarf,
+    bytes32 finalBlobShnarf
+  ) external`,
+  // IZkEvmV2.sol
+  `event BlocksVerificationDone(
+    uint256 indexed lastBlockFinalized,
+    bytes32 startingRootHash,
+    bytes32 finalRootHash
+  )`,
+]);
 
 export type LineaProofObject = {
   proofRelatedNodes: HexString[];

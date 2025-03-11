@@ -10,10 +10,10 @@ import type {
   ProviderPair,
   ProofSequence,
 } from '../types.js';
-import { Interface } from 'ethers/abi';
 import { Contract, EventLog } from 'ethers/contract';
 import { JsonRpcProvider } from 'ethers/providers';
 import { LineaProver } from './LineaProver.js';
+import { ROLLUP_ABI } from './types.js';
 import { CHAINS } from '../chains.js';
 import { ABI_CODER } from '../utils.js';
 
@@ -22,31 +22,6 @@ import { ABI_CODER } from '../utils.js';
 // https://consensys.io/diligence/audits/2024/06/linea-ens/
 // https://github.com/Consensys/linea-monorepo/blob/main/contracts/test/SparseMerkleProof.ts
 // https://github.com/Consensys/linea-ens/blob/main/packages/linea-state-verifier/contracts/LineaSparseProofVerifier.sol
-
-const ROLLUP_ABI = new Interface([
-  // ZkEvmV2.sol
-  `function currentL2BlockNumber() view returns (uint256)`,
-  `function stateRootHashes(uint256 l2BlockNumber) view returns (bytes32)`,
-  // ILineaRollup.sol
-  `event DataFinalized(
-	uint256 indexed lastBlockFinalized,
-	bytes32 indexed startingRootHash,
-	bytes32 indexed finalRootHash,
-	bool withProof
-  )`,
-  `event DataFinalizedV3(
-	uint256 indexed startBlockNumber,
-	uint256 indexed endBlockNumber,
-	bytes32 indexed shnarf,
-	bytes32 parentStateRootHash,
-	bytes32 finalStateRootHash
-  )`,
-  `event BlocksVerificationDone(
-	uint256 indexed lastBlockFinalized,
-	bytes32 startingRootHash,
-	bytes32 finalRootHash
-  )`,
-]);
 
 export type LineaConfig = {
   L1MessageService: HexAddress;
@@ -99,8 +74,8 @@ export class LineaRollup extends AbstractRollup<LineaCommit> {
       : undefined;
   }
 
-  readonly L1MessageService: Contract;
   readonly firstCommitV3: bigint | undefined;
+  readonly L1MessageService: Contract;
   constructor(providers: ProviderPair, config: LineaConfig) {
     super(providers);
     this.L1MessageService = new Contract(
