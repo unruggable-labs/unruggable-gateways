@@ -42,6 +42,15 @@ struct FinalizationParams {
 uint256 constant CHALLENGER_WINS = 1;
 uint256 constant DEFENDER_WINS = 2;
 
+// https://github.com/ethereum-optimism/optimism/blob/42acc178b262b4cdcc75f9b3f4f63941c65bcb8a/packages/contracts-bedrock/interfaces/dispute/IFaultDisputeGame.sol
+interface IFaultDisputeGame {
+    function l2BlockNumberChallenged() external view returns (bool);
+}
+
+// https://github.com/ethereum-optimism/optimism/blob/42acc178b262b4cdcc75f9b3f4f63941c65bcb8a/packages/contracts-bedrock/src/dispute/lib/Types.sol
+uint32 constant GAME_TYPE_CANNON = 0;
+uint32 constant GAME_TYPE_PERMISSIONED_CANNON = 1;
+
 error GameNotFound();
 error InvalidGameTypeBitMask();
 
@@ -134,16 +143,30 @@ contract OPFaultGameFinder {
         if (gameTypeBitMask & (1 << gameType) == 0) return false;
         // https://specs.optimism.io/fault-proof/stage-one/bridge-integration.html#blacklisting-disputegames
         if (portal.disputeGameBlacklist(gameProxy)) return false;
-        if (minAgeSec == 0) {
-            if (created > finalizationParams.gameTypeUpdatedAt && gameProxy.status() == DEFENDER_WINS) {
-                return ((block.timestamp - gameProxy.resolvedAt()) > finalizationParams.finalityDelay);
+        if (minAgeSec > 0) {
+            if (created > block.timestamp - minAgeSec) return false;
+            if (
+                gameType == GAME_TYPE_CANNON ||
+                gameType == GAME_TYPE_PERMISSIONED_CANNON
+            ) {
+                if (
+                    IFaultDisputeGame(address(gameProxy))
+                        .l2BlockNumberChallenged()
+                ) return gameProxy.status() == DEFENDER_WINS;
+
+                return true;
             }
-            return false;
-        } else {
-            return
-                created <= block.timestamp - minAgeSec &&
-                gameProxy.status() != CHALLENGER_WINS;
+            // Testing for an unchallenged game falls back to finalized mode if unknown game type
         }
+
+        if (
+            created > finalizationParams.gameTypeUpdatedAt &&
+            gameProxy.status() == DEFENDER_WINS
+        ) {
+            return ((block.timestamp - gameProxy.resolvedAt()) >
+                finalizationParams.finalityDelay);
+        }
+        return false;
     }
 
     function _gameTypeBitMask(
