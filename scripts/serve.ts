@@ -65,7 +65,7 @@ const versionIdentifier = (() => {
 // 6. https://adraffy.github.io/ens-normalize.js/test/resolver.html#raffy.linea.eth.nb2hi4b2f4xwy33dmfwgq33toq5dqmbqgaxq.ccipr.eth
 
 let dumpAndExit = false;
-let unfinalized = !!process.env.UNFINALIZED;
+let unfinalized = parseInt(process.env.UNFINALIZED ?? '') | 0;
 let printDebug = !!process.env.PRINT_DEBUG;
 let prefetch = !!process.env.PREFETCH;
 let latestBlockTag = process.env.LATEST_BLOCK_TAG;
@@ -73,12 +73,13 @@ let signingKey =
   process.env.SIGNING_KEY ||
   '0xbd1e630bd00f12f0810083ea3bd2be936ead3b2fa84d1bd6690c77da043e9e02'; // 0xd00d from ezccip demo
 const args = process.argv.slice(2).filter((x) => {
+  let match: RegExpMatchArray | null;
   if (x === '--prefetch') {
     prefetch = true;
   } else if (x === '--latest') {
     latestBlockTag = LATEST_BLOCK_TAG;
-  } else if (x === '--unfinalized') {
-    unfinalized = true;
+  } else if ((match = x.match(/^--unfinalized(|=\d+)$/))) {
+    unfinalized = parseInt(match[1].slice(1)) | 0;
   } else if (x === '--dump') {
     dumpAndExit = true;
   } else if (x === '--debug') {
@@ -90,6 +91,7 @@ const args = process.argv.slice(2).filter((x) => {
   }
   return;
 });
+
 const gateway = await createGateway(args.pop()!, unfinalized);
 const port = parseInt(args.pop() || process.env.PORT || '') || 8000;
 
@@ -100,8 +102,21 @@ if (unfinalized && !gateway.rollup.unfinalized) {
   throw new Error('unfinalized not supported');
 }
 
+// [gateway.rollup.provider1, gateway.rollup.provider2].forEach((p) => {
+//   p.on('debug', (x) => {
+//     if (x.action === 'sendRpcPayload') {
+//       const v = Array.isArray(x.payload) ? x.payload : [x.payload];
+//       console.log(
+//         p._network.chainId,
+//         v.map((x: any) => x.method)
+//       );
+//     }
+//   });
+// });
+
 if (prefetch) {
   // periodically pull the latest commit so it's always fresh
+  await gateway.getLatestCommit();
   setInterval(() => gateway.getLatestCommit(), gateway.latestCache.cacheMs);
 }
 
@@ -240,7 +255,7 @@ export default {
   },
 } satisfies Serve;
 
-async function createGateway(name: string, unfinalized: boolean) {
+async function createGateway(name: string, unfinalized: number) {
   const match = name.match(/^trusted:(.+)$/i);
   if (match) {
     const slug = match[1].toUpperCase().replaceAll('-', '_');
@@ -299,7 +314,7 @@ async function createGateway(name: string, unfinalized: boolean) {
           new (config12.isBoLD ? BoLDRollup : NitroRollup)(
             createProviderPair(config12),
             config12,
-            unfinalized ? 1 : 0
+            unfinalized
           ),
           createProvider(config23.chain2),
           config23
@@ -310,7 +325,11 @@ async function createGateway(name: string, unfinalized: boolean) {
       const config = LineaRollup.mainnetConfig;
       return new Gateway(
         unfinalized
-          ? new UnfinalizedLineaRollup(createProviderPair(config), config, 0)
+          ? new UnfinalizedLineaRollup(
+              createProviderPair(config),
+              config,
+              unfinalized
+            )
           : new LineaRollup(createProviderPair(config), config)
       );
     }
@@ -402,31 +421,31 @@ function createSelfGateway(chain: Chain) {
 
 function createOPGateway(
   config: RollupDeployment<OPConfig>,
-  unfinalized?: boolean
+  unfinalized?: number
 ) {
   return new Gateway(
-    new OPRollup(createProviderPair(config), config, unfinalized ? 1 : 0)
+    new OPRollup(createProviderPair(config), config, unfinalized)
   );
 }
 
 function createOPFault(
   config: RollupDeployment<OPFaultConfig>,
-  unfinalized?: boolean
+  unfinalized?: number
 ) {
   return new Gateway(
-    new OPFaultRollup(createProviderPair(config), config, unfinalized ? 1 : 0)
+    new OPFaultRollup(createProviderPair(config), config, unfinalized)
   );
 }
 
 function createArbitrum(
   config: RollupDeployment<ArbitrumConfig>,
-  unfinalized?: boolean
+  unfinalized?: number
 ) {
   return new Gateway(
     new (config.isBoLD ? BoLDRollup : NitroRollup)(
       createProviderPair(config),
       config,
-      unfinalized ? 1 : 0
+      unfinalized
     )
   );
 }

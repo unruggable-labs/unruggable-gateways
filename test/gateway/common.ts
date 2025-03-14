@@ -67,7 +67,7 @@ export async function quickTest(
   const foundry = Foundry.of(verifier);
   const reader = await foundry.deploy({
     file: 'SlotDataReader',
-    args: [verifier, target, ZeroAddress],
+    args: [verifier, target, ZeroAddress, []],
   });
   return reader.readSlot(slot, { enableCcipRead: true });
 }
@@ -80,6 +80,7 @@ export async function setupTests(verifier: FoundryContract, opts: TestOptions) {
       verifier,
       opts.slotDataContract,
       opts.slotDataPointer ?? ZeroAddress,
+      [],
     ],
   });
   runSlotDataTests(reader, !!opts.slotDataPointer);

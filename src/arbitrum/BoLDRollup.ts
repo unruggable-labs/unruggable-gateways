@@ -172,7 +172,8 @@ export class BoLDRollup extends AbstractArbitrumRollup<BoLDCommit> {
   private _lastBlock = -1n;
   readonly _assertionMap = new Map<HexString32, KnownAssertion>();
   readonly unfinalizedGuard = new CachedValue(async () => {
-    const block1 = await fetchBlockNumber(this.provider1, this.latestBlockTag);
+    const latest = await fetchBlockNumber(this.provider1, this.latestBlockTag);
+    const block1 = latest - BigInt(this.minAgeBlocks);
     let block0 = this._lastBlock + 1n;
     if (!block0) {
       const assertionHash: HexString32 = await this.Rollup.latestConfirmed({
@@ -246,9 +247,10 @@ export class BoLDRollup extends AbstractArbitrumRollup<BoLDCommit> {
   }
 
   override async fetchLatestCommitIndex(): Promise<bigint> {
+    let blockTag = this.latestBlockTag;
     if (this.minAgeBlocks) {
       await this.unfinalizedGuard.get();
-      const block = this._lastBlock - BigInt(this.minAgeBlocks);
+      const block = this._lastBlock;
       for (const known of this._latestAssertions((x) => x <= block)) {
         const chain = await this._unfinalizedAssertionChain(
           known.assertionHash
@@ -257,9 +259,10 @@ export class BoLDRollup extends AbstractArbitrumRollup<BoLDCommit> {
           return known.createdAtBlock;
         }
       }
+      blockTag = block;
     }
     const assertionHash: HexString32 = await this.Rollup.latestConfirmed({
-      blockTag: this.latestBlockTag,
+      blockTag,
     });
     const node = await this._fetchNode(assertionHash);
     if (!node.status) throw new Error(`expected latest assertion`);
