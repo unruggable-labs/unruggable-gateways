@@ -11,11 +11,18 @@ contract SlotDataReader is GatewayFetchTarget, Ownable {
     IGatewayVerifier public _verifier;
     address public _target;
     address public _pointer;
+    string[] public _gateways;
 
-    constructor(IGatewayVerifier verifier, address target, address pointer) Ownable(msg.sender) {
+    constructor(
+        IGatewayVerifier verifier,
+        address target,
+        address pointer,
+        string[] memory gateways
+    ) Ownable(msg.sender) {
         _verifier = verifier;
         _target = target;
         _pointer = pointer;
+        _gateways = gateways;
     }
 
     function debugCallback(
@@ -47,7 +54,7 @@ contract SlotDataReader is GatewayFetchTarget, Ownable {
             .setSlot(slot)
             .read()
             .setOutput(0);
-        fetch(_verifier, r, this.uint256Callback.selector);
+        fetch(_verifier, r, this.uint256Callback.selector, '', _gateways);
     }
     function readLatest() external view returns (uint256) {
         return readSlot(0);
@@ -63,7 +70,7 @@ contract SlotDataReader is GatewayFetchTarget, Ownable {
             .setSlot(0)
             .read()
             .setOutput(0);
-        fetch(_verifier, r, this.uint256Callback.selector);
+        fetch(_verifier, r, this.uint256Callback.selector, '', _gateways);
     }
 
     function readName() external view returns (string memory) {
@@ -73,7 +80,7 @@ contract SlotDataReader is GatewayFetchTarget, Ownable {
             .setSlot(1)
             .readBytes()
             .setOutput(0);
-        fetch(_verifier, r, this.stringCallback.selector);
+        fetch(_verifier, r, this.stringCallback.selector, '', _gateways);
     }
 
     function readHighscore(uint256 key) external view returns (uint256) {
@@ -85,7 +92,7 @@ contract SlotDataReader is GatewayFetchTarget, Ownable {
             .follow()
             .read()
             .setOutput(0);
-        fetch(_verifier, r, this.uint256Callback.selector);
+        fetch(_verifier, r, this.uint256Callback.selector, '', _gateways);
     }
 
     function readLatestHighscore() external view returns (uint256) {
@@ -98,7 +105,7 @@ contract SlotDataReader is GatewayFetchTarget, Ownable {
             .follow()
             .read()
             .setOutput(0);
-        fetch(_verifier, r, this.uint256Callback.selector);
+        fetch(_verifier, r, this.uint256Callback.selector, '', _gateways);
     }
 
     function readLatestHighscorer() external view returns (string memory) {
@@ -111,7 +118,7 @@ contract SlotDataReader is GatewayFetchTarget, Ownable {
             .follow()
             .readBytes()
             .setOutput(0);
-        fetch(_verifier, r, this.stringCallback.selector);
+        fetch(_verifier, r, this.stringCallback.selector, '', _gateways);
     }
 
     function readRealName(
@@ -125,7 +132,7 @@ contract SlotDataReader is GatewayFetchTarget, Ownable {
             .follow()
             .readBytes()
             .setOutput(0);
-        fetch(_verifier, r, this.stringCallback.selector);
+        fetch(_verifier, r, this.stringCallback.selector, '', _gateways);
     }
 
     function readLatestHighscorerRealName()
@@ -145,7 +152,7 @@ contract SlotDataReader is GatewayFetchTarget, Ownable {
             .follow()
             .readBytes()
             .setOutput(0);
-        fetch(_verifier, r, this.stringCallback.selector);
+        fetch(_verifier, r, this.stringCallback.selector, '', _gateways);
     }
 
     function readZero() external view returns (uint256) {
@@ -155,7 +162,7 @@ contract SlotDataReader is GatewayFetchTarget, Ownable {
             .setSlot(5)
             .read()
             .setOutput(0);
-        fetch(_verifier, r, this.uint256Callback.selector);
+        fetch(_verifier, r, this.uint256Callback.selector, '', _gateways);
     }
 
     function readRootStr(
@@ -169,7 +176,7 @@ contract SlotDataReader is GatewayFetchTarget, Ownable {
             r.offset(2).push(keys[i]).follow();
         }
         r.offset(1).readBytes().setOutput(0);
-        fetch(_verifier, r, this.stringCallback.selector);
+        fetch(_verifier, r, this.stringCallback.selector, '', _gateways);
     }
 
     function readSlicedKeccak() external view returns (string memory) {
@@ -187,6 +194,6 @@ contract SlotDataReader is GatewayFetchTarget, Ownable {
             .slice(0, 3); // "Hal"
         r.setSlot(0).read().setSlot(2).follow().read().slice(16, 16); // uint128(12345)
         r.concat().keccak().setSlot(3).follow().readBytes().setOutput(0); // highscorers[keccak("Hal"+12345)]
-        fetch(_verifier, r, this.stringCallback.selector);
+        fetch(_verifier, r, this.stringCallback.selector, '', _gateways);
     }
 }
