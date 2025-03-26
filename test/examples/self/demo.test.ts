@@ -1,4 +1,4 @@
-import { serve } from '@resolverworks/ezccip/serve';
+import { serve } from '@namestone/ezccip/serve';
 import { Foundry } from '@adraffy/blocksmith';
 import { EthSelfRollup } from '../../../src/eth/EthSelfRollup.js';
 import { Gateway } from '../../../src/gateway.js';

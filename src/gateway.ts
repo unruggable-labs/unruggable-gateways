@@ -6,7 +6,7 @@ import { getBytes } from 'ethers/utils';
 import { CachedMap, CachedValue, LRU } from './cached.js';
 import { ABI_CODER } from './utils.js';
 import { GatewayRequestV1 } from './v1.js';
-import { EZCCIP } from '@resolverworks/ezccip';
+import { EZCCIP } from '@namestone/ezccip';
 
 export const GATEWAY_ABI = new Interface([
   `function proveRequest(bytes context, tuple(bytes)) returns (bytes)`,

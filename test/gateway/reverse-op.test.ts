@@ -1,6 +1,6 @@
 import { ReverseOPRollup } from '../../src/op/ReverseOPRollup.js';
 import { Gateway } from '../../src/gateway.js';
-import { serve } from '@resolverworks/ezccip/serve';
+import { serve } from '@namestone/ezccip/serve';
 import { Foundry } from '@adraffy/blocksmith';
 import { providerURL, createProviderPair } from '../providers.js';
 import { fetchBlockNumber } from '../../src/utils.js';

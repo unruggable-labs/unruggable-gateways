@@ -144,6 +144,14 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     GameFinder: GAME_FINDER_MAINNET,
   };
 
+  // https://storage.googleapis.com/cel2-rollup-files/celo/deployment-l1.json
+  static readonly celoMainnetConfig: RollupDeployment<OPFaultConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.CELO,
+    OptimismPortal: '0xc5c5D157928BDBD2ACf6d0777626b6C75a9EAEDC',
+    GameFinder: GAME_FINDER_MAINNET,
+  };
+
   // 20240917: delayed constructor not needed
   readonly OptimismPortal: Contract;
   readonly GameFinder: Contract;

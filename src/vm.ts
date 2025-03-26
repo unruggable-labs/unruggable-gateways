@@ -15,7 +15,7 @@ import { Interface } from 'ethers/abi';
 import { keccak256 } from 'ethers/crypto';
 import { solidityPackedKeccak256 } from 'ethers/hash';
 import { dataSlice, concat, getBytes, toUtf8Bytes } from 'ethers/utils';
-import { asciiize } from '@resolverworks/ezccip';
+import { asciiize } from '@namestone/ezccip';
 import { unwrap, Wrapped, type Unwrappable } from './wrap.js';
 import {
   fetchBlock,

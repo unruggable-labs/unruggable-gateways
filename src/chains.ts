@@ -42,6 +42,7 @@ export const CHAINS = {
   SHAPE: 360n,
   BSC: 56n,
   OP_BNB: 204n,
+  CELO: 42220n,
   CELO_ALFAJORES: 44787n,
   WORLD: 480n,
   WORLD_SEPOLIA: 4801n,

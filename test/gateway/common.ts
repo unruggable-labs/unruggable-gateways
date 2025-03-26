@@ -7,7 +7,7 @@ import {
   providerURL,
 } from '../providers.js';
 import { chainName, CHAINS } from '../../src/chains.js';
-import { serve } from '@resolverworks/ezccip/serve';
+import { serve } from '@namestone/ezccip/serve';
 import { type FoundryContract, Foundry } from '@adraffy/blocksmith';
 import { runSlotDataTests } from './SlotDataTests.js';
 import { type OPConfig, OPRollup } from '../../src/op/OPRollup.js';
