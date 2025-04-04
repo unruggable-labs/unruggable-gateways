@@ -13,6 +13,7 @@ const rollup = new EuclidRollup(
 console.log({
   ScrollChain: rollup.ScrollChain.target,
   defaultWindow: rollup.defaultWindow,
+  beaconAPI: rollup.beaconAPI,
 });
 
 const commits = await rollup.fetchRecentCommits(10);
