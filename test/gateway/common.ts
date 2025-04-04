@@ -2,6 +2,7 @@ import type { Chain, ChainPair, HexAddress } from '../../src/types.js';
 import type { RollupDeployment } from '../../src/rollup.js';
 import { Gateway } from '../../src/gateway.js';
 import {
+  beaconURL,
   createProvider,
   createProviderPair,
   providerURL,
@@ -19,6 +20,10 @@ import {
   type ScrollConfig,
   ScrollRollup,
 } from '../../src/scroll/ScrollRollup.js';
+import {
+  type EuclidConfig,
+  EuclidRollup,
+} from '../../src/scroll/EuclidRollup.js';
 import { type LineaConfig, LineaRollup } from '../../src/linea/LineaRollup.js';
 import { type TaikoConfig, TaikoRollup } from '../../src/taiko/TaikoRollup.js';
 import type { ArbitrumConfig } from '../../src/arbitrum/ArbitrumRollup.js';
@@ -102,6 +107,7 @@ export function testOP(
         config,
         opts.minAgeSec
       );
+      await rollup.provider2.getBlockNumber(); // check provider
       const foundry = await Foundry.launch({
         fork: providerURL(config.chain1),
         infoLog: !!opts.log,
@@ -145,6 +151,7 @@ export function testOPFault(
         fork: providerURL(config.chain1),
         infoLog: !!opts.log,
       });
+      await rollup.provider2.getBlockNumber(); // check provider
       afterAll(foundry.shutdown);
       const gateway = new Gateway(rollup);
       const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
@@ -225,11 +232,18 @@ export function testArbitrum(
 }
 
 export function testScroll(
-  config: RollupDeployment<ScrollConfig>,
+  config: RollupDeployment<ScrollConfig | EuclidConfig>,
   opts: TestOptions
 ) {
   describe.skipIf(shouldSkip(opts))(testName(config), async () => {
-    const rollup = new ScrollRollup(createProviderPair(config), config);
+    const isScroll = 'poseidon' in config;
+    const rollup = isScroll
+      ? new ScrollRollup(createProviderPair(config), config)
+      : new EuclidRollup(
+          createProviderPair(config),
+          config,
+          beaconURL(config.chain1)
+        );
     const foundry = await Foundry.launch({
       fork: providerURL(config.chain1),
       infoLog: !!opts.log,
@@ -239,10 +253,14 @@ export function testScroll(
     const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
     afterAll(ccip.shutdown);
     const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
-    const hooks = await foundry.deploy({
-      file: 'ScrollVerifierHooks',
-      args: [rollup.poseidon],
-    });
+    const hooks = isScroll
+      ? await foundry.deploy({
+          file: 'ScrollVerifierHooks',
+          args: [config.poseidon],
+        })
+      : await foundry.deploy({
+          file: 'EthVerifierHooks',
+        });
     const verifier = await foundry.deploy({
       file: 'ScrollVerifier',
       args: [

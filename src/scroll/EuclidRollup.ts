@@ -53,12 +53,6 @@ const ROLLUP_ABI = new Interface([
       bytes zkProof
     ) finalizeStruct
   )`,
-  // `function finalizeBundlePostEuclidV2NoProof(
-  //   bytes batchHeader,
-  //   uint256 totalL1MessagesPoppedOverall,
-  //   bytes32 postStateRoot,
-  //   bytes32 withdrawRoot
-  // )`,
 ]);
 
 const BATCH_VERSION = 7;

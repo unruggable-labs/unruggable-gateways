@@ -1,5 +1,7 @@
 import { EuclidRollup } from '../../src/scroll/EuclidRollup.js';
-import { beaconURL, createProviderPair, providerURL } from '../providers.js';
+import { beaconURL, createProviderPair } from '../providers.js';
+
+console.log(new Date());
 
 const config = EuclidRollup.sepoliaConfig;
 const rollup = new EuclidRollup(
@@ -13,29 +15,12 @@ console.log({
   defaultWindow: rollup.defaultWindow,
 });
 
-console.log(await rollup.fetchLatestCommitIndex());
-//const commit = await rollup.fetchLatestCommit();
-//console.log(commit);
+const commits = await rollup.fetchRecentCommits(10);
 
-console.log(providerURL(config.chain1));
-console.log(providerURL(config.chain2));
+const v = commits.map((x) => Number(x.index));
+console.log(v);
+console.log(v.slice(1).map((x, i) => v[i] - x));
 
-console.log(
-  await rollup.provider2.send('eth_getProof', [
-    '0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05',
-    [],
-    'latest',
-  ])
-);
-
-// console.log(
-//   await prover.fetchProofs('0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05', [
-//     1n,
-//   ])
-// );
-
-// const commits = await rollup.fetchRecentCommits(10);
-
-// const v = commits.map((x) => Number(x.index));
-// console.log(v);
-// console.log(v.slice(1).map((x, i) => v[i] - x));
+// 2025-04-04T04:06:55.314Z
+// [ 86604, 86601, 86598, 86595, 86592, 86589, 86586, 86583, 86580, 86577 ]
+// [ 3, 3, 3, 3, 3, 3, 3, 3, 3 ]

@@ -7,7 +7,7 @@ export async function fetchBeaconData(url: string) {
     const res = await fetch(url);
     if (!res.ok) throw `HTTP ${res.status}`;
     const { data } = await res.json();
-    if (!(data instanceof Object)) throw 'expected "data"';
+    if (!data) throw 'expected "data"';
     return data;
   } catch (err) {
     throw new Error(`${url}: ${err}`);

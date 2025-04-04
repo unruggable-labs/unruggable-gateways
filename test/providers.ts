@@ -496,7 +496,7 @@ type ProviderInfo = {
   apiKey?: string;
 };
 
-function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
+export function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
   const info = RPC_INFO.get(chain);
   if (!info) throw new Error(`unknown chain: ${chain}`);
   // 20240830: so far, alchemy has the best support
@@ -573,9 +573,6 @@ function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
 
 export function providerURL(chain: Chain): string {
   return decideProvider(chain).url;
-}
-export function providerType(chain: Chain): string {
-  return decideProvider(chain).type;
 }
 
 export function createProvider(chain: Chain): Provider {

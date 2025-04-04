@@ -34,28 +34,6 @@ import { Contract } from 'ethers/contract';
 import { SigningKey } from 'ethers/crypto';
 import { execSync } from 'child_process';
 
-const versionIdentifier = (() => {
-  try {
-    // Try to get the current tag
-    const currentTag = execSync('git describe --tags --exact-match', {
-      stdio: 'pipe',
-    })
-      .toString()
-      .trim();
-    return currentTag;
-  } catch (error) {
-    try {
-      const commitHash = execSync('git rev-parse HEAD', { stdio: 'pipe' })
-        .toString()
-        .trim();
-      return commitHash;
-    } catch (error) {
-      /* empty */
-    }
-  }
-  return '';
-})();
-
 // NOTE: you can use CCIPRewriter to test an existing setup against a local gateway!
 // [raffy] https://adraffy.github.io/ens-normalize.js/test/resolver.html#raffy.linea.eth.nb2hi4dthixs62dpnvss4ylooruxg5dvobuwiltdn5ws62duoryc6.ccipr.eth
 // 1. bun serve lineaV1
@@ -148,15 +126,25 @@ gateway.rollup.configure = (c: RollupCommitType<typeof gateway.rollup>) => {
 function chainDetails(provider: Provider) {
   const chain = provider._network.chainId;
   if (chain < 0) return null;
-  return {
+  return toJSON({
     chain,
     name: chainName(chain),
     url: concealKeys(providerURL(chain)),
-  };
+  });
 }
 
 const config: Record<string, any> = {
-  version: versionIdentifier,
+  version: ['git describe --tags --exact-match', 'git rev-parse HEAD'].reduce(
+    (version, cmd) => {
+      try {
+        version ||= execSync(cmd, { stdio: 'pipe' }).toString().trim();
+      } catch (err) {
+        // empty
+      }
+      return version;
+    },
+    ''
+  ),
   gateway: gateway.constructor.name,
   rollup: gateway.rollup.constructor.name,
   unfinalized: gateway.rollup.unfinalized,
@@ -513,7 +501,7 @@ function concealKeys(s: string) {
   if (!s.startsWith('0x')) {
     for (const [k, v] of Object.entries(process.env)) {
       if (v && k.endsWith('_KEY')) {
-        s = s.replace(v, '{}');
+        s = s.replace(v, `{${k}}`);
       }
     }
   }

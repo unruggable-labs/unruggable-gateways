@@ -49,6 +49,7 @@ type ABIFoundGame = {
 
 const GAME_FINDER_MAINNET = '0x728f1ac59A01d07bE3E62940eC9B3F5EF025C38b';
 const GAME_FINDER_SEPOLIA = '0x165386f8699ce2609a8903e25d00e1debd24a277';
+//const GAME_FINDER_HOLESKY = '0xedb18cd8d9D6AF54C4Ac1FbDBF2E098F413c3fe9';
 
 export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   // https://docs.optimism.io/chain/addresses
