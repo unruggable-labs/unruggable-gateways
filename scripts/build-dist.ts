@@ -2,7 +2,7 @@ import {
   readFileSync,
   writeFileSync,
   mkdirSync,
-  rmdirSync,
+  rmSync,
   readdirSync,
   renameSync,
 } from 'node:fs';
@@ -10,13 +10,16 @@ import { FoundryBase } from '@adraffy/blocksmith';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import pkg from '../package.json' with { type: 'json' };
-import tsc from '../tsconfig.json' with { type: 'json' }; // parses json comments
 
 const baseDir = fileURLToPath(new URL('../', import.meta.url));
 const distDir = join(baseDir, 'dist');
 const packageFile = join(baseDir, 'package.json');
 const tsconfigFile = join(baseDir, 'tsconfig.json');
+
+const pkg = JSON.parse(readFileSync(packageFile, 'utf8'));
+const tsc = JSON.parse(
+  readFileSync(tsconfigFile, 'utf8').replaceAll(/\/\/.*/g, '')
+);
 
 function log(...a: any) {
   console.log(performance.now().toFixed(0).padStart(5), ...a);
@@ -32,7 +35,7 @@ if (pkg.type !== 'module') {
 }
 log(`Saved configuration`);
 
-rmdirSync(distDir, { recursive: true });
+rmSync(distDir, { recursive: true, force: true });
 mkdirSync(distDir);
 log(`Cleaned ${distDir}`);
 
