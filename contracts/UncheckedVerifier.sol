@@ -13,7 +13,7 @@ contract UncheckedVerifier is IGatewayVerifier, IVerifierHooks {
     }
 
     function getLatestContext() external view returns (bytes memory) {
-        return abi.encode(block.number - 1);
+        return abi.encode(block.number);
     }
 
     function gatewayURLs() external view returns (string[] memory) {

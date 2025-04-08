@@ -1,7 +1,7 @@
 node_modules/
 cache/
 out/
-artifacts/
+#artifacts/
 junk/
 dist/
 .vscode/
