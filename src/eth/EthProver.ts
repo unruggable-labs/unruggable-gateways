@@ -1,4 +1,4 @@
-import type { HexAddress, HexString, HexString32, ProofRef } from '../types.js';
+import type { HexAddress, HexString, ProofRef } from '../types.js';
 import {
   type EthAccountProof,
   type EthStorageProof,
@@ -8,7 +8,7 @@ import {
 } from './types.js';
 import { BlockProver, makeStorageKey, type TargetNeed } from '../vm.js';
 import { ZeroHash } from 'ethers/constants';
-import { withResolvers, toPaddedHex } from '../utils.js';
+import { withResolvers, toPaddedHex, fetchStorage } from '../utils.js';
 
 export class EthProver extends BlockProver {
   static readonly encodeProof = encodeProof;
@@ -47,14 +47,8 @@ export class EthProver extends BlockProver {
       return toPaddedHex(storageProof.value);
     }
     if (fast) {
-      return this.cache.get(storageKey, async () => {
-        // note: this returns null when block is bad
-        const res: HexString32 | null = await this.provider.send(
-          'eth_getStorageAt',
-          [target, toPaddedHex(slot), this.block]
-        );
-        if (!res) throw new Error(`unprovable block: ${this.block}`);
-        return res;
+      return this.cache.get(storageKey, () => {
+        return fetchStorage(this.provider, target, slot, this.block);
       });
     }
     const proofs = await this.getProofs(target, [slot]);

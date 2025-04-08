@@ -1,7 +1,12 @@
 import type { HexString, HexString32, ProofRef } from '../types.js';
 import { BlockProver, makeStorageKey, type TargetNeed } from '../vm.js';
 import { ZeroAddress, ZeroHash } from 'ethers/constants';
-import { withResolvers, toPaddedHex, isRPCError } from '../utils.js';
+import {
+  withResolvers,
+  toPaddedHex,
+  isRPCError,
+  fetchStorage,
+} from '../utils.js';
 import {
   type LineaProof,
   type RPCLineaGetProof,
@@ -64,7 +69,7 @@ export class LineaProver extends BlockProver {
     // we didn't have the proof
     if (fast) {
       return this.cache.get(storageKey, () => {
-        return this.provider.getStorage(target, slot, this.block);
+        return fetchStorage(this.provider, target, slot, this.block);
       });
     }
     const proof = await this.getProofs(target, [slot]);

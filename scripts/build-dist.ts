@@ -76,6 +76,8 @@ try {
     '--declarationMap'
   );
   log('Built types');
+  spawnSync('npm', ['pack']); //, '--pack-destination', distDir]);
+  log('Built pack');
 } finally {
   writeFileSync(packageFile, packageOriginal);
   writeFileSync(tsconfigFile, tsconfigOriginal);

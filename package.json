@@ -41,13 +41,7 @@
   "files": [
     "dist/",
     "artifacts/",
-    "contracts/GatewayFetcher.sol",
-    "contracts/GatewayFetchTarget.sol",
-    "contracts/GatewayRequest.sol",
-    "contracts/IGatewayProtocol.sol",
-    "contracts/IGatewayVerifier.sol",
-    "contracts/IVerifierHooks.sol",
-    "contracts/ReadBytesAt.sol"
+    "contracts/"
   ],
   "devDependencies": {
     "@adraffy/blocksmith": "^0.1.52",

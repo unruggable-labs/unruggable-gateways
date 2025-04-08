@@ -95,8 +95,8 @@ export class ZKSyncProver extends AbstractProver {
   }
   override async getStorage(
     target: HexAddress,
-    slot: bigint,
-    fast: boolean = this.fast
+    slot: bigint
+    //_fast: boolean = this.fast
   ): Promise<HexString> {
     target = target.toLowerCase();
     const storageKey = makeStorageKey(target, slot);
@@ -105,11 +105,12 @@ export class ZKSyncProver extends AbstractProver {
     if (storageProof) {
       return storageProof.value;
     }
-    if (fast) {
-      return this.cache.get(storageKey, () => {
-        return this.provider.getStorage(target, slot);
-      });
-    }
+    // 20240407: requires efficient batch => block
+    // if (fast) {
+    //   return this.cache.get(storageKey, () => {
+    //     return fetchStorage(this.provider, target, slot, this.batchIndex);
+    //   });
+    // }
     const vs = await this.getStorageProofs(target, [slot]);
     return vs.length ? toPaddedHex(vs[0].value) : ZeroHash;
   }
