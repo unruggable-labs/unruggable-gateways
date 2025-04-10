@@ -161,6 +161,11 @@ export class Gateway<R extends Rollup> extends EZCCIP {
       cacheMs
     );
   }
+  disableCache() {
+    this.latestCache.cacheMs = 0;
+    this.commitCacheMap.cacheMs = 0;
+    this.callLRU.max = 0;
+  }
 }
 
 export abstract class GatewayV1<R extends Rollup> extends EZCCIP {
