@@ -11,6 +11,8 @@ console.log({
   defaultWindow: rollup.defaultWindow,
 });
 
+console.log(await rollup.fetchLatestCommit());
+
 const commits = await rollup.fetchRecentCommits(10);
 
 const v = commits.map((x) => Number(x.index));

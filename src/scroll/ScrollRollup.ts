@@ -12,15 +12,44 @@ import type {
   ProofSequenceV1,
 } from '../types.js';
 import { Contract } from 'ethers/contract';
+import { Interface } from 'ethers/abi';
 import { concat, dataSlice } from 'ethers/utils';
 import { CHAINS } from '../chains.js';
 import { EthProver } from '../eth/EthProver.js';
-import { ROLLUP_ABI } from './types.js';
 import { ABI_CODER, toPaddedHex } from '../utils.js';
 
 // https://github.com/scroll-tech/scroll-contracts/
 // https://docs.scroll.io/en/developers/ethereum-and-scroll-differences/
 // https://status.scroll.io/
+// https://github.com/scroll-tech/scroll/tree/738c85759d0248c005469972a49fc983b031ff1c/contracts/src/L1
+
+const ROLLUP_ABI = new Interface([
+  `function lastFinalizedBatchIndex() view returns (uint256)`,
+  `function finalizedStateRoots(uint256 batchIndex) view returns (bytes32)`,
+  `event FinalizeBatch(
+    uint256 indexed batchIndex,
+    bytes32 indexed batchHash,
+    bytes32 stateRoot,
+    bytes32 withdrawRoot
+  )`,
+  `event CommitBatch(
+    uint256 indexed batchIndex,
+    bytes32 indexed batchHash
+  )`,
+  `function commitBatchWithBlobProof(
+    uint8 version,
+    bytes parentBatchHeader,
+    bytes[] chunks,
+    bytes skippedL1MessageBitmap,
+    bytes blobDataProof
+  )`,
+  `function commitBatch(
+    uint8 version,
+    bytes calldata parentBatchHeader,
+    bytes[] memory chunks,
+    bytes calldata skippedL1MessageBitmap
+   )`,
+]);
 
 export type ScrollConfig = {
   ScrollChain: HexAddress;
@@ -50,15 +79,16 @@ export class ScrollRollup
     ScrollChain: '0xa13BAF47339d63B743e7Da8741db5456DAc1E556',
     poseidon: '0x3508174Fa966e75f70B15348209E33BC711AE63e',
   };
+  // 20250307: https://sepolia.etherscan.io/tx/0xa8c2e812c47ff2f076a64687d380fa3b79cccfa5bc8368be1993907788f3ee50
   // https://sepolia.etherscan.io/address/0x64cb3A0Dcf43Ae0EE35C1C15edDF5F46D48Fa570
   // https://sepolia-api-re.scroll.io/api/
   // https://sepolia.scrollscan.com/batches
-  static readonly sepoliaConfig: RollupDeployment<ScrollConfig> = {
-    chain1: CHAINS.SEPOLIA,
-    chain2: CHAINS.SCROLL_SEPOLIA,
-    ScrollChain: '0x2D567EcE699Eabe5afCd141eDB7A4f2D0D6ce8a0',
-    poseidon: '0xFeE7242E8587d7E22Ea5E9cFC585d0eDB6D57faA',
-  };
+  // static readonly sepoliaConfig: RollupDeployment<ScrollConfig> = {
+  //   chain1: CHAINS.SEPOLIA,
+  //   chain2: CHAINS.SCROLL_SEPOLIA,
+  //   ScrollChain: '0x2D567EcE699Eabe5afCd141eDB7A4f2D0D6ce8a0',
+  //   poseidon: '0xFeE7242E8587d7E22Ea5E9cFC585d0eDB6D57faA',
+  // };
 
   readonly ScrollChain: Contract;
   readonly poseidon: HexAddress;

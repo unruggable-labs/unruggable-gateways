@@ -1,5 +1,5 @@
 import { Foundry } from '@adraffy/blocksmith';
-import { serve } from '@resolverworks/ezccip/serve';
+import { serve } from '@namestone/ezccip/serve';
 import { Contract } from 'ethers/contract';
 import { solidityPackedKeccak256 } from 'ethers/hash';
 import { createProviderPair, providerURL } from '../providers.js';

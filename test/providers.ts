@@ -9,10 +9,12 @@ export type RPCInfo = {
   readonly publicHTTP: string;
   readonly publicWS?: string;
   readonly ankr?: string;
+  readonly ankrPremium?: boolean;
   readonly infura?: string;
   readonly alchemy?: string;
   readonly alchemyPremium?: boolean;
-  readonly drpc?: string; // TODO: drpcPaid?
+  readonly drpc?: string;
+  readonly drpcBeacon?: string;
 };
 
 // TODO: this list is incomplete!
@@ -30,6 +32,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         infura: 'mainnet',
         alchemy: 'eth-mainnet',
         drpc: 'ethereum',
+        drpcBeacon: 'eth-beacon-chain',
       },
       {
         chain: CHAINS.SEPOLIA,
@@ -38,6 +41,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         infura: 'sepolia',
         alchemy: 'eth-sepolia',
         drpc: 'sepolia',
+        drpcBeacon: 'eth-beacon-chain-sepolia',
       },
       {
         chain: CHAINS.HOLESKY,
@@ -46,6 +50,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         infura: 'holesky',
         alchemy: 'eth-holesky',
         drpc: 'holesky',
+        drpcBeacon: 'eth-beacon-chain-holesky',
       },
       {
         // https://docs.optimism.io/chain/networks#op-mainnet
@@ -122,6 +127,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'scroll_sepolia_testnet',
         infura: 'scroll-sepolia',
         alchemy: 'scroll-sepolia',
+        drpc: 'scroll-sepolia',
       },
       {
         // https://docs.taiko.xyz/network-reference/rpc-configuration#taiko-mainnet
@@ -280,10 +286,24 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         //drpc: 'opbnb', // 20250115: no depth
       },
       {
+        // https://docs.celo.org/network#celo-mainnet
+        chain: CHAINS.CELO,
+        publicHTTP: 'https://forno.celo.org',
+        publicWS: 'wss://forno.celo.org/ws',
+        alchemy: 'celo-mainnet',
+        infura: 'celo-mainnet',
+        ankr: 'celo',
+        drpc: 'celo',
+      },
+      {
         // https://docs.celo.org/network#celo-alfajores
         chain: CHAINS.CELO_ALFAJORES,
         publicHTTP: 'https://alfajores-forno.celo-testnet.org',
-        //infura: 'celo-alfajores', // 20241002: eth_getProof doesn't work
+        alchemy: 'celo-alfajores',
+        infura: 'celo-alfajores', // 20241002: eth_getProof doesn't work
+        ankr: 'celo-alfajores',
+        ankrPremium: true,
+        drpc: 'celo-alfajores',
       },
       {
         // https://docs.worldcoin.org/world-chain/quick-start/info
@@ -462,7 +482,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
 
 export function providerOrder(chain?: Chain): string[] {
   let env;
-  if (chain) env = process.env[`PROVIDER_ORDER_${chain}`]; // chain specific
+  if (chain) env = process.env[`PROVIDER_ORDER_${chainName(chain)}`]; // chain specific
   if (!env) env = process.env.PROVIDER_ORDER; // global
   if (env) return env.split(/[,\s+]/).flatMap((x) => x.trim() || []);
   return ['alchemy', 'infura', 'ankr', 'drpc', 'public']; // global default
@@ -472,60 +492,69 @@ type ProviderInfo = {
   info: RPCInfo;
   type: string;
   url: string;
+  slug?: string;
   apiKey?: string;
 };
 
-function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
+export function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
   const info = RPC_INFO.get(chain);
   if (!info) throw new Error(`unknown chain: ${chain}`);
   // 20240830: so far, alchemy has the best support
   order ??= providerOrder(chain);
   for (const type of order) {
-    let apiKey;
+    let slug, apiKey;
     switch (type) {
       case 'alchemy': {
         if (
-          info.alchemy &&
+          (slug = info.alchemy) &&
           (apiKey = process.env.ALCHEMY_KEY) &&
           (!info.alchemyPremium || !!process.env.ALCHEMY_PREMIUM)
         ) {
           return {
             info,
             type,
-            url: `https://${info.alchemy}.g.alchemy.com/v2/${apiKey}`,
+            slug,
+            url: `https://${slug}.g.alchemy.com/v2/${apiKey}`,
             apiKey,
           };
         }
         break;
       }
       case 'ankr': {
-        if (info.ankr && (apiKey = process.env.ANKR_KEY)) {
+        if (
+          (slug = info.ankr) &&
+          (apiKey = process.env.ANKR_KEY) &&
+          (!info.ankrPremium || !!process.env.ANKR_PREMIUM)
+        ) {
           return {
             info,
             type,
-            url: `https://rpc.ankr.com/${info.ankr}/${apiKey}`,
+            slug,
+            url: `https://rpc.ankr.com/${slug}/${apiKey}`,
             apiKey,
           };
         }
         break;
       }
       case 'infura': {
-        if (info.infura && (apiKey = process.env.INFURA_KEY)) {
+        if ((slug = info.infura) && (apiKey = process.env.INFURA_KEY)) {
           return {
             info,
             type,
-            url: `https://${info.infura}.infura.io/v3/${apiKey}`,
+            slug,
+            url: `https://${slug}.infura.io/v3/${apiKey}`,
             apiKey,
           };
         }
         break;
       }
       case 'drpc': {
-        if (info.drpc && (apiKey = process.env.DRPC_KEY)) {
+        if ((slug = info.drpc) && (apiKey = process.env.DRPC_KEY)) {
           return {
             info,
             type,
-            url: `https://lb.drpc.org/ogrpc?network=${info.drpc}&dkey=${apiKey}`,
+            slug,
+            url: `https://lb.drpc.org/ogrpc?network=${slug}&dkey=${apiKey}`,
             apiKey,
           };
         }
@@ -544,9 +573,6 @@ function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
 
 export function providerURL(chain: Chain): string {
   return decideProvider(chain).url;
-}
-export function providerType(chain: Chain): string {
-  return decideProvider(chain).type;
 }
 
 export function createProvider(chain: Chain): Provider {
@@ -575,4 +601,15 @@ export function createProviderPair(
     provider1: createProvider(a),
     provider2: createProvider(b),
   };
+}
+
+// https://docs.arbitrum.io/run-arbitrum-node/l1-ethereum-beacon-chain-rpc-providers
+export function beaconURL(chain: Chain): string {
+  const info = RPC_INFO.get(chain);
+  if (!info) throw new Error(`unknown chain: ${chain}`);
+  let apiKey;
+  if (info.drpcBeacon && (apiKey = process.env.DRPC_KEY)) {
+    return `https://lb.drpc.org/rest/${apiKey}/${info.drpcBeacon}`;
+  }
+  throw new Error(`${chainName(chain)} beacon chain unsupported`);
 }

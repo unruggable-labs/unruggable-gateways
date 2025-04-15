@@ -1,6 +1,6 @@
 import { ReverseOPRollup } from '../../src/op/ReverseOPRollup.js';
 import { Gateway } from '../../src/gateway.js';
-import { serve } from '@resolverworks/ezccip/serve';
+import { serve } from '@namestone/ezccip/serve';
 import { Foundry } from '@adraffy/blocksmith';
 import { providerURL, createProviderPair } from '../providers.js';
 import { fetchBlockNumber } from '../../src/utils.js';
@@ -33,6 +33,8 @@ describe.skipIf(!!process.env.IS_CV)(
     await setupTests(verifier, {
       // https://etherscan.io/address/0xC9D1E777033FB8d17188475CE3D8242D1F4121D5#code
       slotDataContract: '0xC9D1E777033FB8d17188475CE3D8242D1F4121D5',
+      // https://etherscan.io/address/0x08fd8548934012f46727549927611ae0204fed55#code
+      slotDataPointer: '0x08fd8548934012f46727549927611ae0204fed55',
     });
   }
 );

@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 import { CHAINS } from '../../../src/chains.js';
 import { createProvider } from '../../providers.js';
 import { ABI_CODER } from '../../../src/utils.js';
-import { HexString } from '@resolverworks/ezccip';
+import { HexString } from '@namestone/ezccip';
 
 const provider1 = createProvider(CHAINS.MAINNET);
 const provider2 = createProvider(CHAINS.OP);

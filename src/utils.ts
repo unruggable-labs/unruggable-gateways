@@ -6,6 +6,7 @@ import type {
   BigNumberish,
   HexString,
   HexString32,
+  HexAddress,
 } from './types.js';
 import type { RPCEthGetBlock } from './eth/types.js';
 
@@ -103,6 +104,26 @@ export async function fetchBlockTag(
   return isBlockTag(relBlockTag)
     ? relBlockTag
     : fetchBlockNumber(provider, relBlockTag);
+}
+
+export async function fetchStorage(
+  provider: Provider,
+  target: HexAddress,
+  slot: BigNumberish,
+  relBlockTag: BigNumberish = LATEST_BLOCK_TAG
+): Promise<HexString32> {
+  const data: HexString32 | null = await provider.send('eth_getStorageAt', [
+    target,
+    toPaddedHex(slot),
+    relBlockTag,
+  ]);
+  if (!data) {
+    throw new Error(
+      `expected storage: ${target}<${toUnpaddedHex(slot)}>@${relBlockTag}`
+    );
+  }
+  // i think i've seen "0x" before...
+  return data.length === 66 ? data : toPaddedHex(data);
 }
 
 export function isEthersError(err: any): err is EthersError {

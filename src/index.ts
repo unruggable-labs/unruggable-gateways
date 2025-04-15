@@ -4,6 +4,7 @@ export * from './cached.js';
 
 export * from './utils.js';
 export * from './rlp.js';
+export * from './beacon.js';
 export * from './chains.js';
 export * from './VoidProvider.js';
 export * from './GatewayProvider.js';
@@ -35,9 +36,11 @@ export * from './polygon/PolygonPoSRollup.js';
 export * from './polygon/ZKEVMRollup.js';
 export * from './taiko/TaikoRollup.js';
 export * from './scroll/ScrollRollup.js';
+export * from './scroll/EuclidRollup.js';
 export * from './zksync/ZKSyncRollup.js';
 export * from './eth/EthSelfRollup.js';
 export * from './TrustedRollup.js';
+export * from './UncheckedRollup.js';
 
 export * from './gateway.js';
 export * from './linea/LineaGatewayV1.js';

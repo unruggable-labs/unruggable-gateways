@@ -1,5 +1,5 @@
 import { Foundry } from '@adraffy/blocksmith';
-import { serve } from '@resolverworks/ezccip/serve';
+import { serve } from '@namestone/ezccip/serve';
 import { MorphRollup } from '../../src/morph/MorphRollup.js';
 import { Gateway } from '../../src/gateway.js';
 import { createProviderPair, providerURL } from '../providers.js';

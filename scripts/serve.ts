@@ -1,10 +1,11 @@
 import type { Serve } from 'bun';
-import type { Chain } from '../src/types.js';
+import type { Chain, Provider } from '../src/types.js';
 import type { RollupDeployment, RollupCommitType } from '../src/rollup.js';
 import {
   createProviderPair,
   createProvider,
   providerURL,
+  beaconURL,
 } from '../test/providers.js';
 import { CHAINS, chainName } from '../src/chains.js';
 import { Gateway } from '../src/gateway.js';
@@ -15,7 +16,8 @@ import type { ArbitrumConfig } from '../src/arbitrum/ArbitrumRollup.js';
 import { NitroRollup } from '../src/arbitrum/NitroRollup.js';
 import { BoLDRollup } from '../src/arbitrum/BoLDRollup.js';
 import { DoubleArbitrumRollup } from '../src/arbitrum/DoubleArbitrumRollup.js';
-import { type ScrollConfig, ScrollRollup } from '../src/scroll/ScrollRollup.js';
+import { ScrollRollup } from '../src/scroll/ScrollRollup.js';
+import { EuclidRollup } from '../src/scroll/EuclidRollup.js';
 import { type TaikoConfig, TaikoRollup } from '../src/taiko/TaikoRollup.js';
 import { LineaRollup } from '../src/linea/LineaRollup.js';
 import { LineaGatewayV1 } from '../src/linea/LineaGatewayV1.js';
@@ -30,30 +32,7 @@ import { EthProver } from '../src/eth/EthProver.js';
 import { ZKSyncProver } from '../src/zksync/ZKSyncProver.js';
 import { Contract } from 'ethers/contract';
 import { SigningKey } from 'ethers/crypto';
-import { id as keccakStr } from 'ethers/hash';
 import { execSync } from 'child_process';
-
-const versionIdentifier = (() => {
-  try {
-    // Try to get the current tag
-    const currentTag = execSync('git describe --tags --exact-match', {
-      stdio: 'pipe',
-    })
-      .toString()
-      .trim();
-    return currentTag;
-  } catch (error) {
-    try {
-      const commitHash = execSync('git rev-parse HEAD', { stdio: 'pipe' })
-        .toString()
-        .trim();
-      return commitHash;
-    } catch (error) {
-      /* empty */
-    }
-  }
-  return '';
-})();
 
 // NOTE: you can use CCIPRewriter to test an existing setup against a local gateway!
 // [raffy] https://adraffy.github.io/ens-normalize.js/test/resolver.html#raffy.linea.eth.nb2hi4dthixs62dpnvss4ylooruxg5dvobuwiltdn5ws62duoryc6.ccipr.eth
@@ -144,15 +123,33 @@ gateway.rollup.configure = (c: RollupCommitType<typeof gateway.rollup>) => {
   // c.prover.maxEvalDepth = 0;
 };
 
+function chainDetails(provider: Provider) {
+  const chain = provider._network.chainId;
+  if (chain < 0) return null;
+  return toJSON({
+    chain,
+    name: chainName(chain),
+    url: concealKeys(providerURL(chain)),
+  });
+}
+
 const config: Record<string, any> = {
-  version: versionIdentifier,
+  version: ['git describe --tags --exact-match', 'git rev-parse HEAD'].reduce(
+    (version, cmd) => {
+      try {
+        version ||= execSync(cmd, { stdio: 'pipe' }).toString().trim();
+      } catch (err) {
+        // empty
+      }
+      return version;
+    },
+    ''
+  ),
   gateway: gateway.constructor.name,
   rollup: gateway.rollup.constructor.name,
   unfinalized: gateway.rollup.unfinalized,
-  chain1: chainName(gateway.rollup.provider1._network.chainId),
-  rpc1: keccakStr(providerURL(gateway.rollup.provider1._network.chainId)),
-  chain2: chainName(gateway.rollup.provider2._network.chainId),
-  rpc2: keccakStr(providerURL(gateway.rollup.provider2._network.chainId)),
+  chain1: chainDetails(gateway.rollup.provider1),
+  chain2: chainDetails(gateway.rollup.provider2),
   since: new Date(),
   prefetch,
   ...toJSON(gateway),
@@ -353,10 +350,20 @@ async function createGateway(name: string, unfinalized: number) {
         new PolygonPoSRollup(createProviderPair(config), config)
       );
     }
-    case 'scroll':
-      return createScroll(ScrollRollup.mainnetConfig);
-    case 'scroll-sepolia':
-      return createScroll(ScrollRollup.sepoliaConfig);
+    case 'scroll': {
+      const config = ScrollRollup.mainnetConfig;
+      return new Gateway(new ScrollRollup(createProviderPair(config), config));
+    }
+    case 'scroll-sepolia': {
+      const config = EuclidRollup.sepoliaConfig;
+      return new Gateway(
+        new EuclidRollup(
+          createProviderPair(config),
+          config,
+          beaconURL(config.chain1)
+        )
+      );
+    }
     case 'taiko':
       return createTaiko(TaikoRollup.mainnetConfig);
     case 'taiko-hekla':
@@ -450,10 +457,6 @@ function createArbitrum(
   );
 }
 
-function createScroll(config: RollupDeployment<ScrollConfig>) {
-  return new Gateway(new ScrollRollup(createProviderPair(config), config));
-}
-
 function createZKSync(config: RollupDeployment<ZKSyncConfig>) {
   return new Gateway(new ZKSyncRollup(createProviderPair(config), config));
 }
@@ -475,7 +478,10 @@ function toJSON(x: object) {
           info[k] = bigintToJSON(v);
           break;
         }
-        case 'string':
+        case 'string': {
+          info[k] = concealKeys(v);
+          break;
+        }
         case 'boolean':
         case 'number':
           info[k] = v;
@@ -489,4 +495,15 @@ function toJSON(x: object) {
 function bigintToJSON(x: bigint) {
   const i = Number(x);
   return Number.isSafeInteger(i) ? i : toUnpaddedHex(x);
+}
+
+function concealKeys(s: string) {
+  if (!s.startsWith('0x')) {
+    for (const [k, v] of Object.entries(process.env)) {
+      if (v && k.endsWith('_KEY')) {
+        s = s.replace(v, `{${k}}`);
+      }
+    }
+  }
+  return s;
 }

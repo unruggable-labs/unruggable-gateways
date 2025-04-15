@@ -1,7 +1,7 @@
 import { LineaRollup } from '../../src/linea/LineaRollup.js';
 import { UnfinalizedLineaRollup } from '../../src/linea/UnfinalizedLineaRollup.js';
 import { Gateway } from '../../src/gateway.js';
-import { serve } from '@resolverworks/ezccip/serve';
+import { serve } from '@namestone/ezccip/serve';
 import { Foundry } from '@adraffy/blocksmith';
 import { createProviderPair, providerURL } from '../providers.js';
 import { setupTests, testName } from './common.js';

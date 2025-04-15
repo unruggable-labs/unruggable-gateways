@@ -47,8 +47,9 @@ type ABIFoundGame = {
   rootClaim: string;
 };
 
-const GAME_FINDER_MAINNET = '0x728f1ac59A01d07bE3E62940eC9B3F5EF025C38b';
-const GAME_FINDER_SEPOLIA = '0x165386f8699ce2609a8903e25d00e1debd24a277';
+const GAME_FINDER_MAINNET = '0x61F50A76bfb2Ad8620A3E8F81aa27f3bEb1Db0D7';
+const GAME_FINDER_SEPOLIA = '0x1577670E6AC3307D17A8f81464ADc2070A2EFcaa';
+//const GAME_FINDER_HOLESKY = '0xedb18cd8d9D6AF54C4Ac1FbDBF2E098F413c3fe9';
 
 export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   // https://docs.optimism.io/chain/addresses
@@ -141,6 +142,14 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.WORLD,
     OptimismPortal: '0xd5ec14a83B7d95BE1E2Ac12523e2dEE12Cbeea6C',
+    GameFinder: GAME_FINDER_MAINNET,
+  };
+
+  // https://storage.googleapis.com/cel2-rollup-files/celo/deployment-l1.json
+  static readonly celoMainnetConfig: RollupDeployment<OPFaultConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.CELO,
+    OptimismPortal: '0xc5c5D157928BDBD2ACf6d0777626b6C75a9EAEDC',
     GameFinder: GAME_FINDER_MAINNET,
   };
 
