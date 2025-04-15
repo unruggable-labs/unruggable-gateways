@@ -108,6 +108,13 @@ export class Gateway<R extends Rollup> extends EZCCIP {
   async getLatestCommit(): Promise<RollupCommitType<R>> {
     return (await this._updateLatest()).commit;
   }
+  async getParentCommit(
+    commit: RollupCommitType<R>
+  ): Promise<RollupCommitType<R>> {
+    const cached = await this.cachedCommit(commit.index);
+    const parent = await this.cachedCommit(await cached.parent.get());
+    return parent.commit;
+  }
   async getRecentCommit(index: bigint): Promise<RollupCommitType<R>> {
     const latest = await this._updateLatest();
     let cursor = latest;
@@ -133,7 +140,7 @@ export class Gateway<R extends Rollup> extends EZCCIP {
     cacheMs?: number
   ): Promise<CachedCommit<R>> {
     const cached = await this.commitCacheMap.peek(index);
-    if (cached && !(await cached.valid.get())) {
+    if (cached && !(await cached.valid.get().catch(() => {}))) {
       this.commitCacheMap.delete(index);
     }
     return this.commitCacheMap.get(
@@ -164,7 +171,7 @@ export abstract class GatewayV1<R extends Rollup> extends EZCCIP {
     // we only keep the latest commit
     if (
       index !== this.latestCommit?.index ||
-      !(await this.rollup.isCommitStillValid(this.latestCommit))
+      !(await this.rollup.isCommitStillValid(this.latestCommit).catch(() => {}))
     ) {
       this.latestCommit = await this.rollup.fetchCommit(index);
     }

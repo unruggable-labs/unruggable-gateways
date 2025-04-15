@@ -68,7 +68,7 @@ If you are interested in building a solution for another chain, please take a lo
 ## Setup
 
 1. [`foundryup`](https://book.getfoundry.sh/getting-started/installation)
-1. `forge install`
+1. `forge i`
 1. `bun i`
 1. create [`.env`](./.env.example)
 
@@ -81,7 +81,7 @@ If you are interested in building a solution for another chain, please take a lo
 	* Use `trusted:<Chain>` for a [`TrustedRollup`](./src/TrustedRollup.ts)
 		* eg. `bun run serve trusted:op`
 		* Include `0x{64}` to set signing key
-	* Include `--unfinalized` to use unfinalized commits (will throw if not available)
+	* Include `--unfinalized(=minAge)` to use unfinalized commits (will throw if not available)
 	* Include `--latest` for `"latest"` instead of `"finalized"` block tag
 	* Include `--debug` to print `OP_DEBUG` statements
 	* Include `--dump` to print config, latest commit, prover information, and then exit.
@@ -101,7 +101,6 @@ Commands available include:
 		* [Batched `eth_getProof`](./test/components/proofs.test.ts)
 	* `bun run test-gateways`
 		* [Contract](./test/gateway/SlotDataContract.sol) &rarr; [Reader](./test/gateway/SlotDataReader.sol) &rarr; [Tests](./test/gateway/tests.ts)
-		* ⚠️ Scroll fails [`readZero()`](./test/gateway/tests.ts#L26) test
 		* ⚠️ Polygon has poor `eth_getProof` support
 
 ## Examples

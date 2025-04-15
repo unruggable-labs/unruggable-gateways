@@ -9,7 +9,7 @@ import {
 import { chainName, CHAINS } from '../../src/chains.js';
 import { serve } from '@resolverworks/ezccip/serve';
 import { type FoundryContract, Foundry } from '@adraffy/blocksmith';
-import { runSlotDataTests } from './tests.js';
+import { runSlotDataTests } from './SlotDataTests.js';
 import { type OPConfig, OPRollup } from '../../src/op/OPRollup.js';
 import {
   type OPFaultConfig,
@@ -21,8 +21,10 @@ import {
 } from '../../src/scroll/ScrollRollup.js';
 import { type LineaConfig, LineaRollup } from '../../src/linea/LineaRollup.js';
 import { type TaikoConfig, TaikoRollup } from '../../src/taiko/TaikoRollup.js';
-import { type NitroConfig, NitroRollup } from '../../src/nitro/NitroRollup.js';
-import { DoubleNitroRollup } from '../../src/nitro/DoubleNitroRollup.js';
+import type { ArbitrumConfig } from '../../src/arbitrum/ArbitrumRollup.js';
+import { BoLDRollup } from '../../src/arbitrum/BoLDRollup.js';
+import { NitroRollup } from '../../src/arbitrum/NitroRollup.js';
+import { DoubleArbitrumRollup } from '../../src/arbitrum/DoubleArbitrumRollup.js';
 import {
   type ZKSyncConfig,
   ZKSyncRollup,
@@ -34,6 +36,8 @@ import { randomBytes, SigningKey } from 'ethers/crypto';
 import { ZeroAddress } from 'ethers/constants';
 import { afterAll } from 'bun:test';
 import { describe } from '../bun-describe-fix.js';
+import { prefetchBoLD } from '../workarounds/prefetch-BoLD.js';
+import { LATEST_BLOCK_TAG } from '../../src/utils.js';
 
 export function testName(
   { chain1, chain2, chain3 }: ChainPair & { chain3?: Chain },
@@ -63,7 +67,7 @@ export async function quickTest(
   const foundry = Foundry.of(verifier);
   const reader = await foundry.deploy({
     file: 'SlotDataReader',
-    args: [verifier, target],
+    args: [verifier, target, ZeroAddress, []],
   });
   return reader.readSlot(slot, { enableCcipRead: true });
 }
@@ -76,6 +80,7 @@ export async function setupTests(verifier: FoundryContract, opts: TestOptions) {
       verifier,
       opts.slotDataContract,
       opts.slotDataPointer ?? ZeroAddress,
+      [],
     ],
   });
   runSlotDataTests(reader, !!opts.slotDataPointer);
@@ -136,7 +141,6 @@ export function testOPFault(
         config,
         opts.minAgeSec
       );
-      rollup.latestBlockTag = 'latest';
       const foundry = await Foundry.launch({
         fork: providerURL(config.chain1),
         infoLog: !!opts.log,
@@ -172,35 +176,52 @@ export function testOPFault(
   );
 }
 
-export function testNitro(
-  config: RollupDeployment<NitroConfig>,
+export function testArbitrum(
+  config: RollupDeployment<ArbitrumConfig>,
   opts: TestOptions & { minAgeBlocks?: number }
 ) {
-  describe.skipIf(shouldSkip(opts))(testName(config), async () => {
-    const rollup = new NitroRollup(createProviderPair(config), config);
-    const foundry = await Foundry.launch({
-      fork: providerURL(config.chain1),
-      infoLog: !!opts.log,
-    });
-    afterAll(foundry.shutdown);
-    const gateway = new Gateway(rollup);
-    const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
-    afterAll(ccip.shutdown);
-    const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
-    const hooks = await foundry.deploy({ file: 'EthVerifierHooks' });
-    const verifier = await foundry.deploy({
-      file: 'NitroVerifier',
-      args: [
-        [ccip.endpoint],
-        opts.window ?? rollup.defaultWindow,
-        hooks,
-        rollup.Rollup,
-        opts.minAgeBlocks ?? rollup.minAgeBlocks,
-      ],
-      libs: { GatewayVM },
-    });
-    await setupTests(verifier, opts);
-  });
+  describe.skipIf(shouldSkip(opts))(
+    testName(config, { unfinalized: !!opts.minAgeBlocks }),
+    async () => {
+      const rollup = new (config.isBoLD ? BoLDRollup : NitroRollup)(
+        createProviderPair(config),
+        config,
+        opts.minAgeBlocks
+      );
+      const foundry = await Foundry.launch({
+        fork: providerURL(config.chain1),
+        infoLog: !!opts.log,
+      });
+      afterAll(foundry.shutdown);
+      const gateway = new Gateway(rollup);
+      const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
+      afterAll(ccip.shutdown);
+      const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
+      const EthVerifierHooks = await foundry.deploy({
+        file: 'EthVerifierHooks',
+      });
+      const NitroVerifierLib = await foundry.deploy({
+        file: 'NitroVerifierLib',
+      });
+      const BoLDVerifierLib = await foundry.deploy({ file: 'BoLDVerifierLib' });
+      const verifier = await foundry.deploy({
+        file: 'ArbitrumVerifier',
+        args: [
+          [ccip.endpoint],
+          opts.window ?? rollup.defaultWindow,
+          EthVerifierHooks,
+          rollup.Rollup,
+          rollup.minAgeBlocks,
+          rollup.isBoLD,
+        ],
+        libs: { GatewayVM, NitroVerifierLib, BoLDVerifierLib },
+      });
+      if (rollup instanceof BoLDRollup) {
+        await prefetchBoLD(foundry, rollup);
+      }
+      await setupTests(verifier, opts);
+    }
+  );
 }
 
 export function testScroll(
@@ -271,7 +292,7 @@ export function testTrustedEth(chain2: Chain, opts: TestOptions) {
         EthProver,
         new SigningKey(randomBytes(32))
       );
-      rollup.latestBlockTag = 'latest';
+      rollup.latestBlockTag = LATEST_BLOCK_TAG;
       afterAll(foundry.shutdown);
       const gateway = new Gateway(rollup);
       const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
@@ -388,9 +409,9 @@ export function testTaiko(
   });
 }
 
-export function testDoubleNitro(
-  config12: RollupDeployment<NitroConfig>,
-  config23: RollupDeployment<NitroConfig>,
+export function testDoubleArbitrum(
+  config12: RollupDeployment<ArbitrumConfig>,
+  config23: RollupDeployment<ArbitrumConfig>,
   opts: TestOptions & { minAgeBlocks12?: number; minAgeBlocks23?: number }
 ) {
   describe.skipIf(shouldSkip(opts))(
@@ -399,8 +420,8 @@ export function testDoubleNitro(
       { unfinalized: !!opts.minAgeBlocks12 || !!opts.minAgeBlocks23 }
     ),
     async () => {
-      const rollup = new DoubleNitroRollup(
-        new NitroRollup(
+      const rollup = new DoubleArbitrumRollup(
+        new (config12.isBoLD ? BoLDRollup : NitroRollup)(
           createProviderPair(config12),
           config12,
           opts.minAgeBlocks12
@@ -418,21 +439,30 @@ export function testDoubleNitro(
       const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
       afterAll(ccip.shutdown);
       const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
-      const hooks = await foundry.deploy({ file: 'EthVerifierHooks' });
+      const EthVerifierHooks = await foundry.deploy({
+        file: 'EthVerifierHooks',
+      });
+      const NitroVerifierLib = await foundry.deploy({
+        file: 'NitroVerifierLib',
+      });
+      const BoLDVerifierLib = await foundry.deploy({ file: 'BoLDVerifierLib' });
       const verifier = await foundry.deploy({
-        file: 'DoubleNitroVerifier',
+        file: 'DoubleArbitrumVerifier',
         args: [
           [ccip.endpoint],
           opts.window ?? rollup.defaultWindow,
-          hooks,
+          EthVerifierHooks,
           rollup.rollup12.Rollup,
           rollup.rollup12.minAgeBlocks,
-          rollup.rollup23.Rollup,
-          //rollup.rollup23.minAgeBlocks,
-          rollup.nodeRequest.toTuple(),
+          rollup.rollup12.isBoLD,
+          rollup.request.toTuple(),
+          //rollup.rollup23.isBoLD,
         ],
-        libs: { GatewayVM },
+        libs: { GatewayVM, NitroVerifierLib, BoLDVerifierLib },
       });
+      if (rollup.rollup12 instanceof BoLDRollup) {
+        await prefetchBoLD(foundry, rollup.rollup12);
+      }
       await setupTests(verifier, opts);
     }
   );

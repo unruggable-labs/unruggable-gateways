@@ -1,22 +1,33 @@
 import { EthProver } from '../eth/EthProver.js';
-import { AbstractRollup, RollupCommit } from '../rollup.js';
-import { ProofSequence, HexString, Provider, HexAddress } from '../types.js';
-import { NitroCommit, NitroConfig, NitroRollup } from './NitroRollup.js';
+import { type RollupCommit, AbstractRollup } from '../rollup.js';
+import type {
+  ProofSequence,
+  HexString,
+  Provider,
+  HexAddress,
+} from '../types.js';
+import type {
+  ArbitrumCommit,
+  ArbitrumConfig,
+  AbstractArbitrumRollup,
+} from './ArbitrumRollup.js';
+import { type NitroCommit, NitroRollup } from './NitroRollup.js';
 import { ABI_CODER } from '../utils.js';
 import { GatewayRequest } from '../vm.js';
 
-export type DoubleNitroCommit = RollupCommit<EthProver> & {
-  readonly commit12: NitroCommit;
+export type DoubleArbitrumCommit<C1> = RollupCommit<EthProver> & {
+  readonly commit12: C1;
   readonly commit23: NitroCommit;
-  readonly proofSeq: ProofSequence;
+  readonly proofSeq12: ProofSequence;
 };
 
 // NOTE: when finalized, the delay is 2x7days
 // rollup12 finalization works as expected
 // rollup23 finalization is latestConfirmed or latestCreated (unfinalized)
 // TODO: implement minAgeBlocks for rollup23
+// TODO: implement BoLD support for rollup23
 
-function createNodeRequest(address: HexAddress, unfinalized = false) {
+function createRequestForNitro(address: HexAddress, unfinalized = false) {
   const SLOT_NODE_STORAGE = 117n;
   const SLOT_NODES_MAP = 118n;
   const SLOT_OFFSET_CONFIRM_DATA = 2n;
@@ -40,24 +51,27 @@ function createNodeRequest(address: HexAddress, unfinalized = false) {
   return req;
 }
 
-export class DoubleNitroRollup extends AbstractRollup<DoubleNitroCommit> {
+export class DoubleArbitrumRollup<
+  C1 extends ArbitrumCommit,
+  R1 extends AbstractArbitrumRollup<C1>,
+> extends AbstractRollup<DoubleArbitrumCommit<C1>> {
   readonly rollup23: NitroRollup;
-  readonly nodeRequest: GatewayRequest;
+  readonly request: GatewayRequest;
   constructor(
-    readonly rollup12: NitroRollup,
+    readonly rollup12: R1,
     provider3: Provider,
-    config: NitroConfig,
-    minAgeBlocks23 = rollup12.minAgeBlocks
+    config23: ArbitrumConfig,
+    minAgeBlocks23 = 0
   ) {
     super({ provider1: rollup12.provider1, provider2: provider3 });
     this.rollup23 = new NitroRollup(
       { provider1: rollup12.provider2, provider2: provider3 },
-      config,
+      config23,
       minAgeBlocks23
     );
-    this.rollup23.latestBlockTag = 'latest';
-    this.nodeRequest = createNodeRequest(
-      config.Rollup,
+    this.rollup23.latestBlockTag = 'latest'; // TODO: explain this
+    this.request = createRequestForNitro(
+      config23.Rollup,
       this.rollup23.unfinalized
     );
   }
@@ -68,16 +82,16 @@ export class DoubleNitroRollup extends AbstractRollup<DoubleNitroCommit> {
     return this.rollup12.fetchLatestCommitIndex();
   }
   protected override _fetchParentCommitIndex(
-    commit: DoubleNitroCommit
+    commit: DoubleArbitrumCommit<C1>
   ): Promise<bigint> {
     return this.rollup12.fetchParentCommitIndex(commit.commit12);
   }
   protected override async _fetchCommit(
     index: bigint
-  ): Promise<DoubleNitroCommit> {
+  ): Promise<DoubleArbitrumCommit<C1>> {
     const commit12 = await this.rollup12.fetchCommit(index);
-    const state = await commit12.prover.evalRequest(this.nodeRequest);
-    const [proofSeq, outputs] = await Promise.all([
+    const state = await commit12.prover.evalRequest(this.request);
+    const [proofSeq12, outputs] = await Promise.all([
       commit12.prover.prove(state.needs),
       state.resolveOutputs(),
     ]);
@@ -86,28 +100,29 @@ export class DoubleNitroRollup extends AbstractRollup<DoubleNitroCommit> {
     return {
       index,
       prover: commit23.prover,
-      proofSeq,
+      proofSeq12,
       commit12,
       commit23,
     };
   }
   override encodeWitness(
-    commit: DoubleNitroCommit,
-    proofSeq: ProofSequence
+    commit: DoubleArbitrumCommit<C1>,
+    proofSeq23: ProofSequence
   ): HexString {
     return ABI_CODER.encode(
-      ['(uint256,bytes32,bytes,bytes[],bytes,bytes32,bytes,bytes[],bytes)'],
+      ['(bytes,bytes[],bytes)[2]'],
       [
         [
-          commit.index,
-          commit.commit12.sendRoot,
-          commit.commit12.rlpEncodedBlock,
-          commit.proofSeq.proofs,
-          commit.proofSeq.order,
-          commit.commit23.sendRoot,
-          commit.commit23.rlpEncodedBlock,
-          proofSeq.proofs,
-          proofSeq.order,
+          [
+            commit.commit12.encodedRollupProof,
+            commit.proofSeq12.proofs,
+            commit.proofSeq12.order,
+          ],
+          [
+            commit.commit23.encodedRollupProof,
+            proofSeq23.proofs,
+            proofSeq23.order,
+          ],
         ],
       ]
     );

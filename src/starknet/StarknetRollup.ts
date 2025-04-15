@@ -17,7 +17,6 @@ import { Contract, EventLog } from 'ethers/contract';
 import { ABI_CODER } from '../utils.js';
 import { EthProver } from '../eth/EthProver.js';
 import { encodeRlpBlock } from '../rlp.js';
-import { CachedMap } from '../cached.js';
 import { dataSlice } from 'ethers/utils';
 import { id as keccakStr } from 'ethers/hash';
 
@@ -57,7 +56,6 @@ export class StarknetRollup extends AbstractRollup<StarknetCommit> {
   };
 
   readonly Rollup: Contract;
-  readonly logMap = new CachedMap<number, Map<number, number>>(3600 * 1000);
   constructor(providers: ProviderPair, config: StarknetConfig) {
     super(providers);
     this.Rollup = new Contract(config.Rollup, CORE_ABI, this.provider1);
