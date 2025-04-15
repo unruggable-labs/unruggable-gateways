@@ -15,6 +15,9 @@ import {
   encodeProof,
 } from './types.js';
 
+// BLOCK_MISSING_IN_CHAIN, UNKNOWN
+const TRANSIENT_RPC_ERRORS = new Set([-32600, -32603]);
+
 export class LineaProver extends BlockProver {
   static readonly isInclusionProof = isInclusionProof;
   static readonly isContract = isContract;
@@ -31,7 +34,7 @@ export class LineaProver extends BlockProver {
       await this.getProofs(ZeroAddress);
       return true;
     } catch (err) {
-      if (isRPCError(err, -32600)) return false; // BLOCK_MISSING_IN_CHAIN
+      if (isRPCError(err, TRANSIENT_RPC_ERRORS)) return false;
       throw err;
     }
   }
