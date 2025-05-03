@@ -26,6 +26,7 @@ import { type ZKSyncConfig, ZKSyncRollup } from '../src/zksync/ZKSyncRollup.js';
 import { PolygonPoSRollup } from '../src/polygon/PolygonPoSRollup.js';
 import { EthSelfRollup } from '../src/eth/EthSelfRollup.js';
 import { TrustedRollup } from '../src/TrustedRollup.js';
+import { UncheckedRollup } from '../src/UncheckedRollup.js';
 import { LATEST_BLOCK_TAG, toUnpaddedHex } from '../src/utils.js';
 import { EthProver } from '../src/eth/EthProver.js';
 //import { LineaProver } from '../src/linea/LineaProver.js';
@@ -46,6 +47,7 @@ import { execSync } from 'child_process';
 let dumpAndExit = false;
 let unfinalized = parseInt(process.env.UNFINALIZED ?? '') | 0;
 let printDebug = !!process.env.PRINT_DEBUG;
+let printCalls = !!process.env.PRINT_CALLS;
 let prefetch = !!process.env.PREFETCH;
 let latestBlockTag = process.env.LATEST_BLOCK_TAG;
 let signingKey =
@@ -63,6 +65,8 @@ const args = process.argv.slice(2).filter((x) => {
     dumpAndExit = true;
   } else if (x === '--debug') {
     printDebug = true;
+  } else if (x === '--calls') {
+    printCalls = true;
   } else if (/^0x[0-9a-f]{64}$/i.test(x)) {
     signingKey = x;
   } else {
@@ -81,22 +85,16 @@ if (unfinalized && !gateway.rollup.unfinalized) {
   throw new Error('unfinalized not supported');
 }
 
-// [gateway.rollup.provider1, gateway.rollup.provider2].forEach((p) => {
-//   p.on('debug', (x) => {
-//     if (x.action === 'sendRpcPayload') {
-//       const v = Array.isArray(x.payload) ? x.payload : [x.payload];
-//       console.log(
-//         p._network.chainId,
-//         v.map((x: any) => x.method)
-//       );
-//     }
-//   });
-// });
-
-if (prefetch) {
-  // periodically pull the latest commit so it's always fresh
-  await gateway.getLatestCommit();
-  setInterval(() => gateway.getLatestCommit(), gateway.latestCache.cacheMs);
+if (printCalls) {
+  [gateway.rollup.provider1, gateway.rollup.provider2].forEach((p) => {
+    p.on('debug', (x) => {
+      if (x.action === 'sendRpcPayload') {
+        console.log(chainName(p._network.chainId), x.action, x.payload);
+      } else if (x.action == 'receiveRpcResult') {
+        console.log(chainName(p._network.chainId), x.action, x.result);
+      }
+    });
+  });
 }
 
 // how to configure gateway
@@ -134,7 +132,7 @@ function chainDetails(provider: Provider) {
 }
 
 const config: Record<string, any> = {
-  version: ['git describe --tags --exact-match', 'git rev-parse HEAD'].reduce(
+  git: ['git describe --tags --exact-match', 'git rev-parse HEAD'].reduce(
     (version, cmd) => {
       try {
         version ||= execSync(cmd, { stdio: 'pipe' }).toString().trim();
@@ -166,6 +164,12 @@ if (dumpAndExit) {
   console.log(toJSON(commit));
   console.log(toJSON(commit.prover));
   process.exit(0);
+}
+
+if (prefetch) {
+  // periodically pull the latest commit so it's always fresh
+  await gateway.getLatestCommit();
+  setInterval(() => gateway.getLatestCommit(), gateway.latestCache.cacheMs);
 }
 
 console.log('Listening on', port, config);
@@ -252,29 +256,36 @@ export default {
   },
 } satisfies Serve;
 
+function chainFromName(slug: string) {
+  slug = slug.toUpperCase().replaceAll('-', '_');
+  if (slug in CHAINS) return CHAINS[slug as keyof typeof CHAINS];
+  throw new Error(`unknown chain: ${slug}`);
+}
+
 async function createGateway(name: string, unfinalized: number) {
-  const match = name.match(/^trusted:(.+)$/i);
-  if (match) {
-    const slug = match[1].toUpperCase().replaceAll('-', '_');
-    if (slug in CHAINS) {
-      const chain = CHAINS[slug as keyof typeof CHAINS];
-      const provider = createProvider(chain);
-      const key = new SigningKey(signingKey);
-      switch (chain) {
-        case CHAINS.ZKSYNC:
-        case CHAINS.ZKSYNC_SEPOLIA:
-          return new Gateway(new TrustedRollup(provider, ZKSyncProver, key));
-        // NOTE: linea should use eth_getProof instead of linea_getProof
-        // NOTE: this probably needs "--latest" cli option too
-        // rollup => SMT w/Mimc root using linea_getProof
-        // chain => PMT w/Keccak root using eth_getProof
-        // case CHAINS.LINEA:
-        // case CHAINS.LINEA_SEPOLIA:
-        //   return LineaProver;
-        default:
-          return new Gateway(new TrustedRollup(provider, EthProver, key));
-      }
+  let match;
+  if ((match = name.match(/^trusted:(.+)$/i))) {
+    const chain = chainFromName(match[1]);
+    const provider = createProvider(chain);
+    const key = new SigningKey(signingKey);
+    switch (chain) {
+      case CHAINS.ZKSYNC:
+      case CHAINS.ZKSYNC_SEPOLIA:
+        return new Gateway(new TrustedRollup(provider, ZKSyncProver, key));
+      // NOTE: linea should use eth_getProof instead of linea_getProof
+      // NOTE: this probably needs "--latest" cli option too
+      // rollup => SMT w/Mimc root using linea_getProof
+      // chain => PMT w/Keccak root using eth_getProof
+      // case CHAINS.LINEA:
+      // case CHAINS.LINEA_SEPOLIA:
+      //   return LineaProver;
+      default:
+        return new Gateway(new TrustedRollup(provider, EthProver, key));
     }
+  } else if ((match = name.match(/^unchecked:(.+)$/i))) {
+    const chain = chainFromName(match[1]);
+    const provider = createProvider(chain);
+    return new Gateway(new UncheckedRollup(provider));
   }
   switch (name) {
     case 'op':

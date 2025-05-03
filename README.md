@@ -38,16 +38,17 @@ The codebase has been audited. Details of our audits can be found [here](./audit
 * Rollups &amp; Verifers
 	* [OP](./src/op/OPRollup.ts)
 	* [OP w/Fault Proofs](./src/op/OPFaultRollup.ts)
-	* [Nitro](./src/nitro/NitroRollup.ts)
-	* [Linea](./src/linea/LineaRollup.ts)
+	* Arbitrum: [Nitro](./src/arbitrum/NitroRollup.ts) and [BoLD](./src/arbitrum/BoLDRollup.ts)
+	* [Linea](./src/linea/LineaRollup.ts) and [UnfinalizedLinea](./src/linea/UnfinalizedLineaRollup.ts)
 	* [Polygon PoS](./src/polygon/PolygonPoSRollup.ts)
-	* [Scroll](./src/scroll/ScrollRollup.ts)
+	* [Scroll](./src/scroll/ScrollRollup.ts) and [Euclid](./src/scroll//EuclidRollup.ts)
 	* [Taiko](./src/taiko/TaikoRollup.ts)
 	* [ZKSync](./src/zksync/ZKSyncRollup.ts)
 	* [Reverse OP](./src/op/ReverseOPRollup.ts) &mdash; L2 &rarr; L1
 	* [Self](./src/eth/EthSelfRollup.ts) &mdash; any &rarr; itself
 	* [Trusted](./src/TrustedRollup.ts) &mdash; any &rarr; any
-	* [DoubleNitro](./src/nitro/DoubleNitroRollup.ts) &mdash; L1 &rarr; L2 &rarr; L3
+	* [Unchecked](./src/UncheckedRollup.ts) &mdash; any &rarr; any
+	* [DoubleArbitrum](./src/arbitrum/DoubleArbitrumRollup.ts) &mdash; L1 &rarr; L2 &rarr; L3
 	* [Polygon ZK](./src/polygon/ZKEVMRollup.ts) &mdash; *WIP*
 	* [Morph](./src/morph/MorphRollup.ts) &mdash; *WIP*
 	* [Starknet](./src/starknet/StarknetRollup.ts) &mdash; *WIP*
@@ -78,13 +79,17 @@ If you are interested in building a solution for another chain, please take a lo
 	* eg. `bun run serve op 9000`
 	* Chains: `ape` `arb1-sepolia` `arb1` `base-sepolia` `base` `blast` `celo-alfajores` `cyber` `fraxtal` `ink-sepolia` `linea-sepolia` `lineaV1` `linea` `mantle` `mode` `op-sepolia` `op` `opbnb` `polygon` `redstone` `reverse-op` `scroll-sepolia` `scroll` `self-eth` `self-holesky` `self-sepolia` `shape` `soneium-minato` `taiko-hekla` `taiko` `unichain-sepolia` `zero-sepolia` `zero` `zksync-sepolia` `zksync` `zora`
 	* Default port: `8000`
-	* Use `trusted:<Chain>` for a [`TrustedRollup`](./src/TrustedRollup.ts)
+	* Use `trusted:<chain>` for a [`TrustedRollup`](./src/TrustedRollup.ts)
 		* eg. `bun run serve trusted:op`
 		* Include `0x{64}` to set signing key
+	* Use `unchecked:<chain>` for a [`UncheckedRollup](./src/UncheckedRollup.ts)
 	* Include `--unfinalized(=minAge)` to use unfinalized commits (will throw if not available)
 	* Include `--latest` for `"latest"` instead of `"finalized"` block tag
 	* Include `--debug` to print `OP_DEBUG` statements
+	* Inclide `--calls` to print RPC calls.
 	* Include `--dump` to print config, latest commit, prover information, and then exit.
+	* Use [`PROVIDER_ORDER`](./test/providers.ts) to customize global RPC provider priority.
+	* Use `PROVIDER_ORDER_{CHAIN_NAME}` to customize per-chain RPC provider priority.
 
 ## Testing
 

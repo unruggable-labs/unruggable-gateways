@@ -69,6 +69,7 @@ export class ScrollRollup
   extends AbstractRollup<ScrollCommit>
   implements RollupWitnessV1<ScrollCommit>
 {
+  // 20250417: https://x.com/Scroll_ZKP/status/1912944671686533541
   // https://docs.scroll.io/en/developers/scroll-contracts/
   // https://etherscan.io/address/0xC4362457a91B2E55934bDCb7DaaF6b1aB3dDf203
   // https://mainnet-api-re.scroll.io/api/
