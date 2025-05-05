@@ -10,6 +10,7 @@ export type RPCInfo = {
   readonly publicWS?: string;
   readonly ankr?: string;
   readonly ankrPremium?: boolean;
+  readonly ankrBeaconPremium?: boolean;
   readonly infura?: string;
   readonly alchemy?: string;
   readonly alchemyPremium?: boolean;
@@ -29,6 +30,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         chain: CHAINS.MAINNET,
         publicHTTP: 'https://rpc.ankr.com/eth', // https://cloudflare-eth.com is too rate limited
         ankr: 'eth',
+        ankrBeaconPremium: true,
         infura: 'mainnet',
         alchemy: 'eth-mainnet',
         drpc: 'ethereum',
@@ -610,6 +612,12 @@ export function beaconURL(chain: Chain): string {
   let apiKey;
   if (info.drpcBeacon && (apiKey = process.env.DRPC_KEY)) {
     return `https://lb.drpc.org/rest/${apiKey}/${info.drpcBeacon}`;
+  } else if (
+    info.ankrBeaconPremium &&
+    (apiKey = process.env.ANKR_KEY) &&
+    process.env.ANKR_PREMIUM
+  ) {
+    return `https://rpc.ankr.com/premium-http/eth_beacon/${apiKey}`;
   }
   throw new Error(`${chainName(chain)} beacon chain unsupported`);
 }
