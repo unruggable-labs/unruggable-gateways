@@ -10,7 +10,7 @@ import type {
 import {
   type RPCZKSyncGetProof,
   type ZKSyncStorageProof,
-  RPCZKSyncL1BatchDetails,
+  type RPCZKSyncL1BatchDetails,
   encodeProof,
 } from './types.js';
 import {

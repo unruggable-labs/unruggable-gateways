@@ -1,6 +1,5 @@
 import {
   type RollupCommit,
-  type RollupDeployment,
   type RollupWitnessV1,
   AbstractRollup,
 } from '../rollup.js';
@@ -14,7 +13,6 @@ import type {
 import { Contract } from 'ethers/contract';
 import { Interface } from 'ethers/abi';
 import { concat, dataSlice } from 'ethers/utils';
-import { CHAINS } from '../chains.js';
 import { EthProver } from '../eth/EthProver.js';
 import { ABI_CODER, toPaddedHex } from '../utils.js';
 
@@ -74,12 +72,12 @@ export class ScrollRollup
   // https://etherscan.io/address/0xC4362457a91B2E55934bDCb7DaaF6b1aB3dDf203
   // https://mainnet-api-re.scroll.io/api/
   // https://scrollscan.com/batches
-  static readonly mainnetConfig: RollupDeployment<ScrollConfig> = {
-    chain1: CHAINS.MAINNET,
-    chain2: CHAINS.SCROLL,
-    ScrollChain: '0xa13BAF47339d63B743e7Da8741db5456DAc1E556',
-    poseidon: '0x3508174Fa966e75f70B15348209E33BC711AE63e',
-  };
+  // static readonly mainnetConfig: RollupDeployment<ScrollConfig> = {
+  //   chain1: CHAINS.MAINNET,
+  //   chain2: CHAINS.SCROLL,
+  //   ScrollChain: '0xa13BAF47339d63B743e7Da8741db5456DAc1E556',
+  //   poseidon: '0x3508174Fa966e75f70B15348209E33BC711AE63e',
+  // };
   // 20250307: https://sepolia.etherscan.io/tx/0xa8c2e812c47ff2f076a64687d380fa3b79cccfa5bc8368be1993907788f3ee50
   // https://sepolia.etherscan.io/address/0x64cb3A0Dcf43Ae0EE35C1C15edDF5F46D48Fa570
   // https://sepolia-api-re.scroll.io/api/

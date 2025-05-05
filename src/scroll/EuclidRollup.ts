@@ -66,11 +66,11 @@ export type EuclidCommit = RollupCommit<EthProver> & {
 };
 
 export class EuclidRollup extends AbstractRollup<EuclidCommit> {
-  // https://etherscan.io/address/0xb7c8833F5627a8a12558cAFa0d0EBD1ACBDce43f
+  // https://etherscan.io/address/0xa13BAF47339d63B743e7Da8741db5456DAc1E556
   static readonly mainnetConfig: RollupDeployment<EuclidConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.SCROLL,
-    ScrollChain: '0xb7c8833F5627a8a12558cAFa0d0EBD1ACBDce43f',
+    ScrollChain: '0xa13BAF47339d63B743e7Da8741db5456DAc1E556',
   };
   // https://sepolia.etherscan.io/address/0x2D567EcE699Eabe5afCd141eDB7A4f2D0D6ce8a0
   static readonly sepoliaConfig: RollupDeployment<EuclidConfig> = {

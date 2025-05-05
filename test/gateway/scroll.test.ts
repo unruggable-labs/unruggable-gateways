@@ -1,5 +1,4 @@
 import { EuclidRollup } from '../../src/scroll/EuclidRollup.js';
-import { ScrollRollup } from '../../src/scroll/ScrollRollup.js';
 import { testScroll } from './common.js';
 
 testScroll(EuclidRollup.mainnetConfig, {

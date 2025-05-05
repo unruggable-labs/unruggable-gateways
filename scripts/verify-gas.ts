@@ -1,13 +1,13 @@
 import type { ChainPair, HexAddress, ProviderPair } from '../src/types.js';
 import type { Rollup, RollupCommitType } from '../src/rollup.js';
 import { type DeployedContract, Foundry } from '@adraffy/blocksmith';
-import { createProvider, providerURL } from '../test/providers.js';
+import { beaconURL, createProvider, providerURL } from '../test/providers.js';
 import { chainName } from '../src/chains.js';
 import { GatewayRequest } from '../src/vm.js';
 import { ABI_CODER } from '../src/utils.js';
-import { OPFaultRollup } from '../src/op/OPFaultRollup.js';
+import { EuclidRollup } from '../src/scroll/EuclidRollup.js';
 import { LineaRollup } from '../src/linea/LineaRollup.js';
-import { ScrollRollup } from '../src/scroll/ScrollRollup.js';
+import { OPFaultRollup } from '../src/op/OPFaultRollup.js';
 import { ZKSyncRollup } from '../src/zksync/ZKSyncRollup.js';
 import { TaikoRollup } from '../src/taiko/TaikoRollup.js';
 
@@ -134,14 +134,15 @@ const setups: Setup[] = [
     };
   },
   async (launch) => {
-    const config = ScrollRollup.mainnetConfig;
+    const config = EuclidRollup.mainnetConfig;
     const { foundry, providers } = await launch(config);
-    const rollup = new ScrollRollup(providers, config);
+    const rollup = new EuclidRollup(
+      providers,
+      config,
+      beaconURL(config.chain1)
+    );
     const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
-    const hooks = await foundry.deploy({
-      file: 'ScrollVerifierHooks',
-      args: [rollup.poseidon],
-    });
+    const hooks = await foundry.deploy({ file: 'EthVerifierHooks' });
     const verifier = await foundry.deploy({
       file: 'ScrollVerifier',
       args: [[], rollup.defaultWindow, hooks, rollup.ScrollChain],
@@ -249,39 +250,39 @@ for (const setup of setups) {
   await foundry?.shutdown();
 }
 
-// 2024-12-11T19:51:00.382Z
+// 2025-05-05T01:37:55.434Z
 // {
 //   name: "OP",
-//   rollup: 79326n,
-//   account: 336239n,
-//   storage1: 269136n,
-//   storage0: 253343n,
+//   rollup: 86523n,
+//   account: 336761n,
+//   storage1: 269773n,
+//   storage0: 254488n,
 // }
 // {
 //   name: "LINEA",
-//   rollup: 48843n,
-//   account: 1438024n,
-//   storage1: 1366327n,
-//   storage0: 2665510n,
+//   rollup: 48867n,
+//   account: 1438036n,
+//   storage1: 1366387n,
+//   storage0: 2665522n,
 // }
 // {
 //   name: "ZKSYNC",
-//   rollup: 58860n,
-//   account: 13046266n,
-//   storage1: 13048730n,
-//   storage0: 13054036n,
+//   rollup: 58892n,
+//   account: 13046218n,
+//   storage1: 13048766n,
+//   storage0: 13054048n,
 // }
 // {
 //   name: "SCROLL",
-//   rollup: 48730n,
-//   account: 1231470n,
-//   storage1: 819619n,
-//   storage0: 855067n,
+//   rollup: 48755n,
+//   account: 293501n,
+//   storage1: 275356n,
+//   storage0: 227727n,
 // }
 // {
 //   name: "TAIKO",
-//   rollup: 64182n,
-//   account: 292983n,
-//   storage1: 285388n,
-//   storage0: 257136n,
+//   rollup: 69969n,
+//   account: 293013n,
+//   storage1: 306771n,
+//   storage0: 261766n,
 // }

@@ -192,7 +192,7 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     // dodge canary by requiring a valid root claim
     // finalized claims are assumed valid
     if (this.unfinalized) {
-      const t0 = Date.now();
+      const t0 = Date.now(); // prevent "infinite" loop
       for (;;) {
         try {
           await this.fetchCommit(index);
@@ -249,7 +249,6 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   }
   protected override async _fetchCommit(index: bigint) {
     // note: GameFinder checks isCommitStillValid()
-    console.log(index);
     const game: ABIFoundGame = await this.GameFinder.gameAtIndex(
       this.OptimismPortal.target,
       this.minAgeSec,

@@ -16,8 +16,8 @@ import type { ArbitrumConfig } from '../src/arbitrum/ArbitrumRollup.js';
 import { NitroRollup } from '../src/arbitrum/NitroRollup.js';
 import { BoLDRollup } from '../src/arbitrum/BoLDRollup.js';
 import { DoubleArbitrumRollup } from '../src/arbitrum/DoubleArbitrumRollup.js';
-import { ScrollRollup } from '../src/scroll/ScrollRollup.js';
-import { EuclidRollup } from '../src/scroll/EuclidRollup.js';
+import { type ScrollConfig, ScrollRollup } from '../src/scroll/ScrollRollup.js';
+import { type EuclidConfig, EuclidRollup } from '../src/scroll/EuclidRollup.js';
 import { type TaikoConfig, TaikoRollup } from '../src/taiko/TaikoRollup.js';
 import { LineaRollup } from '../src/linea/LineaRollup.js';
 import { LineaGatewayV1 } from '../src/linea/LineaGatewayV1.js';
@@ -361,20 +361,10 @@ async function createGateway(name: string, unfinalized: number) {
         new PolygonPoSRollup(createProviderPair(config), config)
       );
     }
-    case 'scroll': {
-      const config = ScrollRollup.mainnetConfig;
-      return new Gateway(new ScrollRollup(createProviderPair(config), config));
-    }
-    case 'scroll-sepolia': {
-      const config = EuclidRollup.sepoliaConfig;
-      return new Gateway(
-        new EuclidRollup(
-          createProviderPair(config),
-          config,
-          beaconURL(config.chain1)
-        )
-      );
-    }
+    case 'scroll':
+      return createScroll(EuclidRollup.mainnetConfig);
+    case 'scroll-sepolia':
+      return createScroll(EuclidRollup.sepoliaConfig);
     case 'taiko':
       return createTaiko(TaikoRollup.mainnetConfig);
     case 'taiko-hekla':
@@ -466,6 +456,20 @@ function createArbitrum(
       unfinalized
     )
   );
+}
+
+function createScroll(config: RollupDeployment<ScrollConfig | EuclidConfig>) {
+  if ('poseidon' in config) {
+    return new Gateway(new ScrollRollup(createProviderPair(config), config));
+  } else {
+    return new Gateway(
+      new EuclidRollup(
+        createProviderPair(config),
+        config,
+        beaconURL(config.chain1)
+      )
+    );
+  }
 }
 
 function createZKSync(config: RollupDeployment<ZKSyncConfig>) {
