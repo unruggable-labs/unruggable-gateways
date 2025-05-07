@@ -5,7 +5,7 @@ import { describe } from '../bun-describe-fix.js';
 import { afterAll } from 'bun:test';
 import { runSlotDataTests } from './SlotDataTests.js';
 
-describe.skipIf(!!process.env.SKIP_CI)('public: optimism-sepolia', async () => {
+describe.skipIf(!!process.env.IS_CI)('public: optimism-sepolia', async () => {
   const foundry = await Foundry.launch({
     fork: providerURL(CHAINS.SEPOLIA),
     infoLog: false,
