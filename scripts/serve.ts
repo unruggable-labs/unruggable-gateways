@@ -64,7 +64,7 @@ const args = process.argv.slice(2).filter((x) => {
   } else if (x === '--latest') {
     latestBlockTag = LATEST_BLOCK_TAG;
   } else if ((match = x.match(/^--unfinalized(|=\d+)$/))) {
-    unfinalized = parseInt(match[1].slice(1)) | 0;
+    unfinalized = Math.max(1, parseInt(match[1].slice(1)) | 0);
   } else if ((match = x.match(/^--depth=(\d+)$/))) {
     commitDepth = parseInt(match[1]);
   } else if ((match = x.match(/^--step=(\d+)$/))) {
