@@ -484,7 +484,10 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
 
 export function providerOrder(chain?: Chain): string[] {
   let env;
-  if (chain) env = process.env[`PROVIDER_ORDER_${chainName(chain)}`]; // chain specific
+  if (chain) {
+    env = process.env[`PROVIDER_ORDER_${chainName(chain)}`]; // by name
+    if (!env) env = process.env[`PROVIDER_ORDER_${chain}`]; // by id
+  }
   if (!env) env = process.env.PROVIDER_ORDER; // global
   if (env) return env.split(/[,\s+]/).flatMap((x) => x.trim() || []);
   return ['alchemy', 'infura', 'ankr', 'drpc', 'public']; // global default
