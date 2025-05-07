@@ -27,7 +27,11 @@ import { PolygonPoSRollup } from '../src/polygon/PolygonPoSRollup.js';
 import { EthSelfRollup } from '../src/eth/EthSelfRollup.js';
 import { TrustedRollup } from '../src/TrustedRollup.js';
 import { UncheckedRollup } from '../src/UncheckedRollup.js';
-import { LATEST_BLOCK_TAG, toUnpaddedHex } from '../src/utils.js';
+import {
+  flattenErrors,
+  LATEST_BLOCK_TAG,
+  toUnpaddedHex,
+} from '../src/utils.js';
 import { EthProver } from '../src/eth/EthProver.js';
 //import { LineaProver } from '../src/linea/LineaProver.js';
 import { ZKSyncProver } from '../src/zksync/ZKSyncProver.js';
@@ -187,10 +191,18 @@ if (prefetch) {
   // periodically pull the latest commit so it's always fresh
   const fire = async () => {
     try {
-      await gateway.getLatestCommit();
-    } finally {
-      setTimeout(fire, gateway.latestCache.cacheMs);
+      const t0 = Date.now();
+      const commit = await gateway.getLatestCommit();
+      console.log(
+        new Date(),
+        `Prefetch: index=${commit.index}`,
+        commit.prover,
+        Date.now() - t0
+      );
+    } catch (err) {
+      console.log(new Date(), `Prefetch failed: ${flattenErrors(err)}`);
     }
+    setTimeout(fire, gateway.latestCache.cacheMs);
   };
   await fire();
 }
@@ -262,12 +274,7 @@ export default {
           );
           return Response.json({ data }, { headers });
         } catch (err) {
-          // flatten nested errors
-          const errors = [String(err)];
-          for (let e = err; e instanceof Error && e.cause; e = e.cause) {
-            errors.push(String(e.cause));
-          }
-          const error = errors.join(' <== ');
+          const error = flattenErrors(err);
           console.log(new Date(), error);
           return Response.json({ error }, { headers, status: 500 });
         }

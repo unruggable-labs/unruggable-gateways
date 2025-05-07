@@ -126,19 +126,27 @@ export async function fetchStorage(
   return data.length === 66 ? data : toPaddedHex(data);
 }
 
-export function isEthersError(err: any): err is EthersError {
+export function isEthersError(err: unknown): err is EthersError {
   return err instanceof Error && 'code' in err && 'shortMessage' in err;
 }
 
-export function isRevert(err: any): err is CallExceptionError {
+export function isRevert(err: unknown): err is CallExceptionError {
   return isEthersError(err) && err.code === 'CALL_EXCEPTION';
 }
 
-export function isRPCError(err: any, code: number): err is EthersError {
+export function isRPCError(err: unknown, code: number): err is EthersError {
   return (
     isEthersError(err) &&
     err.error instanceof Object &&
     'code' in err.error &&
     err.error.code === code
   );
+}
+
+export function flattenErrors(err: unknown) {
+  const errors = [String(err)];
+  for (let e = err; e instanceof Error && e.cause; e = e.cause) {
+    errors.push(String(e.cause));
+  }
+  return errors.join(' <== ');
 }
