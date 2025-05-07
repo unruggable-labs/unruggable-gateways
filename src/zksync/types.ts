@@ -1,4 +1,4 @@
-import type { HexAddress, HexString32, HexString } from '../types.js';
+import type { HexAddress, HexString32 } from '../types.js';
 import { Interface } from 'ethers/abi';
 import { ABI_CODER } from '../utils.js';
 
@@ -95,18 +95,18 @@ export type RPCZKSyncL1BatchDetails = {
 //   timestamp: 1722381027,
 // }
 
-export type ABIZKSyncCommitBatchInfo = {
-  batchNumber: bigint;
-  timestamp: bigint;
-  indexRepeatedStorageChanges: bigint;
-  newStateRoot: HexString32;
-  numberOfLayer1Txs: bigint;
-  priorityOperationsHash: HexString32;
-  bootloaderHeapInitialContentsHash: HexString32;
-  eventsQueueStateHash: HexString32;
-  systemLogs: HexString;
-  pubdataCommitments: HexString;
-};
+// export type ABIZKSyncCommitBatchInfo = {
+//   batchNumber: bigint;
+//   timestamp: bigint;
+//   indexRepeatedStorageChanges: bigint;
+//   newStateRoot: HexString32;
+//   numberOfLayer1Txs: bigint;
+//   priorityOperationsHash: HexString32;
+//   bootloaderHeapInitialContentsHash: HexString32;
+//   eventsQueueStateHash: HexString32;
+//   systemLogs: HexString;
+//   pubdataCommitments: HexString;
+// };
 
 // https://github.com/matter-labs/era-contracts/blob/main/l1-contracts/contracts/state-transition/chain-interfaces/IGetters.sol
 // https://github.com/matter-labs/era-contracts/blob/main/l1-contracts/contracts/state-transition/chain-interfaces/IExecutor.sol
@@ -118,29 +118,35 @@ export const DIAMOND_ABI = new Interface([
   `function getTotalBatchesExecuted() view returns (uint256)`,
   `function commitBatchesSharedBridge(
     uint256 chainId,
-    (
-      uint64 batchNumber,
-      bytes32 batchHash,
-      uint64 indexRepeatedStorageChanges,
-      uint256 numberOfLayer1Txs,
-      bytes32 priorityOperationsHash,
-      bytes32 l2LogsTreeRoot,
-      uint256 timestamp,
-      bytes32 commitment,
-    ) lastCommittedBatchData,
-    (
-      uint64 batchNumber,
-      uint64 timestamp,
-      uint64 indexRepeatedStorageChanges,
-      bytes32 newStateRoot,
-      uint256 numberOfLayer1Txs,
-      bytes32 priorityOperationsHash,
-      bytes32 bootloaderHeapInitialContentsHash,
-      bytes32 eventsQueueStateHash,
-      bytes systemLogs,
-      bytes pubdataCommitments
-    )[] newBatchesData
+    uint256 batchIndex0,
+    uint256 batchIndex1,
+    bytes commitData
   )`,
+  // `function commitBatchesSharedBridge(
+  //   uint256 chainId,
+  //   (
+  //     uint64 batchNumber,
+  //     bytes32 batchHash,
+  //     uint64 indexRepeatedStorageChanges,
+  //     uint256 numberOfLayer1Txs,
+  //     bytes32 priorityOperationsHash,
+  //     bytes32 l2LogsTreeRoot,
+  //     uint256 timestamp,
+  //     bytes32 commitment,
+  //   ) lastCommittedBatchData,
+  //   (
+  //     uint64 batchNumber,
+  //     uint64 timestamp,
+  //     uint64 indexRepeatedStorageChanges,
+  //     bytes32 newStateRoot,
+  //     uint256 numberOfLayer1Txs,
+  //     bytes32 priorityOperationsHash,
+  //     bytes32 bootloaderHeapInitialContentsHash,
+  //     bytes32 eventsQueueStateHash,
+  //     bytes systemLogs,
+  //     bytes pubdataCommitments
+  //   )[] newBatchesData
+  // )`,
   `event BlockCommit(
     uint256 indexed batchNumber,
     bytes32 indexed batchHash,

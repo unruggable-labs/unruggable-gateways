@@ -5,9 +5,13 @@ const opts = { enableCcipRead: true };
 
 // imo better to expect(await) than expect().resolves
 export function runSlotDataTests(r: Contract, pointer = false) {
-  test('latest = 49', async () => {
-    expect(await r.readLatest(opts)).toEqual(49n);
-  });
+  test(
+    'latest = 49',
+    async () => {
+      expect(await r.readLatest(opts)).toEqual(49n);
+    },
+    { timeout: 60000 } // avoid cold-start timeout
+  );
   test.skipIf(!pointer)('pointer => latest = 49', async () => {
     expect(await r.readLatestViaPointer(opts)).toEqual(49n);
   });

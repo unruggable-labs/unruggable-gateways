@@ -16,8 +16,8 @@ import type { ArbitrumConfig } from '../src/arbitrum/ArbitrumRollup.js';
 import { NitroRollup } from '../src/arbitrum/NitroRollup.js';
 import { BoLDRollup } from '../src/arbitrum/BoLDRollup.js';
 import { DoubleArbitrumRollup } from '../src/arbitrum/DoubleArbitrumRollup.js';
-import { ScrollRollup } from '../src/scroll/ScrollRollup.js';
-import { EuclidRollup } from '../src/scroll/EuclidRollup.js';
+import { type ScrollConfig, ScrollRollup } from '../src/scroll/ScrollRollup.js';
+import { type EuclidConfig, EuclidRollup } from '../src/scroll/EuclidRollup.js';
 import { type TaikoConfig, TaikoRollup } from '../src/taiko/TaikoRollup.js';
 import { LineaRollup } from '../src/linea/LineaRollup.js';
 import { LineaGatewayV1 } from '../src/linea/LineaGatewayV1.js';
@@ -26,7 +26,12 @@ import { type ZKSyncConfig, ZKSyncRollup } from '../src/zksync/ZKSyncRollup.js';
 import { PolygonPoSRollup } from '../src/polygon/PolygonPoSRollup.js';
 import { EthSelfRollup } from '../src/eth/EthSelfRollup.js';
 import { TrustedRollup } from '../src/TrustedRollup.js';
-import { LATEST_BLOCK_TAG, toUnpaddedHex } from '../src/utils.js';
+import { UncheckedRollup } from '../src/UncheckedRollup.js';
+import {
+  flattenErrors,
+  LATEST_BLOCK_TAG,
+  toUnpaddedHex,
+} from '../src/utils.js';
 import { EthProver } from '../src/eth/EthProver.js';
 //import { LineaProver } from '../src/linea/LineaProver.js';
 import { ZKSyncProver } from '../src/zksync/ZKSyncProver.js';
@@ -44,10 +49,15 @@ import { execSync } from 'child_process';
 // 6. https://adraffy.github.io/ens-normalize.js/test/resolver.html#raffy.linea.eth.nb2hi4b2f4xwy33dmfwgq33toq5dqmbqgaxq.ccipr.eth
 
 let dumpAndExit = false;
-let unfinalized = parseInt(process.env.UNFINALIZED ?? '') | 0;
-let printDebug = !!process.env.PRINT_DEBUG;
-let prefetch = !!process.env.PREFETCH;
-let latestBlockTag = process.env.LATEST_BLOCK_TAG;
+let unfinalized = 0;
+let printDebug = false;
+let printCalls = false;
+let prefetch = false;
+let latestBlockTag = '';
+let commitDepth = NaN;
+let commitStep = 0;
+let disableFast = false;
+let disableCache = false;
 let signingKey =
   process.env.SIGNING_KEY ||
   '0xbd1e630bd00f12f0810083ea3bd2be936ead3b2fa84d1bd6690c77da043e9e02'; // 0xd00d from ezccip demo
@@ -58,11 +68,21 @@ const args = process.argv.slice(2).filter((x) => {
   } else if (x === '--latest') {
     latestBlockTag = LATEST_BLOCK_TAG;
   } else if ((match = x.match(/^--unfinalized(|=\d+)$/))) {
-    unfinalized = parseInt(match[1].slice(1)) | 0;
+    unfinalized = Math.max(1, parseInt(match[1].slice(1)) | 0);
+  } else if ((match = x.match(/^--depth=(\d+)$/))) {
+    commitDepth = parseInt(match[1]);
+  } else if ((match = x.match(/^--step=(\d+)$/))) {
+    commitStep = parseInt(match[1]);
   } else if (x === '--dump') {
     dumpAndExit = true;
   } else if (x === '--debug') {
     printDebug = true;
+  } else if (x === '--calls') {
+    printCalls = true;
+  } else if (x === '--no-fast') {
+    disableFast = true;
+  } else if (x === '--no-cache') {
+    disableCache = true;
   } else if (/^0x[0-9a-f]{64}$/i.test(x)) {
     signingKey = x;
   } else {
@@ -71,32 +91,26 @@ const args = process.argv.slice(2).filter((x) => {
   return;
 });
 
-const gateway = await createGateway(args.pop()!, unfinalized);
-const port = parseInt(args.pop() || process.env.PORT || '') || 8000;
+const gateway = await createGateway(args[0]);
+const port = parseInt(args[1] || process.env.PORT || '') || 8000;
 
-if (args.length) {
+if (args.length > 2) {
   throw new Error(`unknown args: ${args.join(' ')}`);
 }
 if (unfinalized && !gateway.rollup.unfinalized) {
   throw new Error('unfinalized not supported');
 }
 
-// [gateway.rollup.provider1, gateway.rollup.provider2].forEach((p) => {
-//   p.on('debug', (x) => {
-//     if (x.action === 'sendRpcPayload') {
-//       const v = Array.isArray(x.payload) ? x.payload : [x.payload];
-//       console.log(
-//         p._network.chainId,
-//         v.map((x: any) => x.method)
-//       );
-//     }
-//   });
-// });
-
-if (prefetch) {
-  // periodically pull the latest commit so it's always fresh
-  await gateway.getLatestCommit();
-  setInterval(() => gateway.getLatestCommit(), gateway.latestCache.cacheMs);
+if (printCalls) {
+  [gateway.rollup.provider1, gateway.rollup.provider2].forEach((p) => {
+    p.on('debug', (x) => {
+      if (x.action === 'sendRpcPayload') {
+        console.log(chainName(p._network.chainId), x.action, x.payload);
+      } else if (x.action == 'receiveRpcResult') {
+        console.log(chainName(p._network.chainId), x.action, x.result);
+      }
+    });
+  });
 }
 
 // how to configure gateway
@@ -105,6 +119,8 @@ if (gateway instanceof Gateway) {
   // gateway.allowHistorical = true;
   if (gateway.rollup instanceof TrustedRollup) {
     gateway.commitDepth = 0; // no need to keep expired signatures
+  } else if (Number.isSafeInteger(commitDepth)) {
+    gateway.commitDepth = commitDepth;
   } else if (gateway.rollup.unfinalized) {
     gateway.commitDepth = 10;
   }
@@ -112,11 +128,14 @@ if (gateway instanceof Gateway) {
 if (latestBlockTag) {
   gateway.rollup.latestBlockTag = latestBlockTag;
 }
+if (disableCache) {
+  gateway.disableCache();
+}
 
 // how to configure prover
 gateway.rollup.configure = (c: RollupCommitType<typeof gateway.rollup>) => {
   c.prover.printDebug = printDebug;
-  // c.prover.fast = false;
+  c.prover.fast = !disableFast;
   // c.prover.maxStackSize = 5;
   // c.prover.maxUniqueProofs = 1;
   // c.prover.maxSuppliedBytes = 256;
@@ -134,7 +153,7 @@ function chainDetails(provider: Provider) {
 }
 
 const config: Record<string, any> = {
-  version: ['git describe --tags --exact-match', 'git rev-parse HEAD'].reduce(
+  git: ['git describe --tags --exact-match', 'git rev-parse HEAD'].reduce(
     (version, cmd) => {
       try {
         version ||= execSync(cmd, { stdio: 'pipe' }).toString().trim();
@@ -166,6 +185,26 @@ if (dumpAndExit) {
   console.log(toJSON(commit));
   console.log(toJSON(commit.prover));
   process.exit(0);
+}
+
+if (prefetch) {
+  // periodically pull the latest commit so it's always fresh
+  const fire = async () => {
+    try {
+      const t0 = Date.now();
+      const commit = await gateway.getLatestCommit();
+      console.log(
+        new Date(),
+        `Prefetch: index=${commit.index}`,
+        commit.prover,
+        Date.now() - t0
+      );
+    } catch (err) {
+      console.log(new Date(), `Prefetch failed: ${flattenErrors(err)}`);
+    }
+    setTimeout(fire, gateway.latestCache.cacheMs);
+  };
+  await fire();
 }
 
 console.log('Listening on', port, config);
@@ -235,12 +274,7 @@ export default {
           );
           return Response.json({ data }, { headers });
         } catch (err) {
-          // flatten nested errors
-          const errors = [String(err)];
-          for (let e = err; e instanceof Error && e.cause; e = e.cause) {
-            errors.push(String(e.cause));
-          }
-          const error = errors.join(' <== ');
+          const error = flattenErrors(err);
           console.log(new Date(), error);
           return Response.json({ error }, { headers, status: 500 });
         }
@@ -252,58 +286,81 @@ export default {
   },
 } satisfies Serve;
 
-async function createGateway(name: string, unfinalized: number) {
-  const match = name.match(/^trusted:(.+)$/i);
-  if (match) {
-    const slug = match[1].toUpperCase().replaceAll('-', '_');
-    if (slug in CHAINS) {
-      const chain = CHAINS[slug as keyof typeof CHAINS];
-      const provider = createProvider(chain);
-      const key = new SigningKey(signingKey);
-      switch (chain) {
-        case CHAINS.ZKSYNC:
-        case CHAINS.ZKSYNC_SEPOLIA:
-          return new Gateway(new TrustedRollup(provider, ZKSyncProver, key));
-        // NOTE: linea should use eth_getProof instead of linea_getProof
-        // NOTE: this probably needs "--latest" cli option too
-        // rollup => SMT w/Mimc root using linea_getProof
-        // chain => PMT w/Keccak root using eth_getProof
-        // case CHAINS.LINEA:
-        // case CHAINS.LINEA_SEPOLIA:
-        //   return LineaProver;
-        default:
-          return new Gateway(new TrustedRollup(provider, EthProver, key));
-      }
+function chainFromName(slug: string): Chain {
+  if (/^(0x)?[0-9a-f]+$/i.test(slug)) return BigInt(slug);
+  slug = slug.toUpperCase().replaceAll('-', '_');
+  if (slug in CHAINS) return CHAINS[slug as keyof typeof CHAINS];
+  throw new Error(`unknown chain: ${slug}`);
+}
+
+async function createGateway(name: string) {
+  let match;
+  if ((match = name.match(/^trusted:(.+)$/i))) {
+    const chain = chainFromName(match[1]);
+    const provider = createProvider(chain);
+    const key = new SigningKey(signingKey);
+    switch (chain) {
+      case CHAINS.ZKSYNC:
+      case CHAINS.ZKSYNC_SEPOLIA:
+        return new Gateway(new TrustedRollup(provider, ZKSyncProver, key));
+      // NOTE: linea should use eth_getProof instead of linea_getProof
+      // NOTE: this probably needs "--latest" cli option too
+      // rollup => SMT w/Mimc root using linea_getProof
+      // chain => PMT w/Keccak root using eth_getProof
+      // case CHAINS.LINEA:
+      // case CHAINS.LINEA_SEPOLIA:
+      //   return LineaProver;
+      default:
+        return new Gateway(new TrustedRollup(provider, EthProver, key));
     }
+  } else if ((match = name.match(/^unchecked:(.+)$/i))) {
+    const provider = createProvider(chainFromName(match[1]));
+    return new Gateway(new UncheckedRollup(provider));
+  } else if ((match = name.match(/^self:(.+)$/i))) {
+    const chain = chainFromName(match[1]);
+    return new Gateway(
+      new EthSelfRollup(createProvider(chain), commitStep || 25) // 5 minutes (5*60/12)
+    );
+  } else if (name === 'reverse:op') {
+    const config = ReverseOPRollup.mainnetConfig;
+    return new Gateway(
+      new ReverseOPRollup(createProviderPair(config), config, commitStep || 150) // 5 minutes (5*60/2)
+    );
+  } else if (name == 'linea:v1') {
+    const config = LineaRollup.mainnetConfig;
+    return new LineaGatewayV1(
+      new LineaRollup(createProviderPair(config), config)
+    );
+  } else if (name == 'ape:L2') {
+    return createArbitrum(NitroRollup.apeMainnetConfig, unfinalized);
   }
-  switch (name) {
-    case 'op':
+  const chain = chainFromName(name);
+  switch (chain) {
+    case CHAINS.OP:
       return createOPFault(OPFaultRollup.mainnetConfig, unfinalized);
-    case 'op-sepolia':
+    case CHAINS.OP_SEPOLIA:
       return createOPFault(OPFaultRollup.sepoliaConfig, unfinalized);
-    case 'base':
+    case CHAINS.BASE:
       return createOPFault(OPFaultRollup.baseMainnetConfig, unfinalized);
-    case 'base-sepolia':
+    case CHAINS.BASE_SEPOLIA:
       return createOPFault(OPFaultRollup.baseSepoliaConfig, unfinalized);
-    case 'unichain':
+    case CHAINS.UNICHAIN:
       return createOPFault(OPFaultRollup.unichainMainnetConfig, unfinalized);
-    case 'unichain-sepolia':
+    case CHAINS.UNICHAIN_SEPOLIA:
       return createOPFault(OPFaultRollup.unichainSepoliaConfig, unfinalized);
-    case 'soneium':
+    case CHAINS.SONEIUM:
       return createOPFault(OPFaultRollup.soneiumMainnetConfig, unfinalized);
-    case 'soneium-minato':
+    case CHAINS.SONEIUM_SEPOLIA:
       return createOPFault(OPFaultRollup.soneiumMinatoConfig, unfinalized);
-    case 'ink':
+    case CHAINS.INK:
       return createOPFault(OPFaultRollup.inkMainnetConfig, unfinalized);
-    case 'ink-sepolia':
+    case CHAINS.INK_SEPOLIA:
       return createOPFault(OPFaultRollup.inkSepoliaConfig, unfinalized);
-    case 'arb1':
+    case CHAINS.ARB1:
       return createArbitrum(BoLDRollup.arb1MainnetConfig, unfinalized);
-    case 'arb1-sepolia':
+    case CHAINS.ARB1_SEPOLIA:
       return createArbitrum(BoLDRollup.arb1SepoliaConfig, unfinalized);
-    case 'ape-L2':
-      return createArbitrum(NitroRollup.apeMainnetConfig, unfinalized);
-    case 'ape': {
+    case CHAINS.APE: {
       const config12 = BoLDRollup.arb1MainnetConfig;
       const config23 = NitroRollup.apeMainnetConfig;
       return new Gateway(
@@ -318,7 +375,7 @@ async function createGateway(name: string, unfinalized: number) {
         )
       );
     }
-    case 'linea': {
+    case CHAINS.LINEA: {
       const config = LineaRollup.mainnetConfig;
       return new Gateway(
         unfinalized
@@ -330,13 +387,7 @@ async function createGateway(name: string, unfinalized: number) {
           : new LineaRollup(createProviderPair(config), config)
       );
     }
-    case 'lineaV1': {
-      const config = LineaRollup.mainnetConfig;
-      return new LineaGatewayV1(
-        new LineaRollup(createProviderPair(config), config)
-      );
-    }
-    case 'linea-sepolia': {
+    case CHAINS.LINEA_SEPOLIA: {
       const config = LineaRollup.sepoliaConfig;
       return new Gateway(
         unfinalized
@@ -344,86 +395,61 @@ async function createGateway(name: string, unfinalized: number) {
           : new LineaRollup(createProviderPair(config), config)
       );
     }
-    case 'polygon': {
+    case CHAINS.POLYGON_POS: {
       const config = PolygonPoSRollup.mainnetConfig;
       return new Gateway(
         new PolygonPoSRollup(createProviderPair(config), config)
       );
     }
-    case 'scroll': {
-      const config = ScrollRollup.mainnetConfig;
-      return new Gateway(new ScrollRollup(createProviderPair(config), config));
-    }
-    case 'scroll-sepolia': {
-      const config = EuclidRollup.sepoliaConfig;
-      return new Gateway(
-        new EuclidRollup(
-          createProviderPair(config),
-          config,
-          beaconURL(config.chain1)
-        )
-      );
-    }
-    case 'taiko':
+    case CHAINS.SCROLL:
+      return createScroll(EuclidRollup.mainnetConfig);
+    case CHAINS.SCROLL_SEPOLIA:
+      return createScroll(EuclidRollup.sepoliaConfig);
+    case CHAINS.TAIKO:
       return createTaiko(TaikoRollup.mainnetConfig);
-    case 'taiko-hekla':
+    case CHAINS.TAIKO_HEKLA:
       return createTaiko(TaikoRollup.heklaConfig);
-    case 'zksync':
+    case CHAINS.ZKSYNC:
       return createZKSync(ZKSyncRollup.mainnetConfig);
-    case 'zksync-sepolia':
+    case CHAINS.ZKSYNC_SEPOLIA:
       return createZKSync(ZKSyncRollup.sepoliaConfig);
-    case 'zero':
+    case CHAINS.ZERO:
       return createZKSync(ZKSyncRollup.zeroMainnetConfig);
-    case 'zero-sepolia':
+    case CHAINS.ZERO_SEPOLIA:
       return createZKSync(ZKSyncRollup.zeroSepoliaConfig);
-    case 'blast':
+    case CHAINS.BLAST:
       return createOPGateway(OPRollup.blastMainnnetConfig, unfinalized);
-    case 'celo-alfajores':
+    case CHAINS.CELO:
+      return createOPFault(OPFaultRollup.celoMainnetConfig, unfinalized);
+    case CHAINS.CELO_ALFAJORES:
       return createOPGateway(OPRollup.celoAlfajoresConfig, unfinalized);
-    case 'cyber':
+    case CHAINS.CYBER:
       return createOPGateway(OPRollup.cyberMainnetConfig, unfinalized);
-    case 'fraxtal':
+    case CHAINS.FRAXTAL:
       return createOPGateway(OPRollup.fraxtalMainnetConfig, unfinalized);
-    case 'lisk':
+    case CHAINS.LISK:
       return createOPGateway(OPRollup.liskMainnetConfig, unfinalized);
-    case 'lisk-sepolia':
+    case CHAINS.LISK_SEPOLIA:
       return createOPGateway(OPRollup.liskSepoliaConfig, unfinalized);
-    case 'mantle':
+    case CHAINS.MANTLE:
       return createOPGateway(OPRollup.mantleMainnetConfig, unfinalized);
-    case 'mode':
+    case CHAINS.MODE:
       return createOPGateway(OPRollup.modeMainnetConfig, unfinalized);
-    case 'opbnb':
+    case CHAINS.OP_BNB:
       return createOPGateway(OPRollup.opBNBMainnetConfig, unfinalized);
-    case 'redstone':
+    case CHAINS.REDSTONE:
       return createOPGateway(OPRollup.redstoneMainnetConfig, unfinalized);
-    case 'shape':
+    case CHAINS.SHAPE:
       return createOPGateway(OPRollup.shapeMainnetConfig, unfinalized);
-    case 'zircuit':
+    case CHAINS.ZIRCUIT:
       return createOPGateway(OPRollup.zircuitMainnetConfig, unfinalized);
-    case 'zircuit-sepolia':
+    case CHAINS.ZIRCUIT_SEPOLIA:
       return createOPGateway(OPRollup.zircuitSepoliaConfig, unfinalized);
-    case 'zora':
+    case CHAINS.ZORA:
       return createOPGateway(OPRollup.zoraMainnetConfig, unfinalized);
-    case 'self-eth':
-      return createSelfGateway(CHAINS.MAINNET);
-    case 'self-sepolia':
-      return createSelfGateway(CHAINS.SEPOLIA);
-    case 'self-holesky':
-      return createSelfGateway(CHAINS.HOLESKY);
-    case 'reverse-op': {
-      const config = ReverseOPRollup.mainnetConfig;
-      return new Gateway(
-        new ReverseOPRollup(createProviderPair(config), config)
-      );
-    }
     default:
       throw new Error(`unknown gateway: ${name}`);
   }
-}
-
-function createSelfGateway(chain: Chain) {
-  // TODO: this should probably use a larger commitStep
-  return new Gateway(new EthSelfRollup(createProvider(chain) /*, 25*/));
 }
 
 function createOPGateway(
@@ -455,6 +481,20 @@ function createArbitrum(
       unfinalized
     )
   );
+}
+
+function createScroll(config: RollupDeployment<ScrollConfig | EuclidConfig>) {
+  if ('poseidon' in config) {
+    return new Gateway(new ScrollRollup(createProviderPair(config), config));
+  } else {
+    return new Gateway(
+      new EuclidRollup(
+        createProviderPair(config),
+        config,
+        beaconURL(config.chain1)
+      )
+    );
+  }
 }
 
 function createZKSync(config: RollupDeployment<ZKSyncConfig>) {

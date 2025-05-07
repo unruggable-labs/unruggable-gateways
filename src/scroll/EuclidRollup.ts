@@ -66,6 +66,12 @@ export type EuclidCommit = RollupCommit<EthProver> & {
 };
 
 export class EuclidRollup extends AbstractRollup<EuclidCommit> {
+  // https://etherscan.io/address/0xa13BAF47339d63B743e7Da8741db5456DAc1E556
+  static readonly mainnetConfig: RollupDeployment<EuclidConfig> = {
+    chain1: CHAINS.MAINNET,
+    chain2: CHAINS.SCROLL,
+    ScrollChain: '0xa13BAF47339d63B743e7Da8741db5456DAc1E556',
+  };
   // https://sepolia.etherscan.io/address/0x2D567EcE699Eabe5afCd141eDB7A4f2D0D6ce8a0
   static readonly sepoliaConfig: RollupDeployment<EuclidConfig> = {
     chain1: CHAINS.SEPOLIA,
@@ -112,6 +118,12 @@ export class EuclidRollup extends AbstractRollup<EuclidCommit> {
     });
   }
   protected override async _fetchCommit(index: bigint): Promise<EuclidCommit> {
+    // const [commitEvent] = await this.ScrollChain.queryFilter(
+    //   this.ScrollChain.filters.CommitBatch(index)
+    // );
+    // const [finalEvent] = await this.ScrollChain.queryFilter(
+    //   this.ScrollChain.filters.FinalizeBatch(index)
+    // );
     const [[commitEvent], [finalEvent]] = await Promise.all([
       this.ScrollChain.queryFilter(this.ScrollChain.filters.CommitBatch(index)),
       this.ScrollChain.queryFilter(

@@ -3,6 +3,7 @@ import { AbstractRollup, type RollupCommit } from '../rollup.js';
 import { fetchBlockNumber, ABI_CODER, MAINNET_BLOCK_SEC } from '../utils.js';
 import { EthProver } from './EthProver.js';
 import { encodeRlpBlock } from '../rlp.js';
+import { VOID_PROVIDER } from '../VoidProvider.js';
 
 export type EthSelfCommit = RollupCommit<EthProver> & {
   readonly rlpEncodedBlock: HexString;
@@ -16,7 +17,7 @@ export type EthSelfCommit = RollupCommit<EthProver> & {
 export class EthSelfRollup extends AbstractRollup<EthSelfCommit> {
   readonly commitStep;
   constructor(provider: Provider, commitStep = 1) {
-    super({ provider1: provider, provider2: provider });
+    super({ provider1: provider, provider2: VOID_PROVIDER });
     this.commitStep = commitStep > 0 ? BigInt(commitStep) : 1n;
   }
   private align(index: bigint) {

@@ -175,6 +175,7 @@ export abstract class GatewayV1<R extends Rollup> extends EZCCIP {
     // since we can only serve the latest commit
     // we only keep the latest commit
     if (
+      !this.latestCache.cacheMs ||
       index !== this.latestCommit?.index ||
       !(await this.rollup.isCommitStillValid(this.latestCommit).catch(() => {}))
     ) {
@@ -203,6 +204,10 @@ export abstract class GatewayV1<R extends Rollup> extends EZCCIP {
   }
   getLatestCommit() {
     return this.latestCache.get();
+  }
+  disableCache() {
+    this.latestCache.cacheMs = 0;
+    this.callLRU.max = 0;
   }
   // since every legacy gateway does "its own thing"
   // we forward the responsibility of generating a response

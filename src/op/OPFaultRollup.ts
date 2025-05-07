@@ -157,6 +157,7 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   readonly OptimismPortal: Contract;
   readonly GameFinder: Contract;
   gameTypes: number[] = []; // if empty, dynamically uses respectedGameType()
+  unfinalizedRootClaimTimeoutMs = 30000;
   constructor(
     providers: ProviderPair,
     config: OPFaultConfig,
@@ -192,6 +193,7 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     // dodge canary by requiring a valid root claim
     // finalized claims are assumed valid
     if (this.unfinalized) {
+      const timeout = Date.now() + this.unfinalizedRootClaimTimeoutMs; // prevent "infinite" loop
       for (;;) {
         try {
           await this.fetchCommit(index);
@@ -202,7 +204,8 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
           // canary often has invalid block <== likely triggers first
           // canary has invalid time
           // canary has invalid root claim
-          if (isEthersError(err)) throw err;
+          // 20250503: this can infinite loop when the rpc errors suck
+          if (isEthersError(err) || Date.now() > timeout) throw err;
           index = await this.GameFinder.findGameIndex(
             this.OptimismPortal.target,
             this.minAgeSec,

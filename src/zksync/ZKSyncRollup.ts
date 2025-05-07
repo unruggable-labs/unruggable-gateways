@@ -6,7 +6,7 @@ import type {
   ProofSequence,
 } from '../types.js';
 import { ZKSyncProver } from './ZKSyncProver.js';
-import { DIAMOND_ABI, type ABIZKSyncCommitBatchInfo } from './types.js';
+import { DIAMOND_ABI } from './types.js';
 import { ZeroHash } from 'ethers/constants';
 import { Contract, EventLog } from 'ethers/contract';
 import { CHAINS } from '../chains.js';
@@ -16,6 +16,7 @@ import {
   AbstractRollup,
 } from '../rollup.js';
 import { ABI_CODER } from '../utils.js';
+import { dataSlice } from 'ethers/utils';
 
 // https://docs.zksync.io/zk-stack/concepts/finality
 // https://docs.zksync.io/build/developer-reference/batches-and-l2-blocks
@@ -98,12 +99,10 @@ export class ZKSyncRollup extends AbstractRollup<ZKSyncCommit> {
     if (!tx) throw new Error(`missing commit tx: ${details.commitTxHash}`);
     if (!(log instanceof EventLog)) throw new Error(`no BlockCommit event`);
     if (l2LogsTreeRoot === ZeroHash) throw new Error('not finalized');
-    const commits: ABIZKSyncCommitBatchInfo[] = DIAMOND_ABI.decodeFunctionData(
-      'commitBatchesSharedBridge',
-      tx.data
-    ).newBatchesData;
-    const batchInfo = commits.find((x) => x.batchNumber == index);
-    if (!batchInfo) throw new Error(`commit not in batch`);
+    // 20240909: interface was changed
+    // https://github.com/matter-labs/era-contracts/commit/49868afc8590c3d09daf4d5fc73dcc31587f487d
+    const batch = decodeBatches(tx.data).find((x) => x.batchNumber === index);
+    if (!batch) throw new Error(`batch not in commit`);
     const abiEncodedBatch = ABI_CODER.encode(
       [
         'uint64', // batchNumber
@@ -116,13 +115,13 @@ export class ZKSyncRollup extends AbstractRollup<ZKSyncCommit> {
         'bytes32', // commitment
       ],
       [
-        batchInfo.batchNumber, // == index
-        batchInfo.newStateRoot, // == details.rootHash
-        batchInfo.indexRepeatedStorageChanges,
-        batchInfo.numberOfLayer1Txs,
-        batchInfo.priorityOperationsHash,
+        batch.batchNumber, // == index
+        batch.newStateRoot, // == details.rootHash
+        batch.indexRepeatedStorageChanges,
+        batch.numberOfLayer1Txs,
+        batch.priorityOperationsHash,
         l2LogsTreeRoot,
-        batchInfo.timestamp,
+        batch.timestamp,
         log.args.commitment,
       ]
     );
@@ -148,5 +147,60 @@ export class ZKSyncRollup extends AbstractRollup<ZKSyncCommit> {
     // approximately 1 batch every hour, sequential
     // https://explorer.zksync.io/batches/
     return Math.ceil(sec / 3600); // units of commit index
+  }
+}
+
+type BatchInfo = {
+  batchNumber: bigint;
+  timestamp: number;
+  indexRepeatedStorageChanges: bigint;
+  newStateRoot: HexString32;
+  numberOfLayer1Txs: bigint;
+  priorityOperationsHash: HexString32;
+  // bootloaderHeapInitialContentsHash: HexString32;
+  // eventsQueueStateHash: HexString32;
+  // systemLogs: HexString;
+  // operatorDAInput: HexString;
+};
+
+// https://github.com/matter-labs/era-contracts/blob/14961f1efecac1030139c4cf0655b14135197772/l1-contracts/test/unit_tests/utils.ts#L543-L553
+// https://github.com/matter-labs/era-contracts/blob/14961f1efecac1030139c4cf0655b14135197772/l1-contracts/src.ts/utils.ts#L38-L41
+function decodeBatches(txData: HexString): BatchInfo[] {
+  const { commitData } = DIAMOND_ABI.decodeFunctionData(
+    'commitBatchesSharedBridge',
+    txData
+  );
+  const version = parseInt(dataSlice(commitData, 0, 1));
+  if (version === 0) {
+    const [/*stored*/ _, batches] = ABI_CODER.decode(
+      [
+        `(
+          uint64 batchNumber,
+          bytes32 batchHash,
+          uint64 indexRepeatedStorageChanges,
+          uint256 numberOfLayer1Txs,
+          bytes32 priorityOperationsHash,
+          bytes32 l2LogsTreeRoot,
+          uint256 timestamp,
+          bytes32 commitment
+        )`,
+        `(
+          uint64 batchNumber,
+          uint64 timestamp,
+          uint64 indexRepeatedStorageChanges,
+          bytes32 newStateRoot,
+          uint256 numberOfLayer1Txs,
+          bytes32 priorityOperationsHash,
+          bytes32 bootloaderHeapInitialContentsHash,
+          bytes32 eventsQueueStateHash,
+          bytes systemLogs,
+          bytes operatorDAInput
+        )[]`,
+      ],
+      dataSlice(commitData, 1)
+    );
+    return batches;
+  } else {
+    throw new Error(`unexpected commit version: ${version}`);
   }
 }
