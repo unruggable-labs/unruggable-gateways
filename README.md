@@ -77,17 +77,22 @@ If you are interested in building a solution for another chain, please take a lo
 
 * `bun run serve <chain> [port]`
 	* eg. `bun run serve op 9000`
-	* Chains: `ape` `arb1-sepolia` `arb1` `base-sepolia` `base` `blast` `celo-alfajores` `cyber` `fraxtal` `ink-sepolia` `linea-sepolia` `lineaV1` `linea` `mantle` `mode` `op-sepolia` `op` `opbnb` `polygon` `redstone` `reverse-op` `scroll-sepolia` `scroll` `self-eth` `self-holesky` `self-sepolia` `shape` `soneium-minato` `taiko-hekla` `taiko` `unichain-sepolia` `zero-sepolia` `zero` `zksync-sepolia` `zksync` `zora`
+	* Chains: `1` or `0x1` or `ape` `arb1-sepolia` `arb1` `base-sepolia` `base` `blast` `celo-alfajores` `cyber` `fraxtal` `ink-sepolia` `linea-sepolia` `lineaV1` `linea` `mantle` `mode` `op-sepolia` `op` `opbnb` `polygon` `redstone` `reverse-op` `scroll-sepolia` `scroll` `shape` `soneium-sepolia` `taiko-hekla` `taiko` `unichain-sepolia` `zero-sepolia` `zero` `zksync-sepolia` `zksync` `zora`
 	* Default port: `8000`
-	* Use `trusted:<chain>` for a [`TrustedRollup`](./src/TrustedRollup.ts)
+	* Use `trusted:<chain>` for [`TrustedRollup`](./src/TrustedRollup.ts)
 		* eg. `bun run serve trusted:op`
 		* Include `0x{64}` to set signing key
-	* Use `unchecked:<chain>` for a [`UncheckedRollup](./src/UncheckedRollup.ts)
+	* Use `unchecked:<chain>` for [UncheckedRollup](./src/UncheckedRollup.ts)
+	* Use `self:<chain>` for [EthSelfRollup](./src/eth/EthSelfRollup.ts)
 	* Include `--unfinalized(=minAge)` to use unfinalized commits (will throw if not available)
 	* Include `--latest` for `"latest"` instead of `"finalized"` block tag
 	* Include `--debug` to print `OP_DEBUG` statements
-	* Inclide `--calls` to print RPC calls.
+	* Include `--calls` to print RPC calls.
 	* Include `--dump` to print config, latest commit, prover information, and then exit.
+	* Include `--no-fast` to disable `eth_getStorageAt`
+	* Include `--no-cache` to disable caching
+	* Include `--depth=#` to adjust commit depth
+	* Include `--step=#` to adjust commit step
 	* Use [`PROVIDER_ORDER`](./test/providers.ts) to customize global RPC provider priority.
 	* Use `PROVIDER_ORDER_{CHAIN_NAME}` to customize per-chain RPC provider priority.
 
