@@ -30,9 +30,10 @@ export class LineaProver extends BlockProver {
     try {
       await this.getProofs(ZeroAddress);
       return true;
-    } catch (err) {
-      if (isRPCError(err, -32600)) return false; // BLOCK_MISSING_IN_CHAIN
-      throw err;
+    } catch (cause) {
+      if (isRPCError(cause, -32600)) return false; // BLOCK_MISSING_IN_CHAIN
+      //if (isRPCError(err, -32603)) return false; // Internal error
+      throw new Error('isShomeiReady()', { cause });
     }
   }
   override async isContract(target: HexString): Promise<boolean> {
