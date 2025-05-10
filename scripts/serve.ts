@@ -236,29 +236,32 @@ export default {
             }
           }
         }
-        return Response.json({
-          ...config,
-          prover: toJSON({
-            ...commit.prover,
-            block: undefined,
-            batchIndex: undefined,
-            cache: {
-              fetches: commit.prover.cache.maxCached,
-              proofs: commit.prover.proofLRU.max,
-            },
-          }),
-          commits: commits.map((c) => ({
-            ...toJSON(c),
-            fetches: c.prover.cache.cachedSize,
-            proofs: c.prover.proofLRU.size,
-            // cache: Object.fromEntries(
-            //   Array.from(c.prover.proofMap(), ([k, v]) => [
-            //     k,
-            //     v.map(bigintToJSON),
-            //   ])
-            // ),
-          })),
-        });
+        return Response.json(
+          {
+            ...config,
+            prover: toJSON({
+              ...commit.prover,
+              block: undefined,
+              batchIndex: undefined,
+              cache: {
+                fetches: commit.prover.cache.maxCached,
+                proofs: commit.prover.proofLRU.max,
+              },
+            }),
+            commits: commits.map((c) => ({
+              ...toJSON(c),
+              fetches: c.prover.cache.cachedSize,
+              proofs: c.prover.proofLRU.size,
+              // cache: Object.fromEntries(
+              //   Array.from(c.prover.proofMap(), ([k, v]) => [
+              //     k,
+              //     v.map(bigintToJSON),
+              //   ])
+              // ),
+            })),
+          },
+          { headers }
+        );
       }
       case 'POST': {
         const t0 = performance.now();
