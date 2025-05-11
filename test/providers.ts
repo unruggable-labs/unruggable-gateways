@@ -28,7 +28,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
     [
       {
         chain: CHAINS.MAINNET,
-        publicHTTP: 'https://rpc.ankr.com/eth', // https://cloudflare-eth.com is too rate limited
+        publicHTTP: 'https://eth.drpc.org',
         ankr: 'eth',
         ankrBeaconPremium: true,
         infura: 'mainnet',
@@ -38,7 +38,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       },
       {
         chain: CHAINS.SEPOLIA,
-        publicHTTP: 'https://rpc.ankr.com/eth_sepolia',
+        publicHTTP: 'https://sepolia.drpc.org',
         ankr: 'eth_sepolia',
         infura: 'sepolia',
         alchemy: 'eth-sepolia',
@@ -47,7 +47,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       },
       {
         chain: CHAINS.HOLESKY,
-        publicHTTP: 'https://rpc.ankr.com/eth_holesky', //'https://rpc.holesky.ethpandaops.io',
+        publicHTTP: 'https://holesky.drpc.org',
         ankr: 'eth_holesky',
         infura: 'holesky',
         alchemy: 'eth-holesky',
@@ -78,8 +78,8 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         publicHTTP: 'https://mainnet.base.org',
         //ankr: 'base', // 202405XX: eth_getProof depth is 10000
         //infura: 'base-mainnet', // 20250214: eth_getProof depth is still insufficient
-        alchemy: 'base-mainnet', // 20250107 eth_getProof depth now seems OK
-        drpc: 'base', // 20250115: no eth_getProof
+        //alchemy: 'base-mainnet', // 20250107 eth_getProof depth now seems OK
+        drpc: 'base',
       },
       {
         // https://docs.base.org/docs/network-information#base-testnet-sepolia

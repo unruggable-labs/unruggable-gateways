@@ -27,7 +27,34 @@ export type RPCEthGetProof = {
 
 export type EthAccountProof = Omit<RPCEthGetProof, 'storageProof'>;
 
-export type RPCEthGetBlock<TransactionT = HexString> = {
+export type RPCEthTransaction = {
+  type: HexString;
+  chainId: HexString;
+  nonce: HexString;
+  gasPrice: HexString;
+  to: HexAddress;
+  from: HexAddress;
+  gas: HexString;
+  value: HexString;
+  input: HexString;
+  r: HexString32;
+  s: HexString32;
+  v: HexString;
+  hash: HexString32;
+  blockHash: HexString32;
+  blockNumber: HexString;
+  transactionIndex: HexString;
+};
+
+export function isEIP4844(tx: RPCEthTransaction): tx is RPCEthTransaction4844 {
+  return tx.type === '0x3';
+}
+
+export type RPCEthTransaction4844 = RPCEthTransaction & {
+  blobVersionedHashes: HexString32[];
+};
+
+export type RPCEthGetBlock<tx extends boolean = false> = {
   hash: HexString32;
   stateRoot: HexString32;
   parentHash: HexString32;
@@ -43,7 +70,7 @@ export type RPCEthGetBlock<TransactionT = HexString> = {
   extraData: HexString;
   mixHash: HexString32; // prev_randao
   nonce: HexString;
-  transactions: TransactionT[];
+  transactions: (tx extends true ? RPCEthTransaction : HexString32)[];
   timestamp: HexString;
   uncles: HexString[];
   // optional

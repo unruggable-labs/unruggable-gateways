@@ -48,21 +48,20 @@ export function isBlockTag(x: BigNumberish): x is string {
   return typeof x === 'string' && !x.startsWith('0x');
 }
 
-export async function fetchBlock(
+export async function fetchBlock<tx extends boolean = false>(
   provider: Provider,
-  relBlockTag: BigNumberish = LATEST_BLOCK_TAG
-): Promise<RPCEthGetBlock> {
+  relBlockTag: BigNumberish = LATEST_BLOCK_TAG,
+  includeTx?: tx | false
+): Promise<RPCEthGetBlock<tx>> {
   if (!isBlockTag(relBlockTag)) {
     let i = BigInt(relBlockTag);
     if (i < 0) i += await fetchBlockNumber(provider);
     relBlockTag = toUnpaddedHex(i);
   }
-  const json = await provider.send('eth_getBlockByNumber', [
-    relBlockTag,
-    false,
-  ]);
+  const tx = includeTx ?? false;
+  const json = await provider.send('eth_getBlockByNumber', [relBlockTag, tx]);
   if (!json) throw new Error(`no block: ${relBlockTag}`);
-  return json;
+  return json as RPCEthGetBlock<tx>;
 }
 
 export async function fetchBlockFromHash(

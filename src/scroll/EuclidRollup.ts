@@ -17,8 +17,11 @@ import { concat, getBytes } from 'ethers/utils';
 import { CHAINS } from '../chains.js';
 import { EthProver } from '../eth/EthProver.js';
 import { ABI_CODER, fetchBlock, toPaddedHex } from '../utils.js';
-import { CachedValue } from '../cached.js';
-import { fetchBeaconData, fetchSidecars, type BlobSidecar } from '../beacon.js';
+import {
+  beaconConfigCache,
+  fetchSidecars,
+  type BlobSidecar,
+} from '../beacon.js';
 import { decompress } from 'fzstd';
 
 // https://github.com/scroll-tech/go-ethereum/tree/24757865c6bbd9becb0256e97e8492d1f73987d9
@@ -80,24 +83,14 @@ export class EuclidRollup extends AbstractRollup<EuclidCommit> {
   };
 
   readonly ScrollChain: Contract;
-  readonly beaconConfig = new CachedValue(async () => {
-    const [genesis, spec] = await Promise.all(
-      [
-        `${this.beaconAPI}/eth/v1/beacon/genesis`,
-        `${this.beaconAPI}/eth/v1/config/spec`,
-      ].map(fetchBeaconData)
-    );
-    return {
-      genesisTime: BigInt(genesis.genesis_time),
-      secondsPerSlot: BigInt(spec.SECONDS_PER_SLOT),
-    };
-  }, Infinity);
+  readonly beaconConfig;
   constructor(
     providers: ProviderPair,
     config: EuclidConfig,
     readonly beaconAPI: string
   ) {
     super(providers);
+    this.beaconConfig = beaconConfigCache(this.beaconAPI);
     this.ScrollChain = new Contract(
       config.ScrollChain,
       ROLLUP_ABI,
