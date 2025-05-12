@@ -1,6 +1,13 @@
-import type { BigNumberish, HexString } from './types.js';
+import type { BigNumberish, BytesLike, HexString } from './types.js';
 import type { RPCEthGetBlock } from './eth/types.js';
-import { encodeRlp, type RlpStructuredDataish } from 'ethers/utils';
+import {
+  encodeRlp,
+  getBytes,
+  hexlify,
+  RlpStructuredData,
+  type RlpStructuredDataish,
+} from 'ethers/utils';
+import { toPaddedHex } from './utils.js';
 
 // block header:
 // https://ethereum.github.io/execution-specs/src/ethereum/cancun/blocks.py.html#ethereum.cancun.blocks.Header:0
@@ -53,4 +60,75 @@ export function encodeRlpBlock(block: RPCEthGetBlock): HexString {
     block.parentBeaconBlockRoot,
     block.requestsHash,
   ]);
+}
+
+function unarrayifyInteger(data, offset, length) {
+  let result = 0;
+  for (let i = 0; i < length; i++) {
+    result = result * 256 + data[offset + i];
+  }
+  return result;
+}
+
+type Decoded = {
+  consumed: number;
+  result: RlpStructuredData;
+};
+
+function _decodeChildren(
+  data: Uint8Array,
+  offset: number,
+  childOffset: number,
+  length: number
+): Decoded {
+  const result: RlpStructuredData = [];
+  while (childOffset < offset + 1 + length) {
+    const decoded = _decode(data, childOffset);
+    result.push(decoded.result);
+    childOffset += decoded.consumed;
+  }
+  return { consumed: 1 + length, result };
+}
+
+function _decode(data: Uint8Array, offset: number): Decoded {
+  function checkOffset(off: number) {
+    if (off > data.length) throw new Error('overflow');
+  }
+  checkOffset(offset);
+  // Array with extra length prefix
+  if (data[offset] >= 0xf8) {
+    const lengthLength = data[offset] - 0xf7;
+    checkOffset(offset + 1 + lengthLength);
+    const length = unarrayifyInteger(data, offset + 1, lengthLength);
+    checkOffset(offset + 1 + lengthLength + length);
+    return _decodeChildren(
+      data,
+      offset,
+      offset + 1 + lengthLength,
+      lengthLength + length
+    );
+  } else if (data[offset] >= 0xc0) {
+    const length = data[offset] - 0xc0;
+    checkOffset(offset + 1 + length);
+    return _decodeChildren(data, offset, offset + 1, length);
+  } else if (data[offset] >= 0xb8) {
+    const lengthLength = data[offset] - 0xb7;
+    checkOffset(offset + 1 + lengthLength);
+    const length = unarrayifyInteger(data, offset + 1, lengthLength);
+    checkOffset(offset + 1 + lengthLength + length);
+    const result = hexlify(
+      data.slice(offset + 1 + lengthLength, offset + 1 + lengthLength + length)
+    );
+    return { consumed: 1 + lengthLength + length, result: result };
+  } else if (data[offset] >= 0x80) {
+    const length = data[offset] - 0x80;
+    checkOffset(offset + 1 + length);
+    const result = hexlify(data.slice(offset + 1, offset + 1 + length));
+    return { consumed: 1 + length, result: result };
+  }
+  return { consumed: 1, result: toPaddedHex(data[offset], 1) };
+}
+
+export function decodeRlp(data: BytesLike): RlpStructuredData {
+  return _decode(getBytes(data), 0).result;
 }

@@ -14,8 +14,9 @@ import { fetchBlock } from '../utils.js';
 import { BigNumberish } from 'ethers';
 import { isEIP4844 } from '../eth/types.js';
 import { beaconConfigCache } from '../beacon.js';
-import { decodeRlp } from 'ethers/utils';
-import { getBytes } from 'ethers/utils';
+import { getBytes, hexlify } from 'ethers/utils';
+import { deflate, brotliDecompress } from 'node:zlib';
+import { decodeRlp } from '../rlp.js';
 
 // Batch transactions are authenticated by verifying that the to address of the transaction matches the batch inbox address, and the from address matches the batch-sender address in the system configuration at the time of the L1 block that the transaction data is read from.
 
@@ -101,23 +102,39 @@ export class OPBatchInboxRollup extends AbstractRollup<OPBatchIndexCommit> {
       this.findCommitTx(index, false),
     ]);
     const sidecars = await config.fetchSidecars(BigInt(info.block.timestamp));
+    const frames: Frame[] = [];
     for (const bvh of info.tx.blobVersionedHashes) {
       const sidecar = sidecars[bvh];
       if (!sidecar) throw new Error(`expected sidecar: ${bvh}`);
       try {
         const v = makeBlobCanonical(sidecar.blob);
         if (v[0] !== 0) continue;
-        const frames = parseFrames(v.subarray(1));
-        console.log(frames);
-        const decoded = decodeRlp(frames[0].frameData);
-        if (!Array.isArray(decoded) || decoded.length !== 5) {
-          throw new Error('expected rlp array');
-        }
-        console.log(decoded);
+        frames.push(...splitFrames(v.subarray(1)));
+		console.log(sidecar.blob.length, sidecar.kzg_commitment.length * 64);
       } catch (cause) {
         throw new Error(`invalid batcher transaction: ${bvh}`, { cause });
       }
     }
+    const blockInfo = await decodeFrame(frames);
+    console.log(blockInfo);
+    let block = await this.provider2.getBlock(blockInfo.l2BlockNumber);
+    for (let i = 0; block; i++) {
+      console.log(block.number, block.hash);
+      if (block.hash?.startsWith(blockInfo.l2BlockHashPrefix)) break;
+      block = await this.provider2.getBlock(block.number - 1);
+    }
+    console.log(block);
+	// https://eips.ethereum.org/EIPS/eip-1108
+    // let block = await this.provider2.getBlock('latest');
+    // for (let i = 0; block; i++) {
+    //   console.log(block.number, block.hash);
+    //   if (
+    //     block.hash?.startsWith(blockInfo.blockHashPrefix) ||
+    //     block.hash?.endsWith(blockInfo.blockHashPrefix.slice(2))
+    //   )
+    //     break;
+    //   block = await this.provider2.getBlock(block.number - 1)!;
+    // }
 
     return new EthProver(this.provider2, 'latest');
   }
@@ -132,32 +149,8 @@ export class OPBatchInboxRollup extends AbstractRollup<OPBatchIndexCommit> {
   }
 }
 
-function parseFrames(v: Uint8Array) {
-  // https://specs.optimism.io/protocol/derivation.html#batcher-transaction-format
-  const dv = new DataView(v.buffer, v.byteOffset, v.byteLength);
-  const frames = [];
-  let pos = 1;
-  console.log(v);
-  for (;;) {
-    console.log(pos);
-    const channelId = v.subarray(pos, (pos += 16));
-    const frameNumber = dv.getUint16(pos);
-    pos += 2;
-    const frameLength = dv.getUint32(pos);
-    pos += 4;
-    const frameData = v.subarray(pos, (pos += frameLength));
-    frames.push({
-      channelId,
-      frameNumber,
-      frameLength,
-      frameData,
-    });
-    console.log(frames.length, frames[frames.length - 1]);
-    const isLast = v[pos++];
-    console.log({ isLast });
-    if (isLast) break;
-  }
-  return frames;
+function dataViewFrom(v: Uint8Array) {
+  return new DataView(v.buffer, v.byteOffset, v.byteLength);
 }
 
 function makeBlobCanonical(blob: HexString) {
@@ -175,21 +168,129 @@ function makeBlobCanonical(blob: HexString) {
   //
   // For only the very first output field, bytes [1:5] are used to encode the version and the length
   // of the data
-  const MaxBlobDataSize = (4 * 31 + 3) * 1024 - 4;
-  const header = getBytes(blob.slice(0, 66));
-  if (header[1] !== 1) throw new Error(`unknown blob version: ${header[1]}`);
-  const n = header.getUint32(2) >> 8;
-  if (n > MaxBlobDataSize)
-    throw new Error(`blob too big: ${n} > ${MaxBlobDataSize}`);
-  const v = new Uint8Array(MaxBlobDataSize);
-  v.set(header.subarray(5));
-
-  const N = 4096;
-  const v = new Uint8Array(N * 31);
-  for (let i = 0; i < N; i++) {
-    const offset = 4 + (i << 6);
-    v.set(getBytes('0x' + blob.slice(offset, offset + 62)), i * 31);
+  const src = Buffer.from(blob.slice(2), 'hex');
+  if (src.length != 131072) throw new Error(`blob size: ${src.length}`);
+  const MAX = (4 * 31 + 3) * 1024 - 4;
+  if (src[1] !== 0) throw new Error(`blob version: ${src[1]}`);
+  const dstLen = dataViewFrom(src).getUint32(2) >> 8;
+  if (dstLen > MAX) throw new Error(`blob too big: ${dstLen} > ${MAX}`);
+  const dst = new Uint8Array(MAX);
+  dst.set(src.subarray(5, 32));
+  let dstPos = 28;
+  let srcPos = 32;
+  const buf = new Uint8Array(4);
+  buf[0] = src[0];
+  for (let i = 1; i < 4; i++) buf[i] = felt();
+  reassemble();
+  for (let round = 1; round < 1024 && dstPos < dstLen; round++) {
+    for (let i = 0; i < 4; i++) buf[i] = felt();
+    reassemble();
   }
+  for (let i = dstLen; i < dst.length; i++) {
+    if (dst[i]) throw new Error(`extraneous output data: ${i}`);
+  }
+  for (let i = srcPos; i < src.length; i++) {
+    if (src[i]) throw new Error(`extraneous input data: ${i}`);
+  }
+  return dst.subarray(0, dstLen);
+  function felt() {
+    const first = src[srcPos];
+    if (first & 0xc0) throw new Error(`invalid felt: ${srcPos}`);
+    dst.set(src.subarray(srcPos + 1, (srcPos += 32)), dstPos);
+    dstPos += 32;
+    return first;
+  }
+  function reassemble() {
+    --dstPos; // account for fact that we don't output a 128th byte
+    dst[dstPos - 32] = (buf[2] & 0b0011_1111) | ((buf[3] & 0b0011_0000) << 2);
+    dst[dstPos - 64] = (buf[1] & 0b0000_1111) | ((buf[3] & 0b0000_1111) << 4);
+    dst[dstPos - 96] = (buf[0] & 0b0011_1111) | ((buf[1] & 0b0011_0000) << 2);
+  }
+}
 
-  return v;
+type Frame = {
+  channelId: HexString;
+  frameNumber: number;
+  frameLength: number;
+  frameData: Uint8Array;
+  isLast: boolean;
+};
+
+function splitFrames(v: Uint8Array): Frame[] {
+  // https://specs.optimism.io/protocol/derivation.html#batcher-transaction-format
+  const dv = dataViewFrom(v);
+  const frames = [];
+  for (let pos = 0; pos < v.length; ) {
+    const channelId = hexlify(v.subarray(pos, (pos += 16)));
+    const frameNumber = dv.getUint16(pos);
+    pos += 2;
+    const frameLength = dv.getUint32(pos);
+    pos += 4;
+    const frameData = v.subarray(pos, (pos += frameLength));
+    const isLast = v[pos++] === 1;
+    frames.push({
+      channelId,
+      frameNumber,
+      frameLength,
+      frameData,
+      isLast,
+    });
+  }
+  return frames;
+}
+
+async function decompressZlib(v: Uint8Array): Promise<Uint8Array> {
+  if ((v[0] & 15) === 8) {
+    // https://www.rfc-editor.org/rfc/rfc1950.html#ref-3
+    if (v[1] & 32) throw new Error('unexpected FDICT');
+    return new Promise((ful, rej) =>
+      deflate(v.subarray(2, -4), (err, res) => (err ? rej(err) : ful(res)))
+    );
+  } else if (v[0] === 1) {
+    return new Promise((ful, rej) =>
+      brotliDecompress(v.subarray(1), (err, res) => (err ? rej(err) : ful(res)))
+    );
+  } else {
+    throw new Error(`expected compressor: ${v[0]}`);
+  }
+}
+
+async function decodeFrame(frames: Frame[]) {
+  if (!frames.length) throw new Error(`expected frame`);
+  const { channelId } = frames[0];
+  frames = frames.filter((x) => x.channelId == channelId);
+  if (
+    !frames.every((x, i) => x.frameNumber === i) ||
+    !frames[frames.length - 1].isLast
+  ) {
+    throw new Error(`incomplete channel: ${channelId}`);
+  }
+  const frameData = Buffer.concat(frames.map((x) => x.frameData));
+  const decompressed = await decompressZlib(frameData);
+  console.log(decompressed.slice(100));
+  const encodedBatch = decodeRlp(decompressed);
+  if (typeof encodedBatch !== 'string') throw new Error('wtf');
+  const v = getBytes(encodedBatch);
+  if (v[0] !== 1) throw new Error('expected delta');
+  let pos = 1;
+  const timestamp = readUvarint();
+  const l1BlockNumber = readUvarint();
+  const l2BlockHashPrefix = hexlify(v.subarray(pos + 0, pos + 20));
+  const l1BlockHashPrefix = hexlify(v.subarray(pos + 20, pos + 40));
+  function readUvarint() {
+    let u = 0n;
+    for (let i = 0; ; i += 7) {
+      const x = v[pos++];
+      u |= BigInt(x & 127) << BigInt(i);
+      if (x < 128) break;
+    }
+    return u;
+  }
+  return {
+    timestamp,
+    l2BlockNumber: timestamp >> 1n,
+    l1BlockNumber,
+    l2BlockHashPrefix,
+    l1BlockHashPrefix,
+  };
 }

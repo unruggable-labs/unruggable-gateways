@@ -4,6 +4,6 @@ import { beaconURL, createProviderPair } from '../providers.js';
 
 const config = OPFaultRollup.baseMainnetConfig;
 const rollup = new OPBatchInboxRollup(createProviderPair(config), config, beaconURL(config.chain1));
-
+rollup.latestBlockTag = 'latest';
 
 console.log(await rollup.fetchLatestCommit());
