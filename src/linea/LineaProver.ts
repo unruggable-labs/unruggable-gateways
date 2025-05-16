@@ -15,6 +15,9 @@ import {
   encodeProof,
 } from './types.js';
 
+// BLOCK_MISSING_IN_CHAIN, UNKNOWN
+const TRANSIENT_RPC_ERRORS = new Set([-32600, -32603]);
+
 export class LineaProver extends BlockProver {
   static readonly isInclusionProof = isInclusionProof;
   static readonly isContract = isContract;
@@ -30,10 +33,9 @@ export class LineaProver extends BlockProver {
     try {
       await this.getProofs(ZeroAddress);
       return true;
-    } catch (cause) {
-      if (isRPCError(cause, -32600)) return false; // BLOCK_MISSING_IN_CHAIN
-      //if (isRPCError(err, -32603)) return false; // Internal error
-      throw new Error('isShomeiReady()', { cause });
+    } catch (err) {
+      if (isRPCError(err, TRANSIENT_RPC_ERRORS)) return false;
+      throw err;
     }
   }
   override async isContract(target: HexString): Promise<boolean> {

@@ -42,6 +42,7 @@ jobs:
           touch .env
           echo ALCHEMY_KEY=${{ secrets.ALCHEMY_KEY }} >> .env
           echo INFURA_KEY=${{ secrets.INFURA_KEY }} >> .env
+          echo DRPC_KEY=${{ secrets.DRPC_KEY }} >> .env
           echo IS_CI=true >> .env
           cat .env
 
