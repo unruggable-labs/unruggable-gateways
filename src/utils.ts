@@ -33,6 +33,10 @@ export function toPaddedHex(x: BigNumberish | boolean, width = 32) {
   return '0x' + i.toString(16).padStart(width << 1, '0');
 }
 
+export function dataViewFrom(v: Uint8Array) {
+  return new DataView(v.buffer, v.byteOffset, v.byteLength);
+}
+
 // manual polyfill: ES2024
 export function withResolvers<T = void>() {
   let resolve!: (value: T) => void;

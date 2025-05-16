@@ -4,19 +4,19 @@ import type {
   ProviderPair,
   HexAddress,
   HexString32,
+  BigNumberish,
 } from '../types.js';
-import { AbstractRollup, RollupCommit } from '../rollup.js';
+import { type RollupCommit, AbstractRollup } from '../rollup.js';
 import { EthProver } from '../eth/EthProver.js';
 import { CachedValue } from '../cached.js';
 import { Contract } from 'ethers/contract';
 import { Interface } from 'ethers/abi';
-import { fetchBlock } from '../utils.js';
-import { BigNumberish } from 'ethers';
+import { ABI_CODER, dataViewFrom, fetchBlock } from '../utils.js';
 import { isEIP4844 } from '../eth/types.js';
-import { beaconConfigCache } from '../beacon.js';
+import { type BlobSidecar, beaconConfigCache } from '../beacon.js';
 import { getBytes, hexlify } from 'ethers/utils';
 import { deflate, brotliDecompress } from 'node:zlib';
-import { decodeRlp } from '../rlp.js';
+import { decodeRlp, encodeRlpBlock } from '../rlp.js';
 
 // Batch transactions are authenticated by verifying that the to address of the transaction matches the batch inbox address, and the from address matches the batch-sender address in the system configuration at the time of the L1 block that the transaction data is read from.
 
@@ -37,7 +37,11 @@ export type OPBatchIndexConfig = {
   OptimismPortal: HexAddress;
 };
 
-export type OPBatchIndexCommit = RollupCommit<EthProver>;
+export type OPBatchIndexCommit = RollupCommit<EthProver> & {
+  rlpEncodedL1Block: HexString;
+  rlpEncodedL2Block: HexString;
+  sidecars: BlobSidecar[];
+};
 
 export class OPBatchInboxRollup extends AbstractRollup<OPBatchIndexCommit> {
   readonly OptimismPortal: Contract;
@@ -60,6 +64,7 @@ export class OPBatchInboxRollup extends AbstractRollup<OPBatchIndexCommit> {
   }, Infinity);
 
   readonly beaconConfig;
+  findBlockPrefixTimeoutMs = 10000;
   constructor(
     providers: ProviderPair,
     config: OPBatchIndexConfig,
@@ -72,11 +77,6 @@ export class OPBatchInboxRollup extends AbstractRollup<OPBatchIndexCommit> {
       PORTAL_ABI,
       providers.provider1
     );
-  }
-
-  override async fetchLatestCommitIndex(): Promise<bigint> {
-    const info = await this.findCommitTx(this.latestBlockTag, true);
-    return BigInt(info.block.number);
   }
 
   async findCommitTx(blockTag: BigNumberish, search: boolean) {
@@ -92,6 +92,16 @@ export class OPBatchInboxRollup extends AbstractRollup<OPBatchIndexCommit> {
       if (!search || block.number === '0x0') throw new Error(`no commit tx`);
       blockTag = BigInt(block.number) - 1n;
     }
+  }
+
+  override async fetchLatestCommitIndex() {
+    const info = await this.findCommitTx(this.latestBlockTag, true);
+    return BigInt(info.block.number);
+  }
+
+  override async _fetchParentCommitIndex(commit: OPBatchIndexCommit) {
+    const info = await this.findCommitTx(commit.index - 1n, true);
+    return BigInt(info.block.number);
   }
 
   protected override async _fetchCommit(
@@ -110,47 +120,53 @@ export class OPBatchInboxRollup extends AbstractRollup<OPBatchIndexCommit> {
         const v = makeBlobCanonical(sidecar.blob);
         if (v[0] !== 0) continue;
         frames.push(...splitFrames(v.subarray(1)));
-		console.log(sidecar.blob.length, sidecar.kzg_commitment.length * 64);
+        console.log(sidecar.blob.length, sidecar.kzg_commitment.length * 64);
       } catch (cause) {
         throw new Error(`invalid batcher transaction: ${bvh}`, { cause });
       }
     }
-    const blockInfo = await decodeFrame(frames);
-    console.log(blockInfo);
-    let block = await this.provider2.getBlock(blockInfo.l2BlockNumber);
-    for (let i = 0; block; i++) {
-      console.log(block.number, block.hash);
-      if (block.hash?.startsWith(blockInfo.l2BlockHashPrefix)) break;
-      block = await this.provider2.getBlock(block.number - 1);
+    const frame = await decodeFrame(frames);
+    console.log(frame);
+    let l2Block = await fetchBlock(this.provider2, frame.l2BlockNumber);
+    const timeout = Date.now() + this.findBlockPrefixTimeoutMs;
+    for (;;) {
+      if (l2Block.hash.startsWith(frame.l2BlockHashPrefix)) break;
+      const blockNumber = BigInt(l2Block.number);
+      console.log(blockNumber);
+      if (!blockNumber || Date.now() > timeout) {
+        throw new Error(`unable to find block: ${frame.l2BlockHashPrefix}`);
+      }
+      l2Block = await fetchBlock(this.provider2, blockNumber - 1n);
     }
-    console.log(block);
-	// https://eips.ethereum.org/EIPS/eip-1108
-    // let block = await this.provider2.getBlock('latest');
-    // for (let i = 0; block; i++) {
-    //   console.log(block.number, block.hash);
-    //   if (
-    //     block.hash?.startsWith(blockInfo.blockHashPrefix) ||
-    //     block.hash?.endsWith(blockInfo.blockHashPrefix.slice(2))
-    //   )
-    //     break;
-    //   block = await this.provider2.getBlock(block.number - 1)!;
-    // }
-
-    return new EthProver(this.provider2, 'latest');
+    const l1Block = await fetchBlock(this.provider1, frame.l1BlockNumber);
+    const prover = new EthProver(this.provider2, l2Block.number);
+    return {
+      index,
+      prover,
+      rlpEncodedL1Block: encodeRlpBlock(l1Block),
+      rlpEncodedL2Block: encodeRlpBlock(l2Block),
+      sidecars: info.tx.blobVersionedHashes.map((x) => sidecars[x]),
+    };
   }
-  override encodeWitness(
-    commit: OPBatchIndexCommit,
-    proofSeq: ProofSequence
-  ): HexString {
-    throw new Error('Method not implemented.');
+  override encodeWitness(commit: OPBatchIndexCommit, proofSeq: ProofSequence) {
+    return ABI_CODER.encode(
+      [`(uint256, bytes, bytes, bytes[], bytes[], bytes)`],
+      [
+        [
+          commit.index,
+          commit.rlpEncodedL1Block,
+          commit.rlpEncodedL2Block,
+          commit.sidecars.map((x) => x.blob), // FIX ME
+          proofSeq.proofs,
+          proofSeq.order,
+        ],
+      ]
+    );
   }
-  override windowFromSec(sec: number): number {
-    throw new Error('Method not implemented.');
+  override windowFromSec(sec: number) {
+    // transaction inclusion in L1 block provides timestamp
+    return sec;
   }
-}
-
-function dataViewFrom(v: Uint8Array) {
-  return new DataView(v.buffer, v.byteOffset, v.byteLength);
 }
 
 function makeBlobCanonical(blob: HexString) {
@@ -168,8 +184,7 @@ function makeBlobCanonical(blob: HexString) {
   //
   // For only the very first output field, bytes [1:5] are used to encode the version and the length
   // of the data
-  const src = Buffer.from(blob.slice(2), 'hex');
-  if (src.length != 131072) throw new Error(`blob size: ${src.length}`);
+  const src = Buffer.from(blob.slice(2), 'hex'); // sidecars are already size checked
   const MAX = (4 * 31 + 3) * 1024 - 4;
   if (src[1] !== 0) throw new Error(`blob version: ${src[1]}`);
   const dstLen = dataViewFrom(src).getUint32(2) >> 8;

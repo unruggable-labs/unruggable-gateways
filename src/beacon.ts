@@ -2,7 +2,6 @@ import type { BigNumberish, HexString, HexString32 } from './types.js';
 import { isHexString } from 'ethers/utils';
 import { sha256 } from 'ethers/crypto';
 import { CachedValue } from './cached.js';
-import { getBytes } from 'ethers/utils';
 
 export async function fetchBeaconData(url: string) {
   try {
