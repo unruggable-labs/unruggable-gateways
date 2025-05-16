@@ -200,7 +200,7 @@ if (prefetch) {
         Date.now() - t0
       );
     } catch (err) {
-      console.log(new Date(), `Prefetch failed: ${flattenErrors(err)}`);
+      console.error(new Date(), `Prefetch failed: ${flattenErrors(err)}`);
     }
     setTimeout(fire, gateway.latestCache.cacheMs);
   };
@@ -277,9 +277,11 @@ export default {
           );
           return Response.json({ data }, { headers });
         } catch (err) {
-          const error = flattenErrors(err);
-          console.log(new Date(), error);
-          return Response.json({ error }, { headers, status: 500 });
+          console.error(new Date(), flattenErrors(err, String));
+          return Response.json(
+            { message: flattenErrors(err) },
+            { headers, status: 500 }
+          );
         }
       }
       default: {

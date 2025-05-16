@@ -16,9 +16,12 @@ import { keccak256 } from 'ethers/crypto';
 import { concat, getBytes } from 'ethers/utils';
 import { CHAINS } from '../chains.js';
 import { EthProver } from '../eth/EthProver.js';
-import { ABI_CODER, fetchBlock, toPaddedHex } from '../utils.js';
-import { CachedValue } from '../cached.js';
-import { fetchBeaconData, fetchSidecars, type BlobSidecar } from '../beacon.js';
+import { ABI_CODER, dataViewFrom, fetchBlock, toPaddedHex } from '../utils.js';
+import {
+  beaconConfigCache,
+  fetchSidecars,
+  type BlobSidecar,
+} from '../beacon.js';
 import { decompress } from 'fzstd';
 
 // https://github.com/scroll-tech/go-ethereum/tree/24757865c6bbd9becb0256e97e8492d1f73987d9
@@ -80,24 +83,14 @@ export class EuclidRollup extends AbstractRollup<EuclidCommit> {
   };
 
   readonly ScrollChain: Contract;
-  readonly beaconConfig = new CachedValue(async () => {
-    const [genesis, spec] = await Promise.all(
-      [
-        `${this.beaconAPI}/eth/v1/beacon/genesis`,
-        `${this.beaconAPI}/eth/v1/config/spec`,
-      ].map(fetchBeaconData)
-    );
-    return {
-      genesisTime: BigInt(genesis.genesis_time),
-      secondsPerSlot: BigInt(spec.SECONDS_PER_SLOT),
-    };
-  }, Infinity);
+  readonly beaconConfig;
   constructor(
     providers: ProviderPair,
     config: EuclidConfig,
     readonly beaconAPI: string
   ) {
     super(providers);
+    this.beaconConfig = beaconConfigCache(this.beaconAPI);
     this.ScrollChain = new Contract(
       config.ScrollChain,
       ROLLUP_ABI,
@@ -237,7 +230,7 @@ function lastBlockFromBlobV7(blob: HexString) {
   }
   // https://github.com/scroll-tech/da-codec/blob/344f2d5e33e1930c63cd6a082ef77e27dbe50cea/encoding/codecv7_types.go#L275
   if (v.length < 74) throw new Error(`payload too small: ${v.length}`); // blobPayloadV7MinEncodedLength
-  const dv = new DataView(v.buffer, v.byteOffset, v.byteLength);
+  const dv = dataViewFrom(v);
   const l2BlockNumber = dv.getBigUint64(64); // blobPayloadV7OffsetInitialL2BlockNumber
   const numBlocks = dv.getUint16(72); // blobPayloadV7OffsetNumBlocks
   return l2BlockNumber + BigInt(numBlocks - 1);

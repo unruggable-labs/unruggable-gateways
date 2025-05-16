@@ -1,6 +1,7 @@
 import type { BigNumberish, HexString, HexString32 } from './types.js';
 import { isHexString } from 'ethers/utils';
 import { sha256 } from 'ethers/crypto';
+import { CachedValue } from './cached.js';
 
 export async function fetchBeaconData(url: string) {
   try {
@@ -12,6 +13,29 @@ export async function fetchBeaconData(url: string) {
   } catch (err) {
     throw new Error(`${url}: ${err}`);
   }
+}
+
+export function beaconConfigCache(beaconAPI: string) {
+  return Object.assign(
+    new CachedValue(async () => {
+      const [genesis, spec] = await Promise.all([
+        fetchBeaconData(`${beaconAPI}/eth/v1/beacon/genesis`),
+        fetchBeaconData(`${beaconAPI}/eth/v1/config/spec`),
+      ]);
+      const temp = {
+        genesisTime: BigInt(genesis.genesis_time),
+        secondsPerSlot: BigInt(spec.SECONDS_PER_SLOT),
+        fetchSidecars(t: bigint) {
+          return fetchSidecars(
+            beaconAPI,
+            (t - this.genesisTime) / this.secondsPerSlot
+          );
+        },
+      };
+      return temp;
+    }, Infinity),
+    { beaconAPI }
+  );
 }
 
 export type BlobSidecar = {

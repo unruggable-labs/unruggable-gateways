@@ -33,6 +33,10 @@ export function toPaddedHex(x: BigNumberish | boolean, width = 32) {
   return '0x' + i.toString(16).padStart(width << 1, '0');
 }
 
+export function dataViewFrom(v: Uint8Array) {
+  return new DataView(v.buffer, v.byteOffset, v.byteLength);
+}
+
 // manual polyfill: ES2024
 export function withResolvers<T = void>() {
   let resolve!: (value: T) => void;
@@ -48,21 +52,20 @@ export function isBlockTag(x: BigNumberish): x is string {
   return typeof x === 'string' && !x.startsWith('0x');
 }
 
-export async function fetchBlock(
+export async function fetchBlock<tx extends boolean = false>(
   provider: Provider,
-  relBlockTag: BigNumberish = LATEST_BLOCK_TAG
-): Promise<RPCEthGetBlock> {
+  relBlockTag: BigNumberish = LATEST_BLOCK_TAG,
+  includeTx?: tx | false
+): Promise<RPCEthGetBlock<tx>> {
   if (!isBlockTag(relBlockTag)) {
     let i = BigInt(relBlockTag);
     if (i < 0) i += await fetchBlockNumber(provider);
     relBlockTag = toUnpaddedHex(i);
   }
-  const json = await provider.send('eth_getBlockByNumber', [
-    relBlockTag,
-    false,
-  ]);
+  const tx = includeTx ?? false;
+  const json = await provider.send('eth_getBlockByNumber', [relBlockTag, tx]);
   if (!json) throw new Error(`no block: ${relBlockTag}`);
-  return json;
+  return json as RPCEthGetBlock<tx>;
 }
 
 export async function fetchBlockFromHash(
@@ -148,10 +151,20 @@ export function isRPCError(
   );
 }
 
-export function flattenErrors(err: unknown) {
-  const errors = [String(err)];
+export function flattenErrors(err: unknown, stringify = stringifyError) {
+  const errors = [stringify(err)];
   for (let e = err; e instanceof Error && e.cause; e = e.cause) {
-    errors.push(String(e.cause));
+    errors.push(stringify(e.cause));
   }
   return errors.join(' <== ');
+}
+
+function stringifyError(err: unknown) {
+  if (isEthersError(err) && err.code === 'SERVER_ERROR') {
+    // this leaks api key via "requestUrl"
+    // https://github.com/ethers-io/ethers.js/blob/d2c9ca0e0fd15e7884bcaab7d5152d68662e3e43/src.ts/utils/fetch.ts#L953
+    return err.shortMessage;
+  } else {
+    return String(err);
+  }
 }
