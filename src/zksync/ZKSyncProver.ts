@@ -69,21 +69,27 @@ export class ZKSyncProver extends AbstractProver {
     super(provider);
   }
   override get context() {
-    return `batch=${this.batchIndex}`;
+    return { batch: this.batchIndex };
   }
-  async fetchBatchDetails(): Promise<
+  fetchBatchDetails(): Promise<
     Omit<RPCZKSyncL1BatchDetails, 'rootHash'> & { rootHash: HexString32 }
   > {
-    // https://docs.zksync.io/build/api-reference/zks-rpc#zks_getl1batchdetails
-    const json = await this.provider.send('zks_getL1BatchDetails', [
-      this.batchIndex,
-    ]);
-    if (!json) throw new Error(`no batch: ${this.batchIndex}`);
-    if (!json.rootHash) throw new Error(`unprovable batch: ${this.batchIndex}`);
-    return json;
+    return this.cache.get('BATCH', async () => {
+      // https://docs.zksync.io/build/api-reference/zks-rpc#zks_getl1batchdetails
+      const json = await this.provider.send('zks_getL1BatchDetails', [
+        this.batchIndex,
+      ]);
+      if (!json) throw new Error(`no batch: ${this.batchIndex}`);
+      if (!json.rootHash)
+        throw new Error(`unprovable batch: ${this.batchIndex}`);
+      return json;
+    });
   }
   override async fetchStateRoot() {
     return (await this.fetchBatchDetails()).rootHash;
+  }
+  override async fetchTimestamp() {
+    return (await this.fetchBatchDetails()).timestamp;
   }
   override async isContract(target: HexAddress): Promise<boolean> {
     const storageProof: ZKSyncStorageProof | undefined =

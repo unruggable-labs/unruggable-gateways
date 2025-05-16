@@ -64,16 +64,21 @@ export class StarknetProver extends AbstractProver {
     this.blockId = { block_number: block };
   }
   override get context() {
-    return `block=${this.blockNumber}`;
+    return { block: this.blockNumber };
   }
   get blockNumber() {
     return this.blockId.block_number;
   }
-  async fetchBlock(): Promise<RPCStarknetBlock> {
-    return this.provider.send('starknet_getBlockWithTxHashes', [this.blockId]);
+  fetchBlock(): Promise<RPCStarknetBlock> {
+    return this.cache.get('BLOCK', () =>
+      this.provider.send('starknet_getBlockWithTxHashes', [this.blockId])
+    );
   }
   override async fetchStateRoot(): Promise<HexString32> {
     return (await this.fetchBlock()).new_root;
+  }
+  override async fetchTimestamp() {
+    return (await this.fetchBlock()).timestamp;
   }
   override async isContract(
     target: HexString32,

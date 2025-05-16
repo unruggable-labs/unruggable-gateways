@@ -134,17 +134,13 @@ export function isRevert(err: unknown): err is CallExceptionError {
   return isEthersError(err) && err.code === 'CALL_EXCEPTION';
 }
 
-export function isRPCError(
-  err: any,
-  code: number | Set<number>
-): err is EthersError {
+export function isRPCError(err: any, ...code: number[]): err is EthersError {
   return (
     isEthersError(err) &&
     err.error instanceof Object &&
     'code' in err.error &&
-    (code instanceof Set
-      ? code.has(err.error.code as number)
-      : err.error.code === code)
+    typeof err.error.code === 'number' &&
+    code.includes(err.error.code)
   );
 }
 
