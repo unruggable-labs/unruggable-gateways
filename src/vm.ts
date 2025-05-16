@@ -555,14 +555,16 @@ export abstract class AbstractProver {
   proofMap() {
     const map = new Map<string, bigint[]>();
     for (const key of this.proofLRU.keys()) {
-      const target = key.slice(0, 42);
-      let bucket = map.get(target);
-      if (!bucket) {
-        bucket = [];
-        map.set(target, bucket);
-      }
-      if (key.length > 42) {
-        bucket.push(BigInt('0x' + key.slice(42)));
+      if (key.startsWith('0x')) {
+        const target = key.slice(0, 42);
+        let bucket = map.get(target);
+        if (!bucket) {
+          bucket = [];
+          map.set(target, bucket);
+        }
+        if (key.length > 42) {
+          bucket.push(BigInt('0x' + key.slice(42)));
+        }
       }
     }
     return map;
@@ -600,7 +602,7 @@ export abstract class AbstractProver {
   }
   async evalReader(reader: ProgramReader) {
     const vm = GatewayVM.create(
-      reader.readByte(),
+      reader.readByte(), // number of outputs
       this.maxStackSize,
       this.maxAllocBytes
     );
