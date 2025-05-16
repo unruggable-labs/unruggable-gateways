@@ -543,7 +543,7 @@ function toJSON(x: object) {
     } else {
       switch (typeof v) {
         case 'bigint': {
-          info[k] = bigintToJSON(v);
+          info[k] = toUnpaddedHex(v);
           break;
         }
         case 'string': {
@@ -558,11 +558,6 @@ function toJSON(x: object) {
     }
   }
   return info;
-}
-
-function bigintToJSON(x: bigint) {
-  const i = Number(x);
-  return Number.isSafeInteger(i) ? i : toUnpaddedHex(x);
 }
 
 function concealKeys(s: string) {
