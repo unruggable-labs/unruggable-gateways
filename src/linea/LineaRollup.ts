@@ -14,7 +14,7 @@ import { Contract, EventLog } from 'ethers/contract';
 import { LineaProver } from './LineaProver.js';
 import { ROLLUP_ABI } from './types.js';
 import { CHAINS } from '../chains.js';
-import { ABI_CODER } from '../utils.js';
+import { ABI_CODER, fetchBlock } from '../utils.js';
 
 // https://docs.linea.build/developers/quickstart/ethereum-differences
 // https://github.com/Consensys/linea-contracts
@@ -105,10 +105,20 @@ export class LineaRollup extends AbstractRollup<LineaCommit> {
     let prevStateRoot: HexString32;
     let stateRoot: HexString32;
     let startIndex: bigint | undefined;
+
+    const l1BlockInfo = await fetchBlock(this.provider1, this.latestBlockTag);
+    const l1BlockNumber = parseInt(l1BlockInfo.number);
+    const step = this.getLogsStepSize;
+
     if (this.firstCommitV3 && index >= this.firstCommitV3) {
-      const [event] = await this.L1MessageService.queryFilter(
-        this.L1MessageService.filters.DataFinalizedV3(null, index)
+      const logs = await this.L1MessageService.queryFilter(
+        this.L1MessageService.filters.DataFinalizedV3(null, index),
+        l1BlockNumber - step,
+        l1BlockNumber
       );
+
+      const event = logs.length ? logs[logs.length - 1] : false;
+
       if (!(event instanceof EventLog)) {
         throw new Error('no DataFinalizedV3 event');
       }
