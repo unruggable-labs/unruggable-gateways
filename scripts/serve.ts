@@ -50,7 +50,7 @@ import { execSync } from 'child_process';
 
 let dumpAndExit = false;
 let unfinalized = 0;
-let printDebug = false;
+let debugMode = false;
 let printCalls = false;
 let prefetch = false;
 let latestBlockTag = '';
@@ -76,7 +76,7 @@ const args = process.argv.slice(2).filter((x) => {
   } else if (x === '--dump') {
     dumpAndExit = true;
   } else if (x === '--debug') {
-    printDebug = true;
+    debugMode = true;
   } else if (x === '--calls') {
     printCalls = true;
   } else if (x === '--no-fast') {
@@ -134,7 +134,7 @@ if (disableCache) {
 
 // how to configure prover
 gateway.rollup.configure = (c: RollupCommitType<typeof gateway.rollup>) => {
-  c.prover.printDebug = printDebug;
+  c.prover.printDebug = debugMode;
   c.prover.fast = !disableFast;
   // c.prover.maxStackSize = 5;
   // c.prover.maxUniqueProofs = 1;
@@ -200,8 +200,11 @@ if (prefetch) {
         Date.now() - t0
       );
     } catch (err) {
-      console.log(new Date(), `Prefetch failed: ${flattenErrors(err)}`);
+      console.log(new Date(), `Prefetch failed: ${flattenErrors(err, String)}`);
     }
+    // this could use remainingCacheMs...
+    // may be spammy when theres an issue
+    // since it will fire at CachedValue.errorMs frequency
     setTimeout(fire, gateway.latestCache.cacheMs);
   };
   await fire();
@@ -219,49 +222,67 @@ export default {
         });
       }
       case 'GET': {
-        const commit = await gateway.getLatestCommit();
-        const commits = [commit];
-        if (gateway instanceof Gateway) {
-          for (const p of await Promise.allSettled(
-            Array.from(gateway.commitCacheMap.cachedKeys(), (i) =>
-              gateway.commitCacheMap.cachedValue(i)
-            )
-          )) {
-            if (
-              p.status === 'fulfilled' &&
-              p.value &&
-              p.value.commit !== commit
-            ) {
-              commits.push(p.value.commit);
+        const url = new URL(req.url);
+        if (url.pathname === '/') {
+          return Response.json(config, { headers });
+        } else if (url.pathname === '/delay') {
+          const commit = await gateway.getLatestCommit();
+          const timestamp = await commit.prover.fetchTimestamp();
+          return Response.json(
+            toJSON({
+              index: commit.index,
+              timestamp,
+              ...commit.prover.context,
+            }),
+            { headers }
+          );
+        } else if (debugMode && url.pathname === '/debug') {
+          const commit = await gateway.getLatestCommit();
+          const commits = [commit];
+          if (gateway instanceof Gateway) {
+            for (const p of await Promise.allSettled(
+              Array.from(gateway.commitCacheMap.cachedKeys(), (i) =>
+                gateway.commitCacheMap.cachedValue(i)
+              )
+            )) {
+              if (
+                p.status === 'fulfilled' &&
+                p.value &&
+                p.value.commit !== commit
+              ) {
+                commits.push(p.value.commit);
+              }
             }
           }
+          return Response.json(
+            {
+              ...config,
+              prover: toJSON({
+                ...commit.prover,
+                block: undefined,
+                batchIndex: undefined,
+                cache: {
+                  fetches: commit.prover.cache.maxCached,
+                  proofs: commit.prover.proofLRU.max,
+                },
+              }),
+              commits: commits.map((c) => ({
+                ...toJSON(c),
+                fetches: c.prover.cache.cachedSize,
+                proofs: c.prover.proofLRU.size,
+                // cache: Object.fromEntries(
+                //   Array.from(c.prover.proofMap(), ([k, v]) => [
+                //     k,
+                //     v.map(bigintToJSON),
+                //   ])
+                // ),
+              })),
+            },
+            { headers }
+          );
+        } else {
+          return new Response('file not found', { status: 404 });
         }
-        return Response.json(
-          {
-            ...config,
-            prover: toJSON({
-              ...commit.prover,
-              block: undefined,
-              batchIndex: undefined,
-              cache: {
-                fetches: commit.prover.cache.maxCached,
-                proofs: commit.prover.proofLRU.max,
-              },
-            }),
-            commits: commits.map((c) => ({
-              ...toJSON(c),
-              fetches: c.prover.cache.cachedSize,
-              proofs: c.prover.proofLRU.size,
-              // cache: Object.fromEntries(
-              //   Array.from(c.prover.proofMap(), ([k, v]) => [
-              //     k,
-              //     v.map(bigintToJSON),
-              //   ])
-              // ),
-            })),
-          },
-          { headers }
-        );
       }
       case 'POST': {
         const t0 = performance.now();
@@ -277,9 +298,11 @@ export default {
           );
           return Response.json({ data }, { headers });
         } catch (err) {
-          const error = flattenErrors(err);
-          console.log(new Date(), error);
-          return Response.json({ error }, { headers, status: 500 });
+          console.log(new Date(), flattenErrors(err, String));
+          return Response.json(
+            { error: flattenErrors(err) },
+            { headers, status: 500 }
+          );
         }
       }
       default: {
@@ -394,7 +417,11 @@ async function createGateway(name: string) {
       const config = LineaRollup.sepoliaConfig;
       return new Gateway(
         unfinalized
-          ? new UnfinalizedLineaRollup(createProviderPair(config), config, 0)
+          ? new UnfinalizedLineaRollup(
+              createProviderPair(config),
+              config,
+              unfinalized
+            )
           : new LineaRollup(createProviderPair(config), config)
       );
     }
@@ -518,7 +545,7 @@ function toJSON(x: object) {
     } else {
       switch (typeof v) {
         case 'bigint': {
-          info[k] = bigintToJSON(v);
+          info[k] = toUnpaddedHex(v);
           break;
         }
         case 'string': {
@@ -533,11 +560,6 @@ function toJSON(x: object) {
     }
   }
   return info;
-}
-
-function bigintToJSON(x: bigint) {
-  const i = Number(x);
-  return Number.isSafeInteger(i) ? i : toUnpaddedHex(x);
 }
 
 function concealKeys(s: string) {

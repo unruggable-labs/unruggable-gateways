@@ -1,6 +1,6 @@
 {
   "name": "@unruggable/gateways",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Trustless Ethereum Multichain CCIP-Read Gateway",
   "publishConfig": {
     "access": "public"
@@ -55,7 +55,7 @@
   },
   "dependencies": {
     "@namestone/ezccip": "^0.1.0",
-    "ethers": "^6.13.5",
+    "ethers": "^6.13",
     "fzstd": "^0.1.1"
   },
   "peerDependencies": {
