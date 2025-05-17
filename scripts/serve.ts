@@ -166,7 +166,7 @@ const config: Record<string, any> = {
   ),
   gateway: gateway.constructor.name,
   rollup: gateway.rollup.constructor.name,
-  unfinalized: !!gateway.rollup.unfinalized,
+  unfinalized: gateway.rollup.unfinalized,
   chain1: chainDetails(gateway.rollup.provider1),
   chain2: chainDetails(gateway.rollup.provider2),
   since: new Date(),
