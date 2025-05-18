@@ -7,6 +7,4 @@ testTaiko(TaikoRollup.mainnetConfig, {
   // https://taikoscan.io/address/0x357276B7F176fD896176Bbf873e9606847A6Ef5a#code
   slotDataPointer: '0x357276B7F176fD896176Bbf873e9606847A6Ef5a',
   skipCI: true,
-  log: true,
-  quick: true,
 });

@@ -16,7 +16,7 @@ import {
 } from './types.js';
 
 const BLOCK_MISSING_IN_CHAIN = -32600;
-// const UNKNOWN_RPC_ERROR = -32603; // 20250517: better to just blow up
+const UNKNOWN_RPC_ERROR = -32603; // 20250517: better to just blow up
 
 export class LineaProver extends BlockProver {
   static readonly isInclusionProof = isInclusionProof;
@@ -34,7 +34,8 @@ export class LineaProver extends BlockProver {
       await this.getProofs(ZeroAddress);
       return true;
     } catch (cause) {
-      if (isRPCError(cause, BLOCK_MISSING_IN_CHAIN)) return false;
+      if (isRPCError(cause, BLOCK_MISSING_IN_CHAIN, UNKNOWN_RPC_ERROR))
+        return false;
       throw new Error(`isShomeiReady()`, { cause });
     }
   }

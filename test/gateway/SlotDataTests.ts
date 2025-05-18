@@ -6,7 +6,7 @@ const cfg = { enableCcipRead: true };
 // imo better to expect(await) than expect().resolves
 export function runSlotDataTests(
   sdr: Contract,
-  opts: { pointer?: boolean; quick?: boolean } = {}
+  opts: { slotDataPointer?: any; quick?: boolean } = {}
 ) {
   test(
     'latest = 49',
@@ -16,7 +16,7 @@ export function runSlotDataTests(
     { timeout: 60000 } // avoid cold-start timeout
   );
   if (!opts.quick) {
-    test.skipIf(!opts.pointer)('pointer => latest = 49', async () => {
+    test.skipIf(!opts.slotDataPointer)('pointer => latest = 49', async () => {
       expect(await sdr.readLatestViaPointer(cfg)).toEqual(49n);
     });
     test('name = "Satoshi"', async () => {
