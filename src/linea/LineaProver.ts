@@ -34,6 +34,7 @@ export class LineaProver extends BlockProver {
       await this.getProofs(ZeroAddress);
       return true;
     } catch (cause) {
+      console.log(this.blockNumber, `not ready`, String(cause));
       if (isRPCError(cause, BLOCK_MISSING_IN_CHAIN, UNKNOWN_RPC_ERROR))
         return false;
       throw new Error(`isShomeiReady()`, { cause });
