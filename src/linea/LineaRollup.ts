@@ -59,7 +59,7 @@ export class LineaRollup extends AbstractRollup<LineaCommit> {
 
   readonly firstCommitV3: bigint | undefined;
   readonly L1MessageService: Contract;
-  shomeiTimeout = 10000;
+  shomeiTimeout = 30000;
   constructor(providers: ProviderPair, config: LineaConfig) {
     super(providers);
     this.L1MessageService = new Contract(
@@ -71,9 +71,6 @@ export class LineaRollup extends AbstractRollup<LineaCommit> {
   }
 
   override async fetchLatestCommitIndex(): Promise<bigint> {
-    // return this.L1MessageService.currentL2BlockNumber({
-    //   blockTag: this.latestBlockTag,
-    // });
     // 20241112: BLOCK_MISSING_IN_CHAIN
     // https://github.com/Consensys/shomei/issues/98
     // https://github.com/Consensys/shomei/issues/104

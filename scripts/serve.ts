@@ -1,6 +1,10 @@
 import type { Serve } from 'bun';
 import type { Chain, Provider } from '../src/types.js';
-import { type RollupDeployment, type RollupCommitType } from '../src/rollup.js';
+import {
+  type RollupDeployment,
+  type RollupCommitType,
+  supportsV1,
+} from '../src/rollup.js';
 import {
   createProviderPair,
   createProvider,
@@ -38,6 +42,7 @@ import { ZKSyncProver } from '../src/zksync/ZKSyncProver.js';
 import { Contract } from 'ethers/contract';
 import { SigningKey } from 'ethers/crypto';
 import { execSync } from 'child_process';
+import { AbstractProver } from '../src/vm.js';
 
 // NOTE: you can use CCIPRewriter to test an existing setup against a local gateway!
 // [raffy] https://adraffy.github.io/ens-normalize.js/test/resolver.html#raffy.linea.eth.nb2hi4dthixs62dpnvss4ylooruxg5dvobuwiltdn5ws62duoryc6.ccipr.eth
@@ -145,16 +150,6 @@ gateway.rollup.configure = (c: RollupCommitType<typeof gateway.rollup>) => {
   // c.prover.maxEvalDepth = 0;
 };
 
-function chainDetails(provider: Provider) {
-  const chain = provider._network.chainId;
-  if (chain < 0) return null;
-  return toJSON({
-    chain,
-    name: chainName(chain),
-    url: concealKeys(providerURL(chain)),
-  });
-}
-
 const config: Record<string, any> = {
   git: ['git describe --tags --exact-match', 'git rev-parse HEAD'].reduce(
     (version, cmd) => {
@@ -173,8 +168,8 @@ const config: Record<string, any> = {
   chain1: chainDetails(gateway.rollup.provider1),
   chain2: chainDetails(gateway.rollup.provider2),
   since: new Date(),
-  supportsV1: !!gateway.findHandler('getStorageSlots'),
-  supportsV2: !!gateway.findHandler('proveRequest'),
+  supportsV1: supportsV1(gateway.rollup),
+  supportsV2: gateway instanceof Gateway,
   prefetch,
   ...toJSON(gateway),
   ...toJSON(gateway.rollup),
@@ -186,9 +181,11 @@ if (gateway.rollup instanceof TrustedRollup) {
 
 if (dumpAndExit) {
   console.log('Config:', config);
+  const t0 = Date.now();
   const commit = await gateway.getLatestCommit();
-  console.log('Commit:', toJSON(commit));
-  console.log('Prover:', toJSON(commit.prover));
+  console.log('Prover:', proverDetails(commit.prover));
+  console.log('Commit:', toJSON(commit), Date.now() - t0);
+  console.log('Context:', toJSON(commit.prover.context));
   process.exit(0);
 }
 
@@ -263,35 +260,10 @@ export default {
               }
             }
           }
-          const {
-            maxUniqueProofs,
-            maxUniqueTargets,
-            proofBatchSize,
-            maxSuppliedBytes,
-            maxProvableBytes,
-            maxAllocBytes,
-            maxEvalDepth,
-            fast,
-            printDebug,
-          } = commit.prover;
           return Response.json(
             {
               ...config,
-              prover: {
-                maxUniqueProofs,
-                maxUniqueTargets,
-                proofBatchSize,
-                maxSuppliedBytes,
-                maxProvableBytes,
-                maxAllocBytes,
-                maxEvalDepth,
-                fast,
-                printDebug,
-                cache: {
-                  fetches: commit.prover.cache.maxCached,
-                  proofs: commit.prover.proofLRU.max,
-                },
-              },
+              prover: proverDetails(commit.prover),
               commits: commits.map((c) =>
                 toJSON({
                   index: c.index,
@@ -520,6 +492,46 @@ async function createGateway(name: string) {
   }
 }
 
+function chainDetails(provider: Provider) {
+  const chain = provider._network.chainId;
+  if (chain < 0) return null;
+  return toJSON({
+    chain,
+    name: chainName(chain),
+    url: concealKeys(providerURL(chain)),
+  });
+}
+
+function proverDetails(prover: AbstractProver) {
+  const {
+    maxUniqueProofs,
+    maxUniqueTargets,
+    proofBatchSize,
+    maxSuppliedBytes,
+    maxProvableBytes,
+    maxAllocBytes,
+    maxEvalDepth,
+    fast,
+    printDebug,
+  } = prover;
+  return {
+    prover: prover.constructor.name,
+    maxUniqueProofs,
+    maxUniqueTargets,
+    proofBatchSize,
+    maxSuppliedBytes,
+    maxProvableBytes,
+    maxAllocBytes,
+    maxEvalDepth,
+    fast,
+    printDebug,
+    cache: {
+      fetches: prover.cache.maxCached,
+      proofs: prover.proofLRU.max,
+    },
+  };
+}
+
 function toJSON(x: object) {
   const info: Record<string, any> = {};
   for (const [k, v] of Object.entries(x)) {
@@ -552,6 +564,7 @@ function toJSON(x: object) {
   return info;
 }
 
+// use number when it fits
 function bigintToJSON(x: bigint) {
   const i = Number(x);
   return Number.isSafeInteger(i) ? i : toUnpaddedHex(x);

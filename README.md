@@ -92,7 +92,8 @@ If you are interested in building a solution for another chain, please take a lo
 	* Include `--dump` to print config, latest commit, prover information, and then exit.
 	* Include `--no-fast` to disable `eth_getStorageAt`
 	* Include `--no-cache` to disable caching
-	* Include `--no-double` to disable L1 &rarr; L2 &rarr; L3
+	* Include `--no-double` to disable double rollups
+		* eg. if `APE`, serves L2 &rarr; L3 instead of L1 &rarr; L2 &rarr; L3
 	* Include `--depth=#` to adjust commit depth
 	* Include `--step=#` to adjust commit step
 	* Use [`PROVIDER_ORDER`](./test/providers.ts#L479) to customize global RPC provider priority.
