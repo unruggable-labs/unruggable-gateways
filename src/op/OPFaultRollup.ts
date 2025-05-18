@@ -205,7 +205,9 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
           // canary has invalid time
           // canary has invalid root claim
           // 20250503: this can infinite loop when the rpc errors suck
-          if (isEthersError(err) || Date.now() > timeout) throw err;
+          if (isEthersError(err)) throw err;
+          if (Date.now() > timeout)
+            throw new Error(`timeout _ensureRootClaim()`);
           index = await this.GameFinder.findGameIndex(
             this.OptimismPortal.target,
             this.minAgeSec,
@@ -250,12 +252,14 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   }
   protected override async _fetchCommit(index: bigint) {
     // note: GameFinder checks isCommitStillValid()
-    const game: ABIFoundGame = await this.GameFinder.gameAtIndex(
-      this.OptimismPortal.target,
-      this.minAgeSec,
-      this.gameTypeBitMask,
-      index
-    );
+    const game: ABIFoundGame = (
+      await this.GameFinder.gameAtIndex(
+        this.OptimismPortal.target,
+        this.minAgeSec,
+        this.gameTypeBitMask,
+        index
+      )
+    ).toObject();
     if (!game.l2BlockNumber) throw new Error('invalid game');
     const commit = await this.createCommit(index, game.l2BlockNumber);
     if (this.unfinalized) {

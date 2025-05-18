@@ -72,8 +72,17 @@ export const CHAINS = {
   SWELL_SEPOLIA: 1924n,
   BOB: 60808n,
   BOB_SEPOLIA: 808813n,
-  MONAD_TESTNET: 10143n,
 } as const satisfies Record<string, Chain>;
+
+// export function isL1(chain: Chain) {
+//   switch (chain) {
+//     case CHAINS.MAINNET:
+//     case CHAINS.SEPOLIA:
+//     case CHAINS.HOLESKY:
+//       return true;
+//   }
+//   return false;
+// }
 
 export function chainName(chain: Chain): string {
   for (const [name, c] of Object.entries(CHAINS)) {

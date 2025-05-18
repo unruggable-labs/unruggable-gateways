@@ -113,3 +113,7 @@ export function supportsV1<R extends Rollup>(
 ): rollup is R & RollupWitnessV1<RollupCommitType<R>> {
   return 'encodeWitnessV1' in rollup;
 }
+
+export function align(index: bigint, step: number) {
+  return step === 1 ? index : index - (index % BigInt(step));
+}

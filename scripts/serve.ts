@@ -19,7 +19,7 @@ import { DoubleArbitrumRollup } from '../src/arbitrum/DoubleArbitrumRollup.js';
 import { type ScrollConfig, ScrollRollup } from '../src/scroll/ScrollRollup.js';
 import { type EuclidConfig, EuclidRollup } from '../src/scroll/EuclidRollup.js';
 import { type TaikoConfig, TaikoRollup } from '../src/taiko/TaikoRollup.js';
-import { LineaRollup } from '../src/linea/LineaRollup.js';
+import { type LineaConfig, LineaRollup } from '../src/linea/LineaRollup.js';
 import { LineaGatewayV1 } from '../src/linea/LineaGatewayV1.js';
 import { UnfinalizedLineaRollup } from '../src/linea/UnfinalizedLineaRollup.js';
 import { type ZKSyncConfig, ZKSyncRollup } from '../src/zksync/ZKSyncRollup.js';
@@ -55,9 +55,10 @@ let printCalls = false;
 let prefetch = false;
 let latestBlockTag = '';
 let commitDepth = NaN;
-let commitStep = 0;
+let commitStep: number | undefined = undefined;
 let disableFast = false;
 let disableCache = false;
+let disableDouble = false;
 let signingKey =
   process.env.SIGNING_KEY ||
   '0xbd1e630bd00f12f0810083ea3bd2be936ead3b2fa84d1bd6690c77da043e9e02'; // 0xd00d from ezccip demo
@@ -83,6 +84,8 @@ const args = process.argv.slice(2).filter((x) => {
     disableFast = true;
   } else if (x === '--no-cache') {
     disableCache = true;
+  } else if (x === '--no-double') {
+    disableDouble = true;
   } else if (/^0x[0-9a-f]{64}$/i.test(x)) {
     signingKey = x;
   } else {
@@ -180,10 +183,10 @@ if (gateway.rollup instanceof TrustedRollup) {
 }
 
 if (dumpAndExit) {
-  console.log(config);
+  console.log('Config:', config);
   const commit = await gateway.getLatestCommit();
-  console.log(toJSON(commit));
-  console.log(toJSON(commit.prover));
+  console.log('Commit:', toJSON(commit));
+  console.log('Prover:', toJSON(commit.prover));
   process.exit(0);
 }
 
@@ -225,14 +228,18 @@ export default {
         const url = new URL(req.url);
         if (url.pathname === '/') {
           return Response.json(config, { headers });
-        } else if (url.pathname === '/delay') {
+        } else if (url.pathname === '/head') {
           const commit = await gateway.getLatestCommit();
-          const timestamp = await commit.prover.fetchTimestamp();
+          const [timestamp, stateRoot] = await Promise.all([
+            commit.prover.fetchTimestamp(),
+            commit.prover.fetchStateRoot(),
+          ]);
           return Response.json(
             toJSON({
-              index: commit.index,
+              commitIndex: commit.index,
+              prover: commit.prover.context,
               timestamp,
-              ...commit.prover.context,
+              stateRoot,
             }),
             { headers }
           );
@@ -254,29 +261,43 @@ export default {
               }
             }
           }
+          const {
+            maxUniqueProofs,
+            maxUniqueTargets,
+            proofBatchSize,
+            maxSuppliedBytes,
+            maxProvableBytes,
+            maxAllocBytes,
+            maxEvalDepth,
+            fast,
+            printDebug,
+          } = commit.prover;
           return Response.json(
             {
               ...config,
-              prover: toJSON({
-                ...commit.prover,
-                block: undefined,
-                batchIndex: undefined,
+              prover: {
+                maxUniqueProofs,
+                maxUniqueTargets,
+                proofBatchSize,
+                maxSuppliedBytes,
+                maxProvableBytes,
+                maxAllocBytes,
+                maxEvalDepth,
+                fast,
+                printDebug,
                 cache: {
                   fetches: commit.prover.cache.maxCached,
                   proofs: commit.prover.proofLRU.max,
                 },
-              }),
-              commits: commits.map((c) => ({
-                ...toJSON(c),
-                fetches: c.prover.cache.cachedSize,
-                proofs: c.prover.proofLRU.size,
-                // cache: Object.fromEntries(
-                //   Array.from(c.prover.proofMap(), ([k, v]) => [
-                //     k,
-                //     v.map(bigintToJSON),
-                //   ])
-                // ),
-              })),
+              },
+              commits: commits.map((c) =>
+                toJSON({
+                  index: c.index,
+                  prover: c.prover.context,
+                  fetches: c.prover.cache.cachedSize,
+                  proofs: c.prover.proofLRU.size,
+                })
+              ),
             },
             { headers }
           );
@@ -345,64 +366,104 @@ async function createGateway(name: string) {
   } else if ((match = name.match(/^self:(.+)$/i))) {
     const chain = chainFromName(match[1]);
     return new Gateway(
-      new EthSelfRollup(createProvider(chain), commitStep || 25) // 5 minutes (5*60/12)
+      new EthSelfRollup(createProvider(chain), commitStep ?? 25) // 5 minutes (5*60/12)
     );
-  } else if (name === 'reverse:op') {
-    const config = ReverseOPRollup.mainnetConfig;
+  } else if ((match = name.match(/^reverse:(.+)$/i))) {
+    const chain = chainFromName(match[1]);
+    const config = [
+      ...deployments(OPFaultRollup),
+      ...deployments(OPRollup),
+    ].find((x) => x.chain2 === chain);
+    if (!config) throw new Error(`irreversible: ${name}`);
     return new Gateway(
-      new ReverseOPRollup(createProviderPair(config), config, commitStep || 150) // 5 minutes (5*60/2)
+      new ReverseOPRollup(
+        createProviderPair(config.chain2, config.chain1),
+        {},
+        commitStep ?? 150 // 5 minutes (5*60/2)
+      )
     );
-  } else if (name == 'linea:v1') {
+  } else if (/^v1:linea$/.test(name)) {
     const config = LineaRollup.mainnetConfig;
     return new LineaGatewayV1(
       new LineaRollup(createProviderPair(config), config)
     );
-  } else if (name == 'ape:L2') {
-    return createArbitrum(NitroRollup.apeMainnetConfig, unfinalized);
   }
   const chain = chainFromName(name);
-  switch (chain) {
-    case CHAINS.OP:
-      return createOPFault(OPFaultRollup.mainnetConfig, unfinalized);
-    case CHAINS.OP_SEPOLIA:
-      return createOPFault(OPFaultRollup.sepoliaConfig, unfinalized);
-    case CHAINS.BASE:
-      return createOPFault(OPFaultRollup.baseMainnetConfig, unfinalized);
-    case CHAINS.BASE_SEPOLIA:
-      return createOPFault(OPFaultRollup.baseSepoliaConfig, unfinalized);
-    case CHAINS.UNICHAIN:
-      return createOPFault(OPFaultRollup.unichainMainnetConfig, unfinalized);
-    case CHAINS.UNICHAIN_SEPOLIA:
-      return createOPFault(OPFaultRollup.unichainSepoliaConfig, unfinalized);
-    case CHAINS.SONEIUM:
-      return createOPFault(OPFaultRollup.soneiumMainnetConfig, unfinalized);
-    case CHAINS.SONEIUM_SEPOLIA:
-      return createOPFault(OPFaultRollup.soneiumMinatoConfig, unfinalized);
-    case CHAINS.INK:
-      return createOPFault(OPFaultRollup.inkMainnetConfig, unfinalized);
-    case CHAINS.INK_SEPOLIA:
-      return createOPFault(OPFaultRollup.inkSepoliaConfig, unfinalized);
-    case CHAINS.ARB1:
-      return createArbitrum(BoLDRollup.arb1MainnetConfig, unfinalized);
-    case CHAINS.ARB1_SEPOLIA:
-      return createArbitrum(BoLDRollup.arb1SepoliaConfig, unfinalized);
-    case CHAINS.APE: {
-      const config12 = BoLDRollup.arb1MainnetConfig;
-      const config23 = NitroRollup.apeMainnetConfig;
+  {
+    const config = deployments<OPFaultConfig>(OPFaultRollup).find(
+      (x) => x.chain2 === chain
+    );
+    if (config) {
       return new Gateway(
-        new DoubleArbitrumRollup(
-          new (config12.isBoLD ? BoLDRollup : NitroRollup)(
-            createProviderPair(config12),
-            config12,
-            unfinalized
-          ),
-          createProvider(config23.chain2),
-          config23
+        new OPFaultRollup(createProviderPair(config), config, unfinalized)
+      );
+    }
+  }
+  {
+    const config = deployments<OPConfig>(OPRollup).find(
+      (x) => x.chain2 === chain
+    );
+    if (config) {
+      return new Gateway(
+        new OPRollup(createProviderPair(config), config, unfinalized)
+      );
+    }
+  }
+  {
+    const config = deployments<ArbitrumConfig>(BoLDRollup).find(
+      (x) => x.chain2 === chain
+    );
+    if (config) {
+      return new Gateway(
+        new BoLDRollup(createProviderPair(config), config, unfinalized)
+      );
+    }
+  }
+  {
+    const config = deployments<ZKSyncConfig>(ZKSyncRollup).find(
+      (x) => x.chain2 === chain
+    );
+    if (config) {
+      return new Gateway(new ZKSyncRollup(createProviderPair(config), config));
+    }
+  }
+  {
+    const config = deployments<EuclidConfig>(EuclidRollup).find(
+      (x) => x.chain2 === chain
+    );
+    if (config) {
+      return new Gateway(
+        new EuclidRollup(
+          createProviderPair(config),
+          config,
+          beaconURL(config.chain1)
         )
       );
     }
-    case CHAINS.LINEA: {
-      const config = LineaRollup.mainnetConfig;
+  }
+  {
+    const config = deployments<ScrollConfig>(ScrollRollup).find(
+      (x) => x.chain2 === chain
+    );
+    if (config) {
+      return new Gateway(new ScrollRollup(createProviderPair(config), config));
+    }
+  }
+  {
+    const config = deployments<TaikoConfig>(TaikoRollup).find(
+      (x) => x.chain2 === chain
+    );
+    if (config) {
+      return new Gateway(
+        new TaikoRollup(createProviderPair(config), config, commitStep)
+      );
+    }
+  }
+  {
+    const config = deployments<LineaConfig>(LineaRollup).find(
+      (x) => x.chain2 === chain
+    );
+    if (config) {
       return new Gateway(
         unfinalized
           ? new UnfinalizedLineaRollup(
@@ -413,128 +474,46 @@ async function createGateway(name: string) {
           : new LineaRollup(createProviderPair(config), config)
       );
     }
-    case CHAINS.LINEA_SEPOLIA: {
-      const config = LineaRollup.sepoliaConfig;
-      return new Gateway(
-        unfinalized
-          ? new UnfinalizedLineaRollup(
-              createProviderPair(config),
-              config,
+  }
+  {
+    const config23 = deployments<ArbitrumConfig>(NitroRollup).find(
+      (x) => x.chain2 === chain
+    );
+    if (config23) {
+      if (disableDouble) {
+        return new Gateway(
+          new NitroRollup(createProviderPair(config23), config23, unfinalized)
+        );
+      } else {
+        const config12 = [
+          ...deployments<ArbitrumConfig>(NitroRollup),
+          ...deployments<ArbitrumConfig>(BoLDRollup),
+        ].find((x) => x.chain2 === config23.chain1);
+        if (!config12) throw new Error(`expected Arbitrum L3: ${name}`);
+        return new Gateway(
+          new DoubleArbitrumRollup(
+            new (config12.isBoLD ? BoLDRollup : NitroRollup)(
+              createProviderPair(config12),
+              config12,
               unfinalized
-            )
-          : new LineaRollup(createProviderPair(config), config)
-      );
+            ),
+            createProvider(config23.chain2),
+            config23
+          )
+        );
+      }
     }
+  }
+  switch (chain) {
     case CHAINS.POLYGON_POS: {
       const config = PolygonPoSRollup.mainnetConfig;
       return new Gateway(
         new PolygonPoSRollup(createProviderPair(config), config)
       );
     }
-    case CHAINS.SCROLL:
-      return createScroll(EuclidRollup.mainnetConfig);
-    case CHAINS.SCROLL_SEPOLIA:
-      return createScroll(EuclidRollup.sepoliaConfig);
-    case CHAINS.TAIKO:
-      return createTaiko(TaikoRollup.mainnetConfig);
-    case CHAINS.TAIKO_HEKLA:
-      return createTaiko(TaikoRollup.heklaConfig);
-    case CHAINS.ZKSYNC:
-      return createZKSync(ZKSyncRollup.mainnetConfig);
-    case CHAINS.ZKSYNC_SEPOLIA:
-      return createZKSync(ZKSyncRollup.sepoliaConfig);
-    case CHAINS.ZERO:
-      return createZKSync(ZKSyncRollup.zeroMainnetConfig);
-    case CHAINS.ZERO_SEPOLIA:
-      return createZKSync(ZKSyncRollup.zeroSepoliaConfig);
-    case CHAINS.BLAST:
-      return createOPGateway(OPRollup.blastMainnnetConfig, unfinalized);
-    case CHAINS.CELO:
-      return createOPFault(OPFaultRollup.celoMainnetConfig, unfinalized);
-    case CHAINS.CELO_ALFAJORES:
-      return createOPGateway(OPRollup.celoAlfajoresConfig, unfinalized);
-    case CHAINS.CYBER:
-      return createOPGateway(OPRollup.cyberMainnetConfig, unfinalized);
-    case CHAINS.FRAXTAL:
-      return createOPGateway(OPRollup.fraxtalMainnetConfig, unfinalized);
-    case CHAINS.LISK:
-      return createOPGateway(OPRollup.liskMainnetConfig, unfinalized);
-    case CHAINS.LISK_SEPOLIA:
-      return createOPGateway(OPRollup.liskSepoliaConfig, unfinalized);
-    case CHAINS.MANTLE:
-      return createOPGateway(OPRollup.mantleMainnetConfig, unfinalized);
-    case CHAINS.MODE:
-      return createOPGateway(OPRollup.modeMainnetConfig, unfinalized);
-    case CHAINS.OP_BNB:
-      return createOPGateway(OPRollup.opBNBMainnetConfig, unfinalized);
-    case CHAINS.REDSTONE:
-      return createOPGateway(OPRollup.redstoneMainnetConfig, unfinalized);
-    case CHAINS.SHAPE:
-      return createOPGateway(OPRollup.shapeMainnetConfig, unfinalized);
-    case CHAINS.ZIRCUIT:
-      return createOPGateway(OPRollup.zircuitMainnetConfig, unfinalized);
-    case CHAINS.ZIRCUIT_SEPOLIA:
-      return createOPGateway(OPRollup.zircuitSepoliaConfig, unfinalized);
-    case CHAINS.ZORA:
-      return createOPGateway(OPRollup.zoraMainnetConfig, unfinalized);
     default:
       throw new Error(`unknown gateway: ${name}`);
   }
-}
-
-function createOPGateway(
-  config: RollupDeployment<OPConfig>,
-  unfinalized?: number
-) {
-  return new Gateway(
-    new OPRollup(createProviderPair(config), config, unfinalized)
-  );
-}
-
-function createOPFault(
-  config: RollupDeployment<OPFaultConfig>,
-  unfinalized?: number
-) {
-  return new Gateway(
-    new OPFaultRollup(createProviderPair(config), config, unfinalized)
-  );
-}
-
-function createArbitrum(
-  config: RollupDeployment<ArbitrumConfig>,
-  unfinalized?: number
-) {
-  return new Gateway(
-    new (config.isBoLD ? BoLDRollup : NitroRollup)(
-      createProviderPair(config),
-      config,
-      unfinalized
-    )
-  );
-}
-
-function createScroll(config: RollupDeployment<ScrollConfig | EuclidConfig>) {
-  if ('poseidon' in config) {
-    return new Gateway(new ScrollRollup(createProviderPair(config), config));
-  } else {
-    return new Gateway(
-      new EuclidRollup(
-        createProviderPair(config),
-        config,
-        beaconURL(config.chain1)
-      )
-    );
-  }
-}
-
-function createZKSync(config: RollupDeployment<ZKSyncConfig>) {
-  return new Gateway(new ZKSyncRollup(createProviderPair(config), config));
-}
-
-async function createTaiko(config: RollupDeployment<TaikoConfig>) {
-  return new Gateway(
-    await TaikoRollup.create(createProviderPair(config), config)
-  );
 }
 
 function toJSON(x: object) {
@@ -556,6 +535,13 @@ function toJSON(x: object) {
         case 'number':
           info[k] = v;
           break;
+        case 'object':
+          if (Array.isArray(v)) {
+            info[k] = v.map(toJSON);
+          } else if (v && v.constructor === Object) {
+            info[k] = toJSON(v);
+          }
+          break;
       }
     }
   }
@@ -571,4 +557,11 @@ function concealKeys(s: string) {
     }
   }
   return s;
+}
+
+// hacky
+function deployments<C>(rollupClass: object): RollupDeployment<C>[] {
+  return Object.values(rollupClass).filter(
+    (x) => x && typeof x === 'object' && 'chain1' in x && 'chain2' in x
+  );
 }

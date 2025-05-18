@@ -1,4 +1,5 @@
 import { ReverseOPRollup } from '../../src/op/ReverseOPRollup.js';
+import { OPFaultRollup } from '../../src/op/OPFaultRollup.js';
 import { Gateway } from '../../src/gateway.js';
 import { serve } from '@namestone/ezccip/serve';
 import { Foundry } from '@adraffy/blocksmith';
@@ -8,7 +9,7 @@ import { setupTests, testName } from './common.js';
 import { describe } from '../bun-describe-fix.js';
 import { afterAll } from 'bun:test';
 
-const config = ReverseOPRollup.mainnetConfig;
+const config = OPFaultRollup.mainnetConfig;
 describe.skipIf(!!process.env.IS_CV)(
   testName(config, { reverse: true }),
   async () => {
