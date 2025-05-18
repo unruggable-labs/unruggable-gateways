@@ -77,7 +77,7 @@ If you are interested in building a solution for another chain, please take a lo
 
 * `bun run serve <chain> [port]`
 	* eg. `bun run serve op 9000`
-	* Chains: `1` or `0x1` or `ape` `arb1-sepolia` `arb1` `base-sepolia` `base` `blast` `celo-alfajores` `cyber` `fraxtal` `ink-sepolia` `linea-sepolia` `lineaV1` `linea` `mantle` `mode` `op-sepolia` `op` `opbnb` `polygon` `redstone` `scroll-sepolia` `scroll` `shape` `soneium-sepolia` `taiko-hekla` `taiko` `unichain-sepolia` `zero-sepolia` `zero` `zksync-sepolia` `zksync` `zora`
+	* [Chains](./src/chains.ts): `1` or `0x1` or `mainnet`
 	* Default port: `8000`
 	* Use `trusted:<chain>` for [`TrustedRollup`](./src/TrustedRollup.ts)
 		* eg. `bun run serve trusted:op`

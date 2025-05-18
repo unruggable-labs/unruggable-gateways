@@ -1,6 +1,6 @@
 import type { Serve } from 'bun';
 import type { Chain, Provider } from '../src/types.js';
-import type { RollupDeployment, RollupCommitType } from '../src/rollup.js';
+import { type RollupDeployment, type RollupCommitType } from '../src/rollup.js';
 import {
   createProviderPair,
   createProvider,
@@ -49,12 +49,12 @@ import { execSync } from 'child_process';
 // 6. https://adraffy.github.io/ens-normalize.js/test/resolver.html#raffy.linea.eth.nb2hi4b2f4xwy33dmfwgq33toq5dqmbqgaxq.ccipr.eth
 
 let dumpAndExit = false;
-let unfinalized = 0;
+let unfinalized: number | undefined = undefined;
 let debugMode = false;
 let printCalls = false;
 let prefetch = false;
 let latestBlockTag = '';
-let commitDepth = NaN;
+let commitDepth: number | undefined = undefined;
 let commitStep: number | undefined = undefined;
 let disableFast = false;
 let disableCache = false;
@@ -122,7 +122,7 @@ if (gateway instanceof Gateway) {
   // gateway.allowHistorical = true;
   if (gateway.rollup instanceof TrustedRollup) {
     gateway.commitDepth = 0; // no need to keep expired signatures
-  } else if (Number.isSafeInteger(commitDepth)) {
+  } else if (typeof commitDepth === 'number') {
     gateway.commitDepth = commitDepth;
   } else if (gateway.rollup.unfinalized) {
     gateway.commitDepth = 10;
@@ -173,6 +173,8 @@ const config: Record<string, any> = {
   chain1: chainDetails(gateway.rollup.provider1),
   chain2: chainDetails(gateway.rollup.provider2),
   since: new Date(),
+  supportsV1: !!gateway.findHandler('getStorageSlots'),
+  supportsV2: !!gateway.findHandler('proveRequest'),
   prefetch,
   ...toJSON(gateway),
   ...toJSON(gateway.rollup),
@@ -357,8 +359,9 @@ async function createGateway(name: string) {
       // case CHAINS.LINEA:
       // case CHAINS.LINEA_SEPOLIA:
       //   return LineaProver;
-      default:
+      default: {
         return new Gateway(new TrustedRollup(provider, EthProver, key));
+      }
     }
   } else if ((match = name.match(/^unchecked:(.+)$/i))) {
     const provider = createProvider(chainFromName(match[1]));
@@ -511,8 +514,9 @@ async function createGateway(name: string) {
         new PolygonPoSRollup(createProviderPair(config), config)
       );
     }
-    default:
+    default: {
       throw new Error(`unknown gateway: ${name}`);
+    }
   }
 }
 
