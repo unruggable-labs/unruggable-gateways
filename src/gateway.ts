@@ -10,6 +10,8 @@ import { EZCCIP } from '@namestone/ezccip';
 
 export const GATEWAY_ABI = new Interface([
   `function proveRequest(bytes context, tuple(bytes)) returns (bytes)`,
+  // `function timestamp() returns (uint256)`,
+  // V1
   `function getStorageSlots(address target, bytes32[] commands, bytes[] constants) returns (bytes)`,
 ]);
 
@@ -34,7 +36,7 @@ type CachedCommit<R extends Rollup> = {
 
 export class Gateway<R extends Rollup> extends EZCCIP {
   // the max number of non-latest commitments to keep in memory
-  commitDepth = 2;
+  commitDepth = 1;
   // if true, requests beyond the commit depth are supported
   allowHistorical = false;
   readonly latestCache = new CachedValue(
@@ -63,6 +65,10 @@ export class Gateway<R extends Rollup> extends EZCCIP {
           return getBytes(this.rollup.encodeWitness(commit, proofSeq));
         });
       },
+      // timestamp: async () => {
+      //   const commit = await this.getLatestCommit();
+      //   return [await commit.prover.fetchTimestamp()];
+      // },
     });
     // NOTE: this only works if V1 and V2 share same proof encoding!
     if (supportsV1(rollup)) {

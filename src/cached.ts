@@ -35,9 +35,15 @@ export class CachedValue<T> {
   get value() {
     return this.#value;
   }
+  get isCached() {
+    return this.#exp > clock();
+  }
+  get cachedRemainingMs() {
+    return Math.max(0, clock() - this.#exp);
+  }
   async get() {
     if (this.#value) {
-      if (this.#exp > clock()) return this.#value;
+      if (this.isCached) return this.#value;
       this.#value = undefined;
     }
     const p = (this.#value = this.fn());

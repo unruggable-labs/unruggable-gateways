@@ -28,5 +28,5 @@ describe.skipIf(!!process.env.IS_CI)('public: optimism-sepolia', async () => {
       [],
     ],
   });
-  runSlotDataTests(contract, true);
+  runSlotDataTests(contract, { slotDataPointer: true });
 });

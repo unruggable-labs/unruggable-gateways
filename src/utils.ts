@@ -134,24 +134,30 @@ export function isRevert(err: unknown): err is CallExceptionError {
   return isEthersError(err) && err.code === 'CALL_EXCEPTION';
 }
 
-export function isRPCError(
-  err: any,
-  code: number | Set<number>
-): err is EthersError {
+export function isRPCError(err: any, ...code: number[]): err is EthersError {
   return (
     isEthersError(err) &&
     err.error instanceof Object &&
     'code' in err.error &&
-    (code instanceof Set
-      ? code.has(err.error.code as number)
-      : err.error.code === code)
+    typeof err.error.code === 'number' &&
+    code.includes(err.error.code)
   );
 }
 
-export function flattenErrors(err: unknown) {
-  const errors = [String(err)];
+export function flattenErrors(err: unknown, stringify = stringifyError) {
+  const errors = [stringify(err)];
   for (let e = err; e instanceof Error && e.cause; e = e.cause) {
-    errors.push(String(e.cause));
+    errors.push(stringify(e.cause));
   }
   return errors.join(' <== ');
+}
+
+function stringifyError(err: unknown) {
+  if (isEthersError(err) && err.code === 'SERVER_ERROR') {
+    // this leaks api key via "requestUrl"
+    // https://github.com/ethers-io/ethers.js/blob/d2c9ca0e0fd15e7884bcaab7d5152d68662e3e43/src.ts/utils/fetch.ts#L953
+    return err.shortMessage;
+  } else {
+    return String(err);
+  }
 }

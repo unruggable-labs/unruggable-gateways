@@ -529,10 +529,10 @@ export abstract class AbstractProver {
 
   constructor(readonly provider: Provider) {}
 
-  abstract get context(): string;
+  abstract get context(): Record<string, any>;
 
   [Symbol.for('nodejs.util.inspect.custom')]() {
-    return `${this.constructor.name}[${this.context}]`;
+    return `${this.constructor.name}[${Object.entries(this.context).map(([k, v]) => `${k}=${v}`)}]`;
   }
 
   checkProofCount(size: number) {
@@ -555,14 +555,16 @@ export abstract class AbstractProver {
   proofMap() {
     const map = new Map<string, bigint[]>();
     for (const key of this.proofLRU.keys()) {
-      const target = key.slice(0, 42);
-      let bucket = map.get(target);
-      if (!bucket) {
-        bucket = [];
-        map.set(target, bucket);
-      }
-      if (key.length > 42) {
-        bucket.push(BigInt('0x' + key.slice(42)));
+      if (key.startsWith('0x')) {
+        const target = key.slice(0, 42);
+        let bucket = map.get(target);
+        if (!bucket) {
+          bucket = [];
+          map.set(target, bucket);
+        }
+        if (key.length > 42) {
+          bucket.push(BigInt('0x' + key.slice(42)));
+        }
       }
     }
     return map;
@@ -589,6 +591,7 @@ export abstract class AbstractProver {
   // a block-derived LineaProver doesn't have a stateRoot
   // whereas LineaRollup => getCommit() => prover does (from L1)
   abstract fetchStateRoot(): Promise<HexString32>;
+  abstract fetchTimestamp(): Promise<number>;
 
   // machine interface
   async evalDecoded(v: BytesLike) {
@@ -599,7 +602,7 @@ export abstract class AbstractProver {
   }
   async evalReader(reader: ProgramReader) {
     const vm = GatewayVM.create(
-      reader.readByte(),
+      reader.readByte(), // number of outputs
       this.maxStackSize,
       this.maxAllocBytes
     );
@@ -1010,16 +1013,19 @@ export abstract class BlockProver extends AbstractProver {
     this.block = toUnpaddedHex(block);
   }
   override get context() {
-    return `block=${this.blockNumber}`;
+    return { block: this.blockNumber };
   }
   get blockNumber() {
     return BigInt(this.block);
   }
-  fetchBlock() {
-    return fetchBlock(this.provider, this.block);
+  fetchBlock(): Promise<ReturnType<typeof fetchBlock>> {
+    return this.cache.get('BLOCK', () => fetchBlock(this.provider, this.block));
   }
   override async fetchStateRoot() {
     return (await this.fetchBlock()).stateRoot;
+  }
+  override async fetchTimestamp() {
+    return parseInt((await this.fetchBlock()).timestamp);
   }
   protected abstract _proveNeed(
     need: TargetNeed,

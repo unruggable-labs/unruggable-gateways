@@ -472,12 +472,6 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         publicHTTP: 'https://bob-sepolia.rpc.gobob.xyz',
         publicWS: 'wss://bob-sepolia.rpc.gobob.xyz',
       },
-      {
-        // https://docs.monad.xyz/
-        // (wait... this isn't a rollup?)
-        chain: CHAINS.MONAD_TESTNET,
-        publicHTTP: 'https://testnet-rpc.monad.xyz',
-      },
     ] satisfies RPCInfo[]
   ).map((x) => [x.chain, x])
 );
@@ -620,7 +614,7 @@ export function beaconURL(chain: Chain): string {
     (apiKey = process.env.ANKR_KEY) &&
     process.env.ANKR_PREMIUM
   ) {
-    return `https://rpc.ankr.com/premium-http/eth_beacon/${apiKey}`;
+    return `https://rpc.ankr.com/premium-http/${info.ankr}_beacon/${apiKey}`;
   }
   throw new Error(`${chainName(chain)} beacon chain unsupported`);
 }

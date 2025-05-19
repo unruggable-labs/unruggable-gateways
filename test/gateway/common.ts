@@ -62,20 +62,8 @@ type TestOptions = {
   log?: boolean;
   skipCI?: boolean;
   window?: number;
+  quick?: boolean;
 };
-
-export async function quickTest(
-  verifier: FoundryContract,
-  target: HexAddress,
-  slot: bigint
-) {
-  const foundry = Foundry.of(verifier);
-  const reader = await foundry.deploy({
-    file: 'SlotDataReader',
-    args: [verifier, target, ZeroAddress, []],
-  });
-  return reader.readSlot(slot, { enableCcipRead: true });
-}
 
 export async function setupTests(verifier: FoundryContract, opts: TestOptions) {
   const foundry = Foundry.of(verifier);
@@ -88,7 +76,7 @@ export async function setupTests(verifier: FoundryContract, opts: TestOptions) {
       [],
     ],
   });
-  runSlotDataTests(reader, !!opts.slotDataPointer);
+  runSlotDataTests(reader, opts);
 }
 
 function shouldSkip(opts: TestOptions) {
@@ -402,7 +390,7 @@ export function testTaiko(
   opts: TestOptions
 ) {
   describe.skipIf(shouldSkip(opts))(testName(config), async () => {
-    const rollup = await TaikoRollup.create(createProviderPair(config), config);
+    const rollup = new TaikoRollup(createProviderPair(config), config);
     const foundry = await Foundry.launch({
       fork: providerURL(config.chain1),
       infoLog: !!opts.log,

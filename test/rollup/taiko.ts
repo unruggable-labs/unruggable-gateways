@@ -2,15 +2,16 @@ import { TaikoRollup } from '../../src/taiko/TaikoRollup.js';
 import { createProviderPair } from '../providers.js';
 
 const config = TaikoRollup.mainnetConfig;
-const rollup = await TaikoRollup.create(createProviderPair(config), config);
+const rollup = new TaikoRollup(createProviderPair(config), config);
 
 console.log({
   TaikoL1: rollup.TaikoL1.target,
-  commitStep: rollup.commitStep,
   defaultWindow: rollup.defaultWindow,
 });
 
-const commits = await rollup.fetchRecentCommits(10);
+console.log(await rollup.fetchLatestCommitIndex());
+
+const commits = await rollup.fetchRecentCommits(5);
 
 const v = commits.map((x) => Number(x.index));
 console.log(v);

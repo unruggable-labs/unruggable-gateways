@@ -14,7 +14,7 @@ The codebase has been audited. Details of our audits can be found [here](./audit
 
 ## Quickstart
 
-`npm i @unruggable/gateways` [&check;](https://www.npmjs.com/package/@unruggable/unruggable-gateways)
+`npm i @unruggable/gateways` [&check;](https://www.npmjs.com/package/@unruggable/gateways)
 
 * We have extensive [documentation](https://gateway-docs.unruggable.com), with a slightly less quick [Quickstart](https://gateway-docs.unruggable.com/quickstart). 
 * The [examples](https://gateway-docs.unruggable.com/examples) page may be of particular interest. 
@@ -36,12 +36,12 @@ The codebase has been audited. Details of our audits can be found [here](./audit
 
 ## Chain Support
 * Rollups &amp; Verifers
-	* [OP](./src/op/OPRollup.ts)
-	* [OP w/Fault Proofs](./src/op/OPFaultRollup.ts)
+	* [Superchain](./src/op/OPRollup.ts)
+	* [Superchain w/Fault Proofs](./src/op/OPFaultRollup.ts)
 	* Arbitrum: [Nitro](./src/arbitrum/NitroRollup.ts) and [BoLD](./src/arbitrum/BoLDRollup.ts)
-	* [Linea](./src/linea/LineaRollup.ts) and [UnfinalizedLinea](./src/linea/UnfinalizedLineaRollup.ts)
+	* [Linea](./src/linea/LineaRollup.ts) (and [Unfinalized](./src/linea/UnfinalizedLineaRollup.ts))
 	* [Polygon PoS](./src/polygon/PolygonPoSRollup.ts)
-	* [Scroll](./src/scroll/ScrollRollup.ts) and [Euclid](./src/scroll//EuclidRollup.ts)
+	* [Scroll](./src/scroll/ScrollRollup.ts) and [Euclid](./src/scroll/EuclidRollup.ts)
 	* [Taiko](./src/taiko/TaikoRollup.ts)
 	* [ZKSync](./src/zksync/ZKSyncRollup.ts)
 	* [Reverse OP](./src/op/ReverseOPRollup.ts) &mdash; L2 &rarr; L1
@@ -77,13 +77,14 @@ If you are interested in building a solution for another chain, please take a lo
 
 * `bun run serve <chain> [port]`
 	* eg. `bun run serve op 9000`
-	* Chains: `1` or `0x1` or `ape` `arb1-sepolia` `arb1` `base-sepolia` `base` `blast` `celo-alfajores` `cyber` `fraxtal` `ink-sepolia` `linea-sepolia` `lineaV1` `linea` `mantle` `mode` `op-sepolia` `op` `opbnb` `polygon` `redstone` `reverse-op` `scroll-sepolia` `scroll` `shape` `soneium-sepolia` `taiko-hekla` `taiko` `unichain-sepolia` `zero-sepolia` `zero` `zksync-sepolia` `zksync` `zora`
+	* [Chains](./src/chains.ts): `1` or `0x1` or `mainnet`
 	* Default port: `8000`
 	* Use `trusted:<chain>` for [`TrustedRollup`](./src/TrustedRollup.ts)
 		* eg. `bun run serve trusted:op`
 		* Include `0x{64}` to set signing key
-	* Use `unchecked:<chain>` for [UncheckedRollup](./src/UncheckedRollup.ts)
-	* Use `self:<chain>` for [EthSelfRollup](./src/eth/EthSelfRollup.ts)
+	* Use `unchecked:<chain>` for [`UncheckedRollup`](./src/UncheckedRollup.ts)
+	* Use `reverse:<chain>` for [`ReverseOPRollup`](./src/op/ReverseOPRollup.ts)
+	* Use `self:<chain>` for [`EthSelfRollup`](./src/eth/EthSelfRollup.ts)
 	* Include `--unfinalized(=minAge)` to use unfinalized commits (will throw if not available)
 	* Include `--latest` for `"latest"` instead of `"finalized"` block tag
 	* Include `--debug` to print `OP_DEBUG` statements
@@ -91,9 +92,11 @@ If you are interested in building a solution for another chain, please take a lo
 	* Include `--dump` to print config, latest commit, prover information, and then exit.
 	* Include `--no-fast` to disable `eth_getStorageAt`
 	* Include `--no-cache` to disable caching
+	* Include `--no-double` to disable double rollups
+		* eg. if `APE`, serves L2 &rarr; L3 instead of L1 &rarr; L2 &rarr; L3
 	* Include `--depth=#` to adjust commit depth
 	* Include `--step=#` to adjust commit step
-	* Use [`PROVIDER_ORDER`](./test/providers.ts) to customize global RPC provider priority.
+	* Use [`PROVIDER_ORDER`](./test/providers.ts#L479) to customize global RPC provider priority.
 	* Use `PROVIDER_ORDER_{CHAIN_NAME}` to customize per-chain RPC provider priority.
 
 ## Testing
@@ -119,7 +122,7 @@ A number of examples are provided as part of this repository. For more extensive
 
 * [linea-ens](./test/v1/linea-ens.ts)
 	* Replacement backend demo for https://names.linea.build/
-	* `bun serve lineaV1`
+	* `bun serve v1:linea`
 
 ## Notes
 

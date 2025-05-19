@@ -72,7 +72,6 @@ export const CHAINS = {
   SWELL_SEPOLIA: 1924n,
   BOB: 60808n,
   BOB_SEPOLIA: 808813n,
-  MONAD_TESTNET: 10143n,
 } as const satisfies Record<string, Chain>;
 
 export function chainName(chain: Chain): string {
@@ -89,7 +88,17 @@ export function isStarknet(chain: Chain) {
     case CHAINS.STARKNET:
     case CHAINS.STARKNET_SEPOLIA:
       return true;
-    default:
-      return false;
   }
+  return false;
+}
+
+// idea: similar to above
+export function isL1(chain: Chain) {
+  switch (chain) {
+    case CHAINS.MAINNET:
+    case CHAINS.SEPOLIA:
+    case CHAINS.HOLESKY:
+      return true;
+  }
+  return false;
 }
