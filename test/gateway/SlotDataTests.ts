@@ -6,7 +6,10 @@ const cfg = { enableCcipRead: true };
 // imo better to expect(await) than expect().resolves
 export function runSlotDataTests(
   sdr: Contract,
-  opts: { slotDataPointer?: any; quick?: boolean } = {}
+  opts: {
+    slotDataPointer?: any;
+    quick?: boolean; // Runs one test for quick high level debugging
+  } = {}
 ) {
   test(
     'latest = 49',

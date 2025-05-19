@@ -16,7 +16,7 @@ import {
 } from './types.js';
 
 const BLOCK_MISSING_IN_CHAIN = -32600;
-const UNKNOWN_RPC_ERROR = -32603; // 20250517: better to just blow up
+const UNKNOWN_RPC_ERROR = -32603;
 
 export class LineaProver extends BlockProver {
   static readonly isInclusionProof = isInclusionProof;
