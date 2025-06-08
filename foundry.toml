@@ -2,6 +2,7 @@
 
 [profile.default]
 src = "contracts"
+out = "tempArtifacts"
 libs = ["lib"]
 remappings = [
 	'@openzeppelin/contracts=lib/openzeppelin-contracts/contracts/',
