@@ -35,6 +35,8 @@ export type LineaCommit = RollupCommit<LineaProver> & {
 };
 
 export class LineaRollup extends AbstractRollup<LineaCommit> {
+  static readonly ROLLUP_ABI = ROLLUP_ABI;
+
   // https://docs.linea.build/developers/quickstart/info-contracts
   static readonly mainnetConfig: RollupDeployment<LineaConfig> = {
     chain1: CHAINS.MAINNET,
@@ -59,6 +61,7 @@ export class LineaRollup extends AbstractRollup<LineaCommit> {
 
   readonly firstCommitV3: bigint | undefined;
   readonly L1MessageService: Contract;
+  readonly SparseMerkleProof: HexAddress;
   shomeiTimeout = 30000;
   constructor(providers: ProviderPair, config: LineaConfig) {
     super(providers);
@@ -68,6 +71,7 @@ export class LineaRollup extends AbstractRollup<LineaCommit> {
       this.provider1
     );
     this.firstCommitV3 = config.firstCommitV3;
+    this.SparseMerkleProof = config.SparseMerkleProof;
   }
 
   override async fetchLatestCommitIndex(): Promise<bigint> {

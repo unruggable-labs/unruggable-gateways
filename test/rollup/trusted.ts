@@ -4,6 +4,8 @@ import { TrustedRollup } from '../../src/TrustedRollup.js';
 import { EthProver } from '../../src/eth/EthProver.js';
 import { createProvider } from '../providers.js';
 
+console.log(new Date());
+
 const rollup = new TrustedRollup(
   createProvider(CHAINS.MAINNET),
   EthProver,
@@ -11,14 +13,11 @@ const rollup = new TrustedRollup(
 );
 
 console.log({
-  prover: rollup.factory,
   signer: rollup.signerAddress,
-  cacheMs: rollup.latest.cacheMs,
 });
 
 // there is only 1 commit
-const { prover: _, ...commit } = await rollup.fetchCommit(0n);
-
+const commit = await rollup.fetchLatestCommit();
 console.log(commit);
 
 // {

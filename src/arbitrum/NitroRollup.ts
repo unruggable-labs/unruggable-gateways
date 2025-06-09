@@ -65,6 +65,8 @@ export type NitroCommit = ArbitrumCommit & {
 };
 
 export class NitroRollup extends AbstractArbitrumRollup<NitroCommit> {
+  static readonly ROLLUP_ABI = ROLLUP_ABI;
+
   // [OLD] https://docs.arbitrum.io/build-decentralized-apps/reference/useful-addresses
   // https://docs.arbitrum.io/for-devs/dev-tools-and-resources/chain-info#core-contracts
   // 20250212: changed to BoLD

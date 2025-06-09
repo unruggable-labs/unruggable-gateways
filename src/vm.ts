@@ -14,7 +14,13 @@ import { Contract } from 'ethers/contract';
 import { Interface } from 'ethers/abi';
 import { keccak256 } from 'ethers/crypto';
 import { solidityPackedKeccak256 } from 'ethers/hash';
-import { dataSlice, concat, getBytes, toUtf8Bytes } from 'ethers/utils';
+import {
+  dataSlice,
+  concat,
+  getBytes,
+  toUtf8Bytes,
+  isCallException,
+} from 'ethers/utils';
 import { asciiize } from '@namestone/ezccip';
 import { unwrap, Wrapped, type Unwrappable } from './wrap.js';
 import {
@@ -23,7 +29,6 @@ import {
   toUnpaddedHex,
   toPaddedHex,
   LATEST_BLOCK_TAG,
-  isRevert,
 } from './utils.js';
 import { CachedMap, LRU } from './cached.js';
 import { GATEWAY_OP as OP } from './ops.js';
@@ -948,7 +953,7 @@ export abstract class AbstractProver {
           if (!can) this.readBytesAtSupported.set(target, true);
           return v;
         } catch (err) {
-          if (!can && isRevert(err))
+          if (!can && isCallException(err))
             this.readBytesAtSupported.set(target, false);
         }
       }
