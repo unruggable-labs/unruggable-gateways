@@ -25,7 +25,7 @@ export class InteractiveRollup<P extends AbstractProver> extends AbstractRollup<
   readonly Rollup: Contract;
   constructor(
     providers: ProviderPair,
-    rollup: HexAddress | Contract,
+    rollup: HexAddress,
     readonly factory: LatestProverFactory<P>
   ) {
     super(providers);
