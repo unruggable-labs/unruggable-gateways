@@ -27,7 +27,7 @@ describe('InteractiveRollup', async () => {
 
   const rollup = new InteractiveRollup(
     { provider1: chain1.provider, provider2: chain2.provider },
-    verifier,
+    verifier.target,
     EthProver
   );
 
@@ -38,12 +38,12 @@ describe('InteractiveRollup', async () => {
   await verifier.setGatewayURLs([ccip.endpoint]);
 
   async function sync() {
-    const [index, block] = await Promise.all([
+    const [last, block] = await Promise.all([
       rollup.fetchLatestCommitIndex(),
       fetchBlock(chain2.provider),
     ]);
     const latest = BigInt(block.number);
-    if (latest != index) {
+    if (latest > last) {
       await chain1.confirm(verifier.setStateRoot(latest, block.stateRoot));
     }
   }
