@@ -1,5 +1,4 @@
 import type {
-  BigNumberish,
   HexAddress,
   HexString,
   ProofSequence,
