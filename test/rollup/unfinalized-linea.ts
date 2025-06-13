@@ -11,15 +11,11 @@ const rollup = new UnfinalizedLineaRollup(
   1
 );
 
-console.log({
-  L1MessageService: rollup.L1MessageService.target,
-  defaultWindow: rollup.defaultWindow,
-});
-
 console.log(BigInt((await rollup.fetchLatestCommit()).prover.block));
 console.log(await new LineaRollup(rollup, config).fetchLatestCommitIndex());
 
 const commits = await rollup.fetchRecentCommits(8);
+console.log(commits[0]);
 const v = commits.map((x) => Number(x.index));
 console.log(v);
 console.log(v.slice(1).map((x, i) => v[i] - x));

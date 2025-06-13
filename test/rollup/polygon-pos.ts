@@ -1,18 +1,13 @@
 import { PolygonPoSRollup } from '../../src/polygon/PolygonPoSRollup.js';
 import { createProviderPair } from '../providers.js';
 
+console.log(new Date());
+
 const config = PolygonPoSRollup.mainnetConfig;
 const rollup = new PolygonPoSRollup(createProviderPair(config), config);
 
-console.log({
-  RootChain: rollup.RootChain.target,
-  apiURL: rollup.apiURL,
-  poster: rollup.poster,
-  defaultWindow: rollup.defaultWindow,
-});
-
-const commits = await rollup.fetchRecentCommits(5);
-
+const commits = await rollup.fetchRecentCommits(8);
+console.log(commits[0]);
 const v = commits.map((x) => Number(x.index));
 console.log(v);
 console.log(v.slice(1).map((x, i) => v[i] - x));

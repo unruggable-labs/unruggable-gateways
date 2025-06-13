@@ -1,19 +1,13 @@
 import { LineaRollup } from '../../src/linea/LineaRollup.js';
-import { createProviderPair, providerURL } from '../providers.js';
+import { createProviderPair } from '../providers.js';
+
+console.log(new Date());
 
 const config = LineaRollup.mainnetConfig;
 const rollup = new LineaRollup(createProviderPair(config), config);
 
-console.log('provider1', providerURL(rollup.provider1._network.chainId));
-console.log('provider2', providerURL(rollup.provider2._network.chainId));
-
-console.log({
-  L1MessageService: rollup.L1MessageService.target,
-  defaultWindow: rollup.defaultWindow,
-});
-
-const commits = await rollup.fetchRecentCommits(10);
-
+const commits = await rollup.fetchRecentCommits(8);
+console.log(commits[0]);
 const v = commits.map((x) => Number(x.index));
 console.log(v);
 console.log(v.slice(1).map((x, i) => v[i] - x));

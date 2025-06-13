@@ -5,7 +5,7 @@ import { test, describe as describe0 } from 'bun:test';
 // this technique makes the describe() an implicit beforeAll()
 // and enables async test() construction
 
-export function describe(label: string, fn: () => void) {
+export function describe(label: string, fn: () => void | Promise<void>) {
   describe0(label, async () => {
     try {
       await fn(); // must be awaited
