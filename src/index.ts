@@ -39,8 +39,10 @@ export * from './scroll/ScrollRollup.js';
 export * from './scroll/EuclidRollup.js';
 export * from './zksync/ZKSyncRollup.js';
 export * from './eth/EthSelfRollup.js';
+
 export * from './TrustedRollup.js';
 export * from './UncheckedRollup.js';
+export * from './InteractiveRollup.js';
 
 export * from './gateway.js';
 export * from './linea/LineaGatewayV1.js';
