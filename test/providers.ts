@@ -562,6 +562,16 @@ export function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
       case 'public': {
         return { info, type, url: info.publicHTTP };
       }
+      case 'custom': {
+        if (process.env.RPC_URL) {
+          return {
+            info,
+            type: 'custom',
+            url: process.env.RPC_URL,
+          };
+        }
+        break;
+      }
       default: {
         throw new Error(`unknown provider type: ${type}`);
       }
