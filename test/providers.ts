@@ -502,6 +502,9 @@ export function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
   order ??= providerOrder(chain);
   for (const type of order) {
     let slug, apiKey;
+    if (type.startsWith('http')) {
+      return { info, type: 'custom', url: type };
+    }
     switch (type) {
       case 'alchemy': {
         if (
