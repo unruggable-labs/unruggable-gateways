@@ -502,6 +502,9 @@ export function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
   order ??= providerOrder(chain);
   for (const type of order) {
     let slug, apiKey;
+    if (type.startsWith('http')) {
+      return { info, type: 'custom', url: type };
+    }
     switch (type) {
       case 'alchemy': {
         if (
@@ -561,16 +564,6 @@ export function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
       }
       case 'public': {
         return { info, type, url: info.publicHTTP };
-      }
-      case 'custom': {
-        if (process.env.RPC_URL) {
-          return {
-            info,
-            type: 'custom',
-            url: process.env.RPC_URL,
-          };
-        }
-        break;
       }
       default: {
         throw new Error(`unknown provider type: ${type}`);
