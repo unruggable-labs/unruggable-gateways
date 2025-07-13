@@ -1,19 +1,15 @@
 import { NitroRollup } from '../../src/arbitrum/NitroRollup.js';
 import { createProviderPair } from '../providers.js';
 
+console.log(new Date());
+
 const config = NitroRollup.apeMainnetConfig;
 const rollup = new NitroRollup(createProviderPair(config), config);
 
-console.log({
-  Rollup: rollup.Rollup.target,
-  defaultWindow: rollup.defaultWindow,
-});
-
-console.log(new Date());
-
-const commits = await rollup.fetchRecentCommits(10);
+const commits = await rollup.fetchRecentCommits(8);
 console.log(commits[0]);
 const v = commits.map((x) => Number(x.index));
+console.log(v);
 console.log(v.slice(1).map((x, i) => v[i] - x));
 
 // 2025-02-23T05:40:46.047Z

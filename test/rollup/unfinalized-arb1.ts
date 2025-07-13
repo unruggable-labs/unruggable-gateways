@@ -14,11 +14,6 @@ console.log({
   proofBytes: commit0.encodedRollupProof.length,
 });
 
-console.log({
-  Rollup: rollup.Rollup.target,
-  defaultWindow: rollup.defaultWindow,
-});
-
 // https://etherscan.io/advanced-filter?eladd=0x4dceb440657f21083db8add07665f8ddbe1dcfc0&eltpc=0xfc42829b29c259a7370ab56c8f69fce23b5f351a9ce151da453281993ec0090c
 const blocksPerCommit = 3600 / 12;
 for (const age of [
@@ -46,6 +41,7 @@ for (const age of [
 
 rollup.minAgeBlocks = 1;
 const commits = await rollup.fetchRecentCommits(5);
+// console.log(commits[0]);
 const v = commits.map((x) => Number(x.index));
 console.log(v.slice(1).map((x, i) => v[i] - x));
 

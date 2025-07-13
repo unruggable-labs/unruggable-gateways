@@ -1,6 +1,6 @@
-import { AbiCoder } from 'ethers/abi';
+import { AbiCoder, Interface } from 'ethers/abi';
 import { id as keccakStr } from 'ethers/hash';
-import type { CallExceptionError, EthersError } from 'ethers/utils';
+import { isCallException, type EthersError } from 'ethers/utils';
 import type {
   Provider,
   BigNumberish,
@@ -126,12 +126,34 @@ export async function fetchStorage(
   return data.length === 66 ? data : toPaddedHex(data);
 }
 
-export function isEthersError(err: unknown): err is EthersError {
-  return err instanceof Error && 'code' in err && 'shortMessage' in err;
+export async function staticCall<T>(
+  provider: Provider,
+  to: HexAddress,
+  abi: Interface,
+  fragment: string,
+  args: any[],
+  blockTag: BigNumberish = LATEST_BLOCK_TAG
+): Promise<T> {
+  const data = abi.encodeFunctionData(fragment, args);
+  try {
+    const answer = await provider.call({
+      to,
+      data,
+      enableCcipRead: true,
+      blockTag,
+    });
+    const result = abi.decodeFunctionResult(fragment, answer);
+    return (result.length == 1 ? result[0] : result) as T;
+  } catch (err) {
+    if (isCallException(err) && err.data) {
+      throw abi.makeError(err.data, { to, data });
+    }
+    throw err;
+  }
 }
 
-export function isRevert(err: unknown): err is CallExceptionError {
-  return isEthersError(err) && err.code === 'CALL_EXCEPTION';
+export function isEthersError(err: unknown): err is EthersError {
+  return err instanceof Error && 'code' in err && 'shortMessage' in err;
 }
 
 export function isRPCError(err: any, ...code: number[]): err is EthersError {

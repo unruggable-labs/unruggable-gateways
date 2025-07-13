@@ -24,7 +24,7 @@ export const ASSERTION_STATUS_CONFIRMED = 2n;
 // https://github.com/OffchainLabs/nitro-contracts/blob/94999b3e2d3b4b7f8e771cc458b9eb229620dd8f/src/state/Machine.sol
 export const MACHINE_STATUS_FINISHED = 1n;
 
-export const ROLLUP_ABI = new Interface([
+const ROLLUP_ABI = new Interface([
   `function latestConfirmed() view returns (bytes32)`,
   `function confirmPeriodBlocks() view returns (uint256)`,
   `function getAssertion(bytes32) view returns ((
@@ -137,6 +137,8 @@ export type BoLDCommit = ArbitrumCommit & {
 };
 
 export class BoLDRollup extends AbstractArbitrumRollup<BoLDCommit> {
+  static readonly ROLLUP_ABI = ROLLUP_ABI;
+
   // TODO: get docs link once arbitrum updates their website
   static readonly arb1MainnetConfig: RollupDeployment<ArbitrumConfig> = {
     chain1: CHAINS.MAINNET,

@@ -10,14 +10,8 @@ const rollup = new EuclidRollup(
   beaconURL(config.chain1)
 );
 
-console.log({
-  ScrollChain: rollup.ScrollChain.target,
-  defaultWindow: rollup.defaultWindow,
-  beaconAPI: rollup.beaconAPI,
-});
-
-const commits = await rollup.fetchRecentCommits(10);
-
+const commits = await rollup.fetchRecentCommits(8);
+console.log(commits[0]);
 const v = commits.map((x) => Number(x.index));
 console.log(v);
 console.log(v.slice(1).map((x, i) => v[i] - x));

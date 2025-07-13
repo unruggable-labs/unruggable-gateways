@@ -1,23 +1,16 @@
 import { createProviderPair } from '../providers.js';
 import { OPFaultRollup } from '../../src/op/OPFaultRollup.js';
 
+console.log(new Date());
+
 const config = OPFaultRollup.mainnetConfig;
 const rollup = new OPFaultRollup(createProviderPair(config), config, 3600);
 
-console.log({
-  OptimismPortal: rollup.OptimismPortal.target,
-  GameFinder: rollup.GameFinder.target,
-  respectedGameType: await rollup.fetchRespectedGameType(),
-  defaultWindow: rollup.defaultWindow,
-  minAgeSec: rollup.minAgeSec,
-});
-
-console.log(new Date());
 console.log(await rollup.fetchLatestCommitIndex());
 console.log(await new OPFaultRollup(rollup, config).fetchLatestCommitIndex());
 
 const commits = await rollup.fetchRecentCommits(8);
-
+console.log(commits[0]);
 const v = commits.map((x) => Number(x.index));
 console.log(v);
 console.log(v.slice(1).map((x, i) => v[i] - x));

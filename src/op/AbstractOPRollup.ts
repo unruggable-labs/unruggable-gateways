@@ -39,13 +39,11 @@ export type AbstractOPCommit = RollupCommit<EthProver> & {
   readonly passerRoot: HexString;
 };
 
-const L2ToL1MessagePasser = '0x4200000000000000000000000000000000000016';
-
 export abstract class AbstractOPRollup<C extends AbstractOPCommit>
   extends AbstractRollup<C>
   implements RollupWitnessV1<C>
 {
-  L2ToL1MessagePasser = L2ToL1MessagePasser;
+  L2ToL1MessagePasser = '0x4200000000000000000000000000000000000016';
   async createCommit(
     index: bigint,
     block: BigNumberish

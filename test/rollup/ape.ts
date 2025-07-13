@@ -3,6 +3,8 @@ import { BoLDRollup } from '../../src/arbitrum/BoLDRollup.js';
 import { NitroRollup } from '../../src/arbitrum/NitroRollup.js';
 import { DoubleArbitrumRollup } from '../../src/arbitrum/DoubleArbitrumRollup.js';
 
+console.log(new Date());
+
 const config12 = BoLDRollup.arb1MainnetConfig;
 const config23 = NitroRollup.apeMainnetConfig;
 
