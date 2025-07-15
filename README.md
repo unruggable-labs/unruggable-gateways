@@ -98,6 +98,8 @@ If you are interested in building a solution for another chain, please take a lo
 	* Include `--step=#` to adjust commit step
 	* Use [`PROVIDER_ORDER`](./test/providers.ts#L479) to customize global RPC provider priority.
 	* Use `PROVIDER_ORDER_{CHAIN_NAME}` to customize per-chain RPC provider priority.
+	* Use `PROVIDER_{CHAIN_NAME}` to customize per-chain RPC provider override.
+	* Use `BEACON_{CHAIN_NAME}` to customize per-chain Beacon RPC provider override.
 
 ## Testing
 

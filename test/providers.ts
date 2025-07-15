@@ -8,6 +8,7 @@ export type RPCInfo = {
   readonly chain: Chain;
   readonly publicHTTP: string;
   readonly publicWS?: string;
+  readonly publicBeacon?: string;
   readonly ankr?: string;
   readonly ankrPremium?: boolean;
   readonly ankrBeaconPremium?: boolean;
@@ -29,6 +30,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       {
         chain: CHAINS.MAINNET,
         publicHTTP: 'https://rpc.ankr.com/eth', // https://cloudflare-eth.com is too rate limited
+        publicBeacon: 'https://ethereum-beacon-api.publicnode.com',
         ankr: 'eth',
         ankrBeaconPremium: true,
         infura: 'mainnet',
@@ -476,14 +478,19 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
   ).map((x) => [x.chain, x])
 );
 
+function envForChain(prefix: string, chain: Chain) {
+  return (
+    process.env[`${prefix}${chainName(chain)}`] ||
+    process.env[`${prefix}${chain}`]
+  );
+}
+
 export function providerOrder(chain?: Chain): string[] {
   let env;
-  if (chain) {
-    env = process.env[`PROVIDER_ORDER_${chainName(chain)}`]; // by name
-    if (!env) env = process.env[`PROVIDER_ORDER_${chain}`]; // by id
-  }
+  if (chain) env = envForChain('PROVIDER_ORDER_', chain);
   if (!env) env = process.env.PROVIDER_ORDER; // global
   if (env) return env.split(/[,\s+]/).flatMap((x) => x.trim() || []);
+  // 20240830: so far, alchemy has the best support
   return ['alchemy', 'infura', 'ankr', 'drpc', 'public']; // global default
 }
 
@@ -498,7 +505,8 @@ type ProviderInfo = {
 export function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
   const info = RPC_INFO.get(chain);
   if (!info) throw new Error(`unknown chain: ${chain}`);
-  // 20240830: so far, alchemy has the best support
+  const env = envForChain('PROVIDER_', chain);
+  if (env) return { info, type: 'custom', url: env };
   order ??= providerOrder(chain);
   for (const type of order) {
     let slug, apiKey;
@@ -604,6 +612,8 @@ export function createProviderPair(
 
 // https://docs.arbitrum.io/run-arbitrum-node/l1-ethereum-beacon-chain-rpc-providers
 export function beaconURL(chain: Chain): string {
+  const env = envForChain('BEACON_', chain);
+  if (env) return env;
   const info = RPC_INFO.get(chain);
   if (!info) throw new Error(`unknown chain: ${chain}`);
   let apiKey;
@@ -615,6 +625,8 @@ export function beaconURL(chain: Chain): string {
     process.env.ANKR_PREMIUM
   ) {
     return `https://rpc.ankr.com/premium-http/${info.ankr}_beacon/${apiKey}`;
+  } else if (info.publicBeacon) {
+    return info.publicBeacon;
   }
   throw new Error(`${chainName(chain)} beacon chain unsupported`);
 }

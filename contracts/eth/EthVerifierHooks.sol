@@ -5,6 +5,8 @@ import {IVerifierHooks, NOT_A_CONTRACT, NULL_CODE_HASH} from '../IVerifierHooks.
 import {SecureMerkleTrie} from './SecureMerkleTrie.sol';
 import {RLPReader, RLPReaderExt} from '../RLPReaderExt.sol';
 
+bytes32 constant NULL_STORAGE_HASH = keccak256(hex'80');
+
 contract EthVerifierHooks is IVerifierHooks {
     function verifyAccountState(
         bytes32 stateRoot,
@@ -35,6 +37,7 @@ contract EthVerifierHooks is IVerifierHooks {
         uint256 slot,
         bytes memory proof
     ) external pure returns (bytes32) {
+        if (storageRoot == NULL_STORAGE_HASH) return bytes32(0);
         (bool exists, bytes memory v) = SecureMerkleTrie.get(
             abi.encodePacked(slot),
             abi.decode(proof, (bytes[])),
