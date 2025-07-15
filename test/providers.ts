@@ -480,15 +480,16 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
 
 function envForChain(prefix: string, chain: Chain) {
   return (
-    process.env[`${prefix}${chainName(chain)}`] ||
-    process.env[`${prefix}${chain}`]
+    process.env[`${prefix}_${chainName(chain)}`] ||
+    process.env[`${prefix}_${chain}`]
   );
 }
 
 export function providerOrder(chain?: Chain): string[] {
+  const key = 'PROVIDER_ORDER';
   let env;
-  if (chain) env = envForChain('PROVIDER_ORDER_', chain);
-  if (!env) env = process.env.PROVIDER_ORDER; // global
+  if (chain) env = envForChain(key, chain);
+  if (!env) env = process.env[key]; // global
   if (env) return env.split(/[,\s+]/).flatMap((x) => x.trim() || []);
   // 20240830: so far, alchemy has the best support
   return ['alchemy', 'infura', 'ankr', 'drpc', 'public']; // global default
@@ -505,7 +506,7 @@ type ProviderInfo = {
 export function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
   const info = RPC_INFO.get(chain);
   if (!info) throw new Error(`unknown chain: ${chain}`);
-  const env = envForChain('PROVIDER_', chain);
+  const env = envForChain('PROVIDER', chain);
   if (env) return { info, type: 'custom', url: env };
   order ??= providerOrder(chain);
   for (const type of order) {
@@ -612,7 +613,7 @@ export function createProviderPair(
 
 // https://docs.arbitrum.io/run-arbitrum-node/l1-ethereum-beacon-chain-rpc-providers
 export function beaconURL(chain: Chain): string {
-  const env = envForChain('BEACON_', chain);
+  const env = envForChain('BEACON', chain);
   if (env) return env;
   const info = RPC_INFO.get(chain);
   if (!info) throw new Error(`unknown chain: ${chain}`);
