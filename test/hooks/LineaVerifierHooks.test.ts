@@ -21,6 +21,8 @@ describe('LineaVerifierHooks', async () => {
     libs: { SparseMerkleProof },
   });
 
+  //console.log(await Mimc.hash('0x8000000000000000000000000000000000000000000000000000000000000000'));
+
   const { stateRoot, tests } = JSON.parse(
     await readFile(new URL('./linea.json', import.meta.url), {
       encoding: 'utf8',
@@ -62,13 +64,12 @@ describe('LineaVerifierHooks', async () => {
     ).resolves.toStrictEqual(toPaddedHex(0));
   });
 
-  // TODO: fix this after rollup updates
-  test.skip('empty', async () => {
+  test('empty', async () => {
     const proofs = tests['empty'];
     expect(
-      LineaProver.isInclusionProof(proofs.accountProof),
-      'isInclusionProof'
-    ).toStrictEqual(true);
+      LineaProver.isContract(proofs.accountProof, true),
+      'isContract'
+    ).toStrictEqual(false);
     const storageRoot = await hooks.verifyAccountState(
       stateRoot,
       proofs.accountProof.key,
@@ -93,8 +94,8 @@ describe('LineaVerifierHooks', async () => {
   test('SlotDataContract', async () => {
     const proofs = tests['SlotDataContract'];
     expect(
-      LineaProver.isInclusionProof(proofs.accountProof),
-      'isInclusionProof'
+      LineaProver.isContract(proofs.accountProof, true),
+      'isContract'
     ).toStrictEqual(true);
     const storageRoot = await hooks.verifyAccountState(
       stateRoot,

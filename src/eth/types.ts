@@ -6,6 +6,7 @@ import type {
   HexString32,
 } from '../types.js';
 import { ABI_CODER, NULL_CODE_HASH } from '../utils.js';
+import { NULL_TRIE_HASH } from './merkle.js';
 
 export type EthProof = HexString[];
 
@@ -57,11 +58,13 @@ export type RPCEthGetBlock<TransactionT = HexString> = {
   requestsHash?: HexString32;
 };
 
-export function isContract(proof: EthAccountProof) {
+export function isContract(proof: EthAccountProof, requireStorage = false) {
   const codeHash = proof.keccakCodeHash ?? proof.codeHash;
   const eoa = codeHash === NULL_CODE_HASH;
   const dne = codeHash === ZeroHash;
-  return !eoa && !dne;
+  return (
+    !eoa && !dne && (!requireStorage || proof.storageHash !== NULL_TRIE_HASH)
+  );
 }
 
 export function encodeProof(proof: EthProof): EncodedProof {

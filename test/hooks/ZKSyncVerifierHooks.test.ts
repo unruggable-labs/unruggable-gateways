@@ -5,7 +5,7 @@ import { Foundry } from '@adraffy/blocksmith';
 import { describe, afterAll, test, expect } from 'bun:test';
 import { toPaddedHex } from '../../src/utils.js';
 import { encodeShortString } from '../utils.js';
-import { ZKSyncProver } from '../../src/index.js';
+import { ZKSyncProver } from '../../src/zksync/ZKSyncProver.js';
 
 describe('ZKSyncVerifierHooks', async () => {
   const foundry = await Foundry.launch({ infoLog: false });
