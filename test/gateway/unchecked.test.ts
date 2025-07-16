@@ -13,9 +13,7 @@ runTests(CHAINS.MAINNET);
 
 function runTests(chain: Chain) {
   describe(`unchecked: ${chainName(chain)}`, async () => {
-    const foundry = await Foundry.launch({
-      infoLog: false,
-    });
+    const foundry = await Foundry.launch({ infoLog: false });
     const rollup = new UncheckedRollup(createProvider(chain));
     afterAll(foundry.shutdown);
     const gateway = new Gateway(rollup);
