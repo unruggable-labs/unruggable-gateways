@@ -4,7 +4,7 @@ import { chainName, CHAINS } from '../../src/chains.js';
 import { Gateway } from '../../src/gateway.js';
 import { serve } from '@namestone/ezccip/serve';
 import { Foundry } from '@adraffy/blocksmith';
-import { createProvider, providerURL } from '../providers.js';
+import { providerURL } from '../providers.js';
 import { setupTests } from './common.js';
 import { describe } from '../bun-describe-fix.js';
 import { afterAll } from 'bun:test';
@@ -13,11 +13,11 @@ runTests(CHAINS.MAINNET);
 
 function runTests(chain: Chain) {
   describe(`unchecked: ${chainName(chain)}`, async () => {
-    const rollup = new UncheckedRollup(createProvider(chain));
     const foundry = await Foundry.launch({
       fork: providerURL(chain),
       infoLog: false,
     });
+    const rollup = new UncheckedRollup(foundry.provider);
     afterAll(foundry.shutdown);
     const gateway = new Gateway(rollup);
     const ccip = await serve(gateway, {
@@ -34,6 +34,7 @@ function runTests(chain: Chain) {
     });
     await setupTests(verifier, {
       slotDataContract: '0xC9D1E777033FB8d17188475CE3D8242D1F4121D5',
+      slotDataPointer: '0xA537a7A8D9cE405a50d2e8aA00D4623E94E97d71',
     });
   });
 }
