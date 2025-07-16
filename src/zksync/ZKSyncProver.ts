@@ -184,8 +184,16 @@ export class ZKSyncProver extends AbstractProver {
       order: Uint8Array.from(order, (x) => x.id),
     };
   }
+  async getAccountCodeHashProof(
+    target: HexAddress
+  ): Promise<ZKSyncStorageProof> {
+    const [proof] = await this.getStorageProofs(ZKSYNC_ACCOUNT_CODEHASH, [
+      BigInt(target),
+    ]);
+    return proof;
+  }
   async getStorageProofs(
-    target: HexString,
+    target: HexAddress,
     slots: bigint[]
   ): Promise<ZKSyncStorageProof[]> {
     target = target.toLowerCase();

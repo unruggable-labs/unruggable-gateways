@@ -6,6 +6,7 @@ import { afterAll, expect, test } from 'bun:test';
 import { id as keccakStr } from 'ethers/hash';
 import { EnsResolver } from 'ethers/providers';
 import { serve } from '@namestone/ezccip/serve';
+import { LATEST_BLOCK_TAG } from '../../../src/utils.js';
 
 describe('ens', async () => {
   const foundry = await Foundry.launch({
@@ -13,7 +14,7 @@ describe('ens', async () => {
   });
   afterAll(foundry.shutdown);
   const rollup = new EthSelfRollup(foundry.provider);
-  rollup.latestBlockTag = 'latest';
+  rollup.latestBlockTag = LATEST_BLOCK_TAG;
   const gateway = new Gateway(rollup);
   const ccip = await serve(gateway, { protocol: 'raw', log: false });
   afterAll(ccip.shutdown);

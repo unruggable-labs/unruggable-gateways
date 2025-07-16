@@ -1,3 +1,4 @@
+import { ZeroHash } from 'ethers/constants';
 import type {
   EncodedProof,
   HexAddress,
@@ -57,9 +58,10 @@ export type RPCEthGetBlock<TransactionT = HexString> = {
 };
 
 export function isContract(proof: EthAccountProof) {
-  return (
-    proof.codeHash !== NULL_CODE_HASH && proof.keccakCodeHash !== NULL_CODE_HASH
-  );
+  const codeHash = proof.keccakCodeHash ?? proof.codeHash;
+  const eoa = codeHash === NULL_CODE_HASH;
+  const dne = codeHash === ZeroHash;
+  return !eoa && !dne;
 }
 
 export function encodeProof(proof: EthProof): EncodedProof {
