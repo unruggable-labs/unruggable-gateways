@@ -4,7 +4,7 @@ import { chainName, CHAINS } from '../../src/chains.js';
 import { Gateway } from '../../src/gateway.js';
 import { serve } from '@namestone/ezccip/serve';
 import { Foundry } from '@adraffy/blocksmith';
-import { providerURL } from '../providers.js';
+import { createProvider } from '../providers.js';
 import { setupTests } from './common.js';
 import { describe } from '../bun-describe-fix.js';
 import { afterAll } from 'bun:test';
@@ -14,16 +14,12 @@ runTests(CHAINS.MAINNET);
 function runTests(chain: Chain) {
   describe(`unchecked: ${chainName(chain)}`, async () => {
     const foundry = await Foundry.launch({
-      fork: providerURL(chain),
       infoLog: false,
     });
-    const rollup = new UncheckedRollup(foundry.provider);
+    const rollup = new UncheckedRollup(createProvider(chain));
     afterAll(foundry.shutdown);
     const gateway = new Gateway(rollup);
-    const ccip = await serve(gateway, {
-      protocol: 'raw',
-      log: false,
-    });
+    const ccip = await serve(gateway, { protocol: 'raw', log: false });
     afterAll(ccip.shutdown);
     const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
     const hooks = await foundry.deploy({ file: 'UncheckedVerifierHooks' });
