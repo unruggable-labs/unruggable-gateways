@@ -4,7 +4,7 @@ pragma solidity ^0.8.23;
 import {IVerifierHooks, InvalidProof, NOT_A_CONTRACT, NULL_CODE_HASH} from '../IVerifierHooks.sol';
 import {SparseMerkleProof} from './SparseMerkleProof.sol';
 
-bytes32 constant EMPTY_STORAGE_HASH = 0x07977874126658098c066972282d4c85f230520af3847e297fe7524f976873e5;
+bytes32 constant EMPTY_STORAGE_HASH = 0x07977874126658098c066972282d4c85f230520af3847e297fe7524f976873e5; // see: src/linea/types.ts
 
 contract LineaVerifierHooks is IVerifierHooks {
     uint256 constant LAST_LEAF_INDEX = 41;
