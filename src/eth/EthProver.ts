@@ -5,12 +5,14 @@ import {
   type RPCEthGetProof,
   isContract,
   encodeProof,
+  EMPTY_STORAGE_HASH,
 } from './types.js';
 import { BlockProver, makeStorageKey, type TargetNeed } from '../vm.js';
 import { ZeroHash } from 'ethers/constants';
 import { withResolvers, toPaddedHex, fetchStorage } from '../utils.js';
 
 export class EthProver extends BlockProver {
+  static readonly EMPTY_STORAGE_HASH = EMPTY_STORAGE_HASH;
   static readonly encodeProof = encodeProof;
   static readonly isContract = isContract;
   static readonly latest = this._createLatest();

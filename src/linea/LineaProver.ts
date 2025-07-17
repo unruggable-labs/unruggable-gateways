@@ -13,12 +13,14 @@ import {
   isInclusionProof,
   isContract,
   encodeProof,
+  EMPTY_STORAGE_HASH,
 } from './types.js';
 
 const BLOCK_MISSING_IN_CHAIN = -32600;
 const UNKNOWN_RPC_ERROR = -32603;
 
 export class LineaProver extends BlockProver {
+  static readonly EMPTY_STORAGE_HASH = EMPTY_STORAGE_HASH;
   static readonly isInclusionProof = isInclusionProof;
   static readonly isContract = isContract;
   static readonly encodeProof = encodeProof;
