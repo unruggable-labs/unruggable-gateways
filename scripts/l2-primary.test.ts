@@ -1,32 +1,24 @@
-import type { HexAddress } from '../../src/types.js';
-import type { Rollup, RollupDeployment } from '../../src/rollup.js';
+import type { HexAddress } from '../src/types.js';
+import type { Rollup, RollupDeployment } from '../src/rollup.js';
 import { Foundry } from '@adraffy/blocksmith';
 import {
   createProviderPair,
   providerURL,
   beaconURL,
   decideProvider,
-  createProvider,
-} from '../providers.js';
-import { describe } from '../bun-describe-fix.js';
+} from '../test/providers.js';
+import { describe } from '../test/bun-describe-fix.js';
 import { afterAll } from 'bun:test';
-import { runSlotDataTests } from '../gateway/SlotDataTests.js';
-import { chainName, CHAINS } from '../../src/chains.js';
+import { runSlotDataTests } from '../test/gateway/SlotDataTests.js';
+import { chainFromName, chainName, CHAINS } from '../src/chains.js';
 import { ZeroAddress } from 'ethers/constants';
-import { Gateway } from '../../src/gateway.js';
+import { Gateway } from '../src/gateway.js';
 import { serve } from '@namestone/ezccip/serve';
-import {
-  type OPFaultConfig,
-  OPFaultRollup,
-} from '../../src/op/OPFaultRollup.js';
-import type { ArbitrumConfig } from '../../src/arbitrum/ArbitrumRollup.js';
-import { BoLDRollup } from '../../src/arbitrum/BoLDRollup.js';
-import {
-  type EuclidConfig,
-  EuclidRollup,
-} from '../../src/scroll/EuclidRollup.js';
-import { type LineaConfig, LineaRollup } from '../../src/linea/LineaRollup.js';
-import { Contract } from 'ethers/contract';
+import { type OPFaultConfig, OPFaultRollup } from '../src/op/OPFaultRollup.js';
+import type { ArbitrumConfig } from '../src/arbitrum/ArbitrumRollup.js';
+import { BoLDRollup } from '../src/arbitrum/BoLDRollup.js';
+import { type EuclidConfig, EuclidRollup } from '../src/scroll/EuclidRollup.js';
+import { type LineaConfig, LineaRollup } from '../src/linea/LineaRollup.js';
 
 type Setup = {
   config: RollupDeployment<unknown>;
@@ -98,59 +90,18 @@ const SETUPS: Setup[] = [
   },
 ];
 
-const chain2 = CHAINS[process.env.C?.toUpperCase() as keyof typeof CHAINS];
+const chain2 = chainFromName(process.env.C ?? '');
 const useLocalGateway = !!process.env.G;
 const useLocalVerifier = !!process.env.V;
 const finalizationHours = parseInt(process.env.H ?? '') || 6;
 
 const setup = SETUPS.find((x) => x.config.chain2 === chain2);
-if (!setup) {
-  console.log('Providers:', {
-    L1: Object.fromEntries(
-      [...new Set(SETUPS.map((x) => x.config.chain1))].map((x) => [
-        chainName(x),
-        providerURL(x),
-      ])
-    ),
-    L2: Object.fromEntries(
-      SETUPS.map((x) => [
-        chainName(x.config.chain2),
-        providerURL(x.config.chain2),
-      ])
-    ),
-  });
-  console.log(
-    'Default Gateways:',
-    Object.fromEntries(
-      await Promise.all(
-        SETUPS.map(async (x) => {
-          const provider = createProvider(x.config.chain1);
-          const verifier = new Contract(
-            x.verifier,
-            [`function gatewayURLs() external view returns (string[] memory)`],
-            provider
-          );
-          return [
-            chainName(x.config.chain2),
-            await verifier.gatewayURLs().catch((x) => x),
-          ];
-        })
-      )
-    )
-  );
-  process.exit();
-}
-
-console.log({
-  useLocalGateway,
-  useLocalVerifier,
-  finalizationHours,
-});
+if (!setup) throw new Error('unsupported chain');
 
 describe(chainName(setup.config.chain2), async () => {
   const foundry = await Foundry.launch({
     fork: providerURL(setup.config.chain1),
-    infoLog: false,
+    infoLog: true,
   });
   afterAll(foundry.shutdown);
   const { gatewayURL, verifierAddress } = await determineGateway(
