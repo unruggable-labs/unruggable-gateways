@@ -122,14 +122,15 @@ describe(chainName(setup.config.chain2), async () => {
     file: 'AbstractVerifier',
   });
 
+  console.log('getLatestContext:', BigInt(await verifier.getLatestContext()));
+  console.log('getWindow:', BigInt(await verifier.getWindow()));
+  console.log('gatewayURLs:', await verifier.gatewayURLs());
+
   console.log('Gateway:', gatewayURL);
   if (!useLocalVerifier) {
     console.log('Verifier:', verifier.target);
     console.log('Hooks:', await verifier.getHooks());
   }
-  console.log('getLatestContext:', BigInt(await verifier.getLatestContext()));
-  console.log('getWindow:', BigInt(await verifier.getWindow()));
-  console.log('gatewayURLs:', BigInt(await verifier.gatewayURLs()));
 
   console.time('warmup');
   await reader.readSlot(1337, { enableCcipRead: true });
