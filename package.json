@@ -1,6 +1,6 @@
 {
   "name": "@unruggable/gateways",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Trustless Ethereum Multichain CCIP-Read Gateway",
   "publishConfig": {
     "access": "public"
