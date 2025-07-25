@@ -14,7 +14,7 @@ const BRANCH_NODE_SIZE = 17;
 const LEAF_NODE_SIZE = 2;
 const RLP_NULL = '0x80';
 
-export const NULL_TRIE_HASH = keccak256(RLP_NULL);
+const NULL_TRIE_HASH = keccak256(RLP_NULL);
 
 type TrieNode = {
   rlp: HexString;

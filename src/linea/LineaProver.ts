@@ -13,12 +13,14 @@ import {
   isInclusionProof,
   isContract,
   encodeProof,
+  EMPTY_STORAGE_HASH,
 } from './types.js';
 
 const BLOCK_MISSING_IN_CHAIN = -32600;
 const UNKNOWN_RPC_ERROR = -32603;
 
 export class LineaProver extends BlockProver {
+  static readonly EMPTY_STORAGE_HASH = EMPTY_STORAGE_HASH;
   static readonly isInclusionProof = isInclusionProof;
   static readonly isContract = isContract;
   static readonly encodeProof = encodeProof;
@@ -58,7 +60,7 @@ export class LineaProver extends BlockProver {
     // check to see if we know this target isn't a contract
     const accountProof: LineaProof | undefined =
       await this.proofLRU.touch(target);
-    if (accountProof && !isContract(accountProof)) {
+    if (accountProof && !isContract(accountProof, true)) {
       return ZeroHash;
     }
     // check to see if we've already have a proof for this value
@@ -77,7 +79,7 @@ export class LineaProver extends BlockProver {
       });
     }
     const proof = await this.getProofs(target, [slot]);
-    return isContract(proof.accountProof) &&
+    return isContract(proof.accountProof, true) &&
       isInclusionProof(proof.storageProofs[0])
       ? proof.storageProofs[0].proof.value
       : ZeroHash;
@@ -91,13 +93,13 @@ export class LineaProver extends BlockProver {
     const accountProof: LineaProof | undefined = await this.proofLRU.peek(
       need.target
     );
-    if (accountProof && !isContract(accountProof)) m.length = 0;
+    if (accountProof && !isContract(accountProof, true)) m.length = 0;
     const proofs = await this.getProofs(
       need.target,
       m.map(([slot]) => slot)
     );
     accountRef.proof = encodeProof(proofs.accountProof);
-    if (isContract(proofs.accountProof)) {
+    if (isContract(proofs.accountProof, true)) {
       m.forEach(
         ([, ref], i) => (ref.proof = encodeProof(proofs.storageProofs[i]))
       );
@@ -160,7 +162,10 @@ export class LineaProver extends BlockProver {
       accountProof,
       Promise.all(storageProofs),
     ]);
-    this.checkStorageProofs(isContract(a), slots, v);
+    // 20250716: inconsistent rpc behavior
+    // not-a-contract returns [null, ...]
+    // contract-w/o-storage returns []
+    this.checkStorageProofs(isContract(a, true), slots, v);
     return {
       accountProof: a,
       storageProofs: v as LineaProof[],

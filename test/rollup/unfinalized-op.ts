@@ -14,7 +14,11 @@ console.log({
 
 console.log(new Date());
 console.log(await rollup.fetchLatestCommitIndex());
-console.log(await new OPFaultRollup(rollup, config).fetchLatestCommitIndex());
+console.log(
+  await new OPFaultRollup(rollup, config)
+    .fetchLatestCommitIndex()
+    .catch((x) => x)
+);
 
 const commits = await rollup.fetchRecentCommits(8);
 

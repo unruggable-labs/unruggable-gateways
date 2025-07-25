@@ -1,5 +1,5 @@
 import type { Serve } from 'bun';
-import type { Chain, Provider } from '../src/types.js';
+import type { Provider } from '../src/types.js';
 import {
   type RollupDeployment,
   type RollupCommitType,
@@ -11,7 +11,7 @@ import {
   providerURL,
   beaconURL,
 } from '../test/providers.js';
-import { CHAINS, chainName } from '../src/chains.js';
+import { CHAINS, chainFromName, chainName } from '../src/chains.js';
 import { Gateway } from '../src/gateway.js';
 import { type OPConfig, OPRollup } from '../src/op/OPRollup.js';
 import { type OPFaultConfig, OPFaultRollup } from '../src/op/OPFaultRollup.js';
@@ -306,13 +306,6 @@ export default {
     }
   },
 } satisfies Serve;
-
-function chainFromName(slug: string): Chain {
-  if (/^(0x)?[0-9a-f]+$/i.test(slug)) return BigInt(slug);
-  slug = slug.toUpperCase().replaceAll('-', '_');
-  if (slug in CHAINS) return CHAINS[slug as keyof typeof CHAINS];
-  throw new Error(`unknown chain: ${slug}`);
-}
 
 async function createGateway(name: string) {
   let match;

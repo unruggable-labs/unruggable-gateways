@@ -81,6 +81,13 @@ export function chainName(chain: Chain): string {
   throw new TypeError(`unknown chain: ${chain}`);
 }
 
+export function chainFromName(slug: string): Chain {
+  if (/^(0x)?[0-9a-f]+$/i.test(slug)) return BigInt(slug);
+  const key = slug.toUpperCase().replaceAll('-', '_');
+  if (key in CHAINS) return CHAINS[key as keyof typeof CHAINS];
+  throw new Error(`unknown chain: ${slug}`);
+}
+
 // idea: chainType? chainKind?
 // at the moment, the only distinction needed is address type
 export function isStarknet(chain: Chain) {

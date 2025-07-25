@@ -78,11 +78,17 @@ export function isInclusionProof(proof: LineaProof) {
 
 //const NULL_CODE_HASH = '0x0134373b65f439c874734ff51ea349327c140cde2e47a933146e6f9f2ad8eb17'; // mimc(ZeroHash)
 
-export function isContract(accountProof: LineaProof) {
+// https://github.com/Consensys/linea-monorepo/blob/000a2fead729d2b4fcde640f53d009236a1c5e4e/prover/crypto/state-management/accumulator/testvectors_mimc_test.go#L66
+export const EMPTY_STORAGE_HASH =
+  '0x07977874126658098c066972282d4c85f230520af3847e297fe7524f976873e5';
+
+export function isContract(accountProof: LineaProof, requireStorage = false) {
   return (
     isInclusionProof(accountProof) &&
     // https://github.com/Consensys/linea-monorepo/blob/a001342170768a22988a29b2dca8601199c6e205/contracts/contracts/lib/SparseMerkleProof.sol#L23
-    dataSlice(accountProof.proof.value, 128, 160) !== NULL_CODE_HASH
+    dataSlice(accountProof.proof.value, 128, 160) !== NULL_CODE_HASH &&
+    (!requireStorage ||
+      dataSlice(accountProof.proof.value, 64, 96) !== EMPTY_STORAGE_HASH)
   );
 }
 

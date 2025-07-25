@@ -36,6 +36,9 @@ type CachedCommit<R extends Rollup> = {
 
 export class Gateway<R extends Rollup> extends EZCCIP {
   // the max number of non-latest commitments to keep in memory
+  // depth = 0 => latest
+  // depth = 1 => [latest, prev(latest)]
+  // depth = 2 => [latest, prev(latest), prev(prev(latest))]
   commitDepth = 1;
   // if true, requests beyond the commit depth are supported
   allowHistorical = false;
@@ -127,7 +130,7 @@ export class Gateway<R extends Rollup> extends EZCCIP {
     // check recent cache in linear order
     for (let depth = 0; ; ) {
       if (index >= cursor.commit.index) return cursor.commit;
-      if (++depth >= this.commitDepth) break;
+      if (++depth > this.commitDepth) break;
       const prev = await cursor.parent.get();
       cursor = await this.cachedCommit(prev);
     }

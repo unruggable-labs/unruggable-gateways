@@ -5,12 +5,14 @@ import {
   type RPCEthGetProof,
   isContract,
   encodeProof,
+  EMPTY_STORAGE_HASH,
 } from './types.js';
 import { BlockProver, makeStorageKey, type TargetNeed } from '../vm.js';
 import { ZeroHash } from 'ethers/constants';
 import { withResolvers, toPaddedHex, fetchStorage } from '../utils.js';
 
 export class EthProver extends BlockProver {
+  static readonly EMPTY_STORAGE_HASH = EMPTY_STORAGE_HASH;
   static readonly encodeProof = encodeProof;
   static readonly isContract = isContract;
   static readonly latest = this._createLatest();
@@ -52,7 +54,7 @@ export class EthProver extends BlockProver {
       });
     }
     const proofs = await this.getProofs(target, [slot]);
-    return isContract(proofs)
+    return isContract(proofs, true)
       ? toPaddedHex(proofs.storageProof[0].value)
       : ZeroHash;
   }
@@ -65,13 +67,13 @@ export class EthProver extends BlockProver {
     const accountProof: EthAccountProof | undefined = await this.proofLRU.peek(
       need.target
     );
-    if (accountProof && !isContract(accountProof)) m.length = 0;
+    if (accountProof && !isContract(accountProof, true)) m.length = 0;
     const proofs = await this.getProofs(
       need.target,
       m.map(([slot]) => slot)
     );
     accountRef.proof = encodeProof(proofs.accountProof);
-    if (isContract(proofs)) {
+    if (isContract(proofs, true)) {
       m.forEach(
         ([, ref], i) => (ref.proof = encodeProof(proofs.storageProof[i].proof))
       );
