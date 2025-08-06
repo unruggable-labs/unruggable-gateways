@@ -25,6 +25,7 @@ type Setup = {
   verifier: HexAddress;
   slotDataContract: HexAddress;
   slotDataPointer?: HexAddress;
+  backupGateway?: string;
 };
 
 const SETUPS: Setup[] = [
@@ -75,6 +76,7 @@ const SETUPS: Setup[] = [
     verifier: '0x547af78b28290D4158c1064FF092ABBcc4cbfD97',
     slotDataContract: '0xCC344B12fcc8512cc5639CeD6556064a8907c8a1',
     slotDataPointer: '0xaB6D328eB7457164Bb4C2AC27b05200B9b688ac3',
+    backupGateway: 'https://arbitrum.3668.io',
   },
   {
     config: LineaRollup.mainnetConfig,
@@ -94,6 +96,8 @@ const chain2 = chainFromName(process.env.C ?? '');
 const useLocalGateway = !!process.env.G;
 const useLocalVerifier = !!process.env.V;
 const finalizationHours = parseInt(process.env.H ?? '') || 6;
+const printCalls = !!process.env.P;
+const useBackupGateway = !!process.env.B;
 
 const setup = SETUPS.find((x) => x.config.chain2 === chain2);
 if (!setup) throw new Error('unsupported chain');
@@ -267,6 +271,19 @@ async function determineGateway(foundry: Foundry, setup: Setup) {
   if (!verifierAddress) {
     throw new Error(`no verifier: ${chainName(setup.config.chain2)}`);
   }
+
+  if (printCalls) {
+    [gateway.rollup.provider1, gateway.rollup.provider2].forEach((p) => {
+      p.on('debug', (x) => {
+        if (x.action === 'sendRpcPayload') {
+          console.log(p._network.chainId, x.action, x.payload);
+        } else if (x.action == 'receiveRpcResult') {
+          console.log(p._network.chainId, x.action); //, x.result);
+        }
+      });
+    });
+  }
+
   if (useLocalGateway) {
     console.log(await gateway.getLatestCommit());
     const ccip = await serve(gateway, { protocol: 'raw', log: true });
@@ -280,17 +297,11 @@ async function determineGateway(foundry: Foundry, setup: Setup) {
       throw new Error(`expected dRPC: ${chainName(setup.config.chain2)}`);
     }
     gatewayURL = `https://lb.drpc.org/gateway/unruggable?network=${drpc}`;
+    if (useBackupGateway) {
+      if (!setup.backupGateway) throw new Error('no backup gateway');
+      gatewayURL = setup.backupGateway;
+    }
   }
-
-  // [gateway.rollup.provider1, gateway.rollup.provider2].forEach((p) => {
-  //   p.on('debug', (x) => {
-  //     if (x.action === 'sendRpcPayload') {
-  //       console.log(p._network.chainId, x.action, x.payload);
-  //     } else if (x.action == 'receiveRpcResult') {
-  //       console.log(p._network.chainId, x.action, x.result);
-  //     }
-  //   });
-  // });
 
   return { gatewayURL, verifierAddress };
 }
