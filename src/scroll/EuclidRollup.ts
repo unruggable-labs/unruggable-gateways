@@ -55,8 +55,6 @@ const ROLLUP_ABI = new Interface([
   )`,
 ]);
 
-const BATCH_VERSION = 7;
-
 export type EuclidConfig = {
   ScrollChain: HexAddress;
 };
@@ -141,9 +139,6 @@ export class EuclidRollup extends AbstractRollup<EuclidCommit> {
         break;
       default:
         throw new Error(`unsupported commit tx: ${desc.name}`);
-    }
-    if (desc.args.version != BATCH_VERSION && desc.args.version != 8) {
-      throw new Error(`unexpected version: ${desc.args.version}`);
     }
     if (!tx.blobVersionedHashes || !tx.blobVersionedHashes.length) {
       throw new Error(`expected blobs`);
