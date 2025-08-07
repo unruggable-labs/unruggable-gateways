@@ -64,12 +64,14 @@ const SETUPS: Setup[] = [
     verifier: '0x074C93CD956B0Dd2cAc0f9F11dDA4d3893a88149',
     slotDataContract: '0x0C49361E151BC79899A9DD31B8B0CCdE4F6fd2f6',
     slotDataPointer: '0x972433d30b6b78C05ADf32972F7b8485C112E055',
+    backupGateway: 'https://base.3668.io',
   },
   {
     config: OPFaultRollup.mainnetConfig,
     verifier: '0x7F49A74D264e48E64e76E136b2a4BA1310C3604c',
     slotDataContract: '0xf9d79d8c09d24e0C47E32778c830C545e78512CF',
     slotDataPointer: '0x19E3e95804020282246E7C30C45cC77dE70E9dc2',
+    backupGateway: 'https://optimism.3668.io',
   },
   {
     config: BoLDRollup.arb1MainnetConfig,
@@ -83,12 +85,14 @@ const SETUPS: Setup[] = [
     verifier: '0x37041498CF4eE07476d2EDeAdcf82d524Aa22ce4',
     slotDataContract: '0x48F5931C5Dbc2cD9218ba085ce87740157326F59',
     slotDataPointer: '0xDeF531a66D7eA1d4E038acABF7F5D1Bd2b306891',
+    backupGateway: 'https://linea.3668.io',
   },
   {
     config: EuclidRollup.mainnetConfig,
     verifier: '0xe439F14Aaf43c87e3dfBDB0A470D9EB2C7f27d93', // un
     slotDataContract: '0x09D2233D3d109683ea95Da4546e7E9Fc17a6dfAF',
     slotDataPointer: '0x28507d851729c12F193019c7b05D916D53e9Cf57',
+    backupGateway: 'https://scroll.3668.io',
   },
 ];
 
