@@ -8,6 +8,7 @@ export const CHAINS = {
   MAINNET: 1n,
   SEPOLIA: 11155111n,
   HOLESKY: 17000n,
+  HOODI: 560048n,
   OP: 10n,
   OP_SEPOLIA: 11155420n,
   ZKSYNC: 324n,
@@ -105,6 +106,8 @@ export function isL1(chain: Chain) {
     case CHAINS.MAINNET:
     case CHAINS.SEPOLIA:
     case CHAINS.HOLESKY:
+    case CHAINS.HOODI:
+    case CHAINS.BSC:
       return true;
   }
   return false;
