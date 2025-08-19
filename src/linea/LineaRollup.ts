@@ -11,6 +11,7 @@ import type {
   ProofSequence,
 } from '../types.js';
 import { Contract, EventLog } from 'ethers/contract';
+import { JsonRpcProvider } from 'ethers/providers';
 import { LineaProver } from './LineaProver.js';
 import { ROLLUP_ABI } from './types.js';
 import { CHAINS } from '../chains.js';
@@ -56,6 +57,22 @@ export class LineaRollup extends AbstractRollup<LineaCommit> {
     // commit: https://sepolia.etherscan.io/tx/0xa2a4a0cf7205e7dc6eac8cdef5a7fd1cb750dac25539e6886e76f76278c27893
     firstCommitV3: 6391917n,
   };
+
+  protected _shomeiProvider: JsonRpcProvider | undefined;
+
+  // "linea_getProof" is implemented by https://github.com/Consensys/shomei/
+  // https://documenter.getpostman.com/view/27370530/2s93ebTr7h#8c98cbd9-5c3b-4e1a-8d8e-790a2a9ab305
+  // this appears to be implemented as a passthru rpc call
+  // if we know the URL directly, we can avoid an extra hop
+  // TODO: acquire a direct shomei rpc url
+  setShomeiURL(url: string | undefined) {
+    this._shomeiProvider = url
+      ? new JsonRpcProvider(url, 1, {
+          staticNetwork: true,
+          batchMaxCount: 1, // batching not supported
+        })
+      : undefined;
+  }
 
   readonly firstCommitV3: bigint | undefined;
   readonly L1MessageService: Contract;
@@ -127,6 +144,7 @@ export class LineaRollup extends AbstractRollup<LineaCommit> {
     }
     const prover = new LineaProver(this.provider2, index);
     prover.stateRoot = stateRoot;
+    prover.shomeiProvider = this._shomeiProvider;
     return { index, startIndex, stateRoot, prevStateRoot, prover };
   }
   override encodeWitness(
