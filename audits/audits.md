@@ -1,8 +1,9 @@
 # Audited Releases
 
-| Audit Date | Release Link | NPM Package Link |
-|------------|--------------|------------------|
-| [December 2024 to February 2025](#december-2024-to-february-2025) | [v1.0.0](https://github.com/unruggable-labs/unruggable-gateways/releases/tag/v1.0.0) | [@unruggable/gateways@1.0.0](https://www.npmjs.com/package/@unruggable/gateways/v/1.0.0) |
+| Audit Date | Scope  | Release Link | NPM Package Link
+| :-- | :-- | --: | :--
+| [December 2024 to February 2025](#december-2024-to-february-2025) | Internals, Arbitrum, OPFault, Linea, Scroll | [v1.0.0](https://github.com/unruggable-labs/unruggable-gateways/releases/tag/v1.0.0) | [@unruggable/gateways@1.0.0](https://www.npmjs.com/package/@unruggable/gateways/v/1.0.0)
+| [August 2025](#august-2025) | OPFault | [v1.2.5](https://github.com/unruggable-labs/unruggable-gateways/releases/tag/v1.2.5) | [@unruggable/gateways@1.2.5](https://www.npmjs.com/package/@unruggable/gateways/v/1.2.5)
 
 # Audit Details
 
@@ -52,3 +53,13 @@ This [additional review](https://gist.github.com/peakbolt/d09c5b3cd7e77d04af0d1a
 This issue was mitigated using a GameFinder (binary search) approach to optimise finding appropriately finalised games from both the gateway and verifier code.
 
 Additionally, two Low risk issues related to strict proof validation correctness were found. These issues were mitigated.
+
+## August 2025
+
+Commit hash: [`128a7c6`](https://github.com/unruggable-labs/unruggable-gateways/tree/128a7c6d36f33b51f3c746eddfc76fdd676b1ae3)
+
+Alexis Williams from [Coinbase](https://coinbase.com) provided an impromptu audit of code related to [ENSIP-19](https://docs.ens.domains/ensip/21) primary resolution for [Base](https://base.org/).
+
+Please see the [following report](./2025-08-18_Coinbase_OPFault.pdf) for an indepth look at the findings.
+
+TODO: describe findings, implement mitigations
