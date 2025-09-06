@@ -29,8 +29,20 @@ import { CachedMap, LRU } from './cached.js';
 import { GATEWAY_OP as OP } from './ops.js';
 import { ProgramReader } from './reader.js';
 
+// see: GatewayFetchTarget.sol
+const ERROR_ABI = new Interface([`error TooManyProofs(uint256 max)`]);
+
 // all addresses are lowercase
 // all values are hex-strings
+
+export class CallbackError extends Error {
+  constructor(
+    message: string,
+    readonly data: HexString
+  ) {
+    super(message);
+  }
+}
 
 type HexFuture = Unwrappable<number, HexString>;
 
@@ -406,32 +418,92 @@ export function requireV1Needs(needs: Need[]) {
   return { ...need, slots };
 }
 
+export class GatewayTrace {
+  static from(prover: AbstractProver) {
+    return new this(
+      prover.maxUniqueProofs,
+      prover.maxAllocBytes,
+      prover.requireTargetBeforeSlot
+    );
+  }
+  readonly needs: Need[] = [];
+  readonly targets = new Map<HexString, TargetNeed>();
+  proofBudget: number;
+  allocBudget: number;
+  constructor(
+    readonly maxProofCount = Infinity,
+    readonly maxAllocBytes = Infinity,
+    readonly requireTargetBeforeSlot = true
+  ) {
+    this.proofBudget = maxProofCount;
+    this.allocBudget = maxAllocBytes;
+  }
+  get remainingProvableBytes() {
+    return this.proofBudget << 5;
+  }
+  consumeAlloc(size: number) {
+    this.allocBudget -= size;
+    if (this.allocBudget < 0)
+      throw new Error(`too much allocation: ${this.maxAllocBytes}`);
+  }
+  consumeProofs(size: number) {
+    this.proofBudget -= size;
+    if (this.proofBudget < 0)
+      throw new CallbackError(
+        `too many proofs: ${this.maxProofCount}`,
+        ERROR_ABI.encodeErrorResult('TooManyProofs', [this.maxProofCount])
+      );
+  }
+  requireTarget(target: HexAddress) {
+    const need = this.targets.get(target);
+    if (need && !need.required) {
+      need.required = true;
+      this.consumeProofs(1);
+    }
+  }
+  addTarget(target: HexAddress) {
+    let need = this.targets.get(target);
+    if (!need) {
+      // NOTE: changing the target doesn't necessarily include an account proof
+      // an account proof is included, either:
+      // 1.) 2-level trie (stateRoot => storageRoot => slot)
+      // 2.) we need to prove it is a contract (non-null codehash)
+      // (native balance and other account state is not currently supported)
+      need = { target, required: false };
+      this.targets.set(target, need);
+    }
+    this.needs.push(need);
+  }
+  addSlots(target: HexAddress, slots: bigint[]) {
+    if (target !== ZeroAddress) {
+      if (this.requireTargetBeforeSlot) {
+        this.requireTarget(target);
+      }
+      this.consumeProofs(slots.length);
+    }
+    this.needs.push(...slots);
+  }
+}
+
 // record the state of an evaluation
 // registers: [slot, target, stack] + exitCode
 // outputs are shared across eval()
 // needs is sequence of necessary proofs
 export class GatewayVM {
-  static create(
-    outputCount: number,
-    maxStackSize = Infinity,
-    allocBudget = Infinity
-  ) {
-    return new this(Array(outputCount).fill('0x'), maxStackSize, allocBudget);
-  }
   target = ZeroAddress;
   slot = 0n;
   stack: HexFuture[] = [];
   exitCode = 0;
+  readonly outputs: HexFuture[];
   constructor(
-    readonly outputs: HexFuture[],
-    readonly maxStack: number,
-    public allocBudget: number,
-    readonly needs: Need[] = [],
-    readonly targets = new Map<HexString, TargetNeed>()
-  ) {}
-  checkAlloc(size: number) {
-    this.allocBudget -= size;
-    if (this.allocBudget < 0) throw new Error('too much allocation');
+    outputs: number | HexFuture[],
+    readonly maxStack = Infinity,
+    readonly trace = new GatewayTrace()
+  ) {
+    this.outputs = Array.isArray(outputs) ? outputs : Array(outputs).fill('0x');
+  }
+  get needs() {
+    return this.trace.needs;
   }
   checkOutputIndex(i: number) {
     if (i >= this.outputs.length) {
@@ -509,15 +581,11 @@ export abstract class AbstractProver {
   // maximum number of proofs (M account + N storage)
   // note: if this number is too small, protocol can be changed to uint16
   maxUniqueProofs = 128; // max = 256
-  // maximum number of targets (accountProofs)
-  maxUniqueTargets = 32; // max = maxUniqueProofs
   // maximum number of proofs per _getProof
   proofBatchSize = 16; // max = unlimited
   // maximum bytes from single readHashedBytes(), readFetchedBytes()
   // when readBytesAt() is not available
   maxSuppliedBytes = 13125 << 5; // max = unlimited, ~420KB @ 30m gas
-  // maximum bytes from single read(), readBytes()
-  maxProvableBytes = 64 << 5; // max = 32 * proof count
   // maximum bytes allocated by concat() and slice()
   maxAllocBytes = 1 << 20; // max = server memory
   // maximum recursion depth
@@ -531,15 +599,14 @@ export abstract class AbstractProver {
 
   abstract get context(): Record<string, any>;
 
+  get requireTargetBeforeSlot() {
+    return true;
+  }
+
   [Symbol.for('nodejs.util.inspect.custom')]() {
     return `${this.constructor.name}[${Object.entries(this.context).map(([k, v]) => `${k}=${v}`)}]`;
   }
 
-  checkProofCount(size: number) {
-    if (size > this.maxUniqueProofs) {
-      throw new Error(`too many proofs: ${size} > ${this.maxUniqueProofs}`);
-    }
-  }
   checkStorageProofs(isContract: boolean, slots: bigint[], proofs: any[]) {
     if (isContract) {
       // 20241112: devcon bug with linea-sepolia rpc
@@ -601,10 +668,10 @@ export abstract class AbstractProver {
     return this.evalReader(ProgramReader.fromProgram(req));
   }
   async evalReader(reader: ProgramReader) {
-    const vm = GatewayVM.create(
+    const vm = new GatewayVM(
       reader.readByte(), // number of outputs
       this.maxStackSize,
-      this.maxAllocBytes
+      GatewayTrace.from(this)
     );
     await this.eval(reader, vm, 0);
     return vm;
@@ -624,22 +691,7 @@ export abstract class AbstractProver {
       switch (op) {
         case OP.SET_TARGET: {
           const target = addressFromHex(await unwrap(vm.pop()));
-          // IDEA: this could incrementally build the needs map
-          // instead of doing it during prove()
-          let need = vm.targets.get(target);
-          if (!need) {
-            if (vm.targets.size >= this.maxUniqueTargets) {
-              throw new Error('too many targets');
-            }
-            // NOTE: changing the target doesn't necessarily include an account proof
-            // an account proof is included, either:
-            // 1.) 2-level trie (stateRoot => storageRoot => slot)
-            // 2.) we need to prove it is a contract (non-null codehash)
-            // (native balance and other account state is not currently supported)
-            need = { target, required: false };
-            vm.targets.set(target, need);
-          }
-          vm.needs.push(need);
+          vm.trace.addTarget(target);
           vm.target = target;
           vm.slot = 0n; // slot is reset when target is changed
           continue;
@@ -681,8 +733,7 @@ export abstract class AbstractProver {
           continue;
         }
         case OP.IS_CONTRACT: {
-          const need = vm.targets.get(vm.target);
-          if (need) need.required = true;
+          vm.trace.requireTarget(vm.target);
           vm.pushUint256(await this.isContract(vm.target));
           continue;
         }
@@ -708,16 +759,16 @@ export abstract class AbstractProver {
         }
         case OP.READ_SLOT: {
           const { target, slot } = vm;
-          vm.needs.push(slot);
+          vm.trace.addSlots(target, [slot]);
           vm.push(new Wrapped(32, () => this.getStorage(target, slot)));
           continue;
         }
         case OP.READ_SLOTS: {
           const { target, slot } = vm;
           const count = await vm.popNumber();
-          const size = checkSize(count << 5, this.maxProvableBytes);
+          const size = checkSize(count << 5, vm.trace.remainingProvableBytes);
           const slots = bigintRange(slot, count);
-          vm.needs.push(...slots);
+          vm.trace.addSlots(target, slots);
           vm.push(
             new Wrapped(size, async () =>
               concat(
@@ -729,8 +780,12 @@ export abstract class AbstractProver {
         }
         case OP.READ_BYTES: {
           const { target, slot } = vm;
-          const { value, slots } = await this.getStorageBytes(target, slot);
-          vm.needs.push(slot, ...slots);
+          const { value, slots } = await this.getStorageBytes(
+            target,
+            slot,
+            vm.trace
+          );
+          vm.trace.addSlots(target, [slot, ...slots]);
           vm.push(value);
           continue;
         }
@@ -738,7 +793,7 @@ export abstract class AbstractProver {
           const { target, slot } = vm;
           const hash = vm.pop();
           const value = this.fetchUnprovenStorageBytes(target, slot);
-          vm.needs.push({ hash, value });
+          vm.trace.needs.push({ hash, value });
           vm.push(value);
           continue;
         }
@@ -748,7 +803,7 @@ export abstract class AbstractProver {
           const { target, slot } = vm;
           let length = checkSize(
             uint256FromHex(await this.getStorage(target, slot)),
-            this.maxProvableBytes
+            vm.trace.remainingProvableBytes
           );
           if (step < 32) {
             const per = (32 / step) | 0;
@@ -756,10 +811,10 @@ export abstract class AbstractProver {
           } else {
             length = length * ((step + 31) >> 5);
           }
-          const size = checkSize(length << 5, this.maxProvableBytes);
+          const size = checkSize(length << 5, vm.trace.remainingProvableBytes);
           const slots = solidityArraySlots(slot, length);
           slots.unshift(slot);
-          vm.needs.push(...slots);
+          vm.trace.addSlots(target, slots);
           vm.push(
             new Wrapped(size, async () =>
               concat(
@@ -782,13 +837,7 @@ export abstract class AbstractProver {
           const flags = reader.readByte();
           const [code, n] = await Promise.all(vm.popSlice(2).map(unwrap));
           const program = ProgramReader.fromBytes(code);
-          const vm2 = new GatewayVM(
-            vm.outputs,
-            vm.maxStack,
-            vm.allocBudget,
-            vm.needs,
-            vm.targets
-          );
+          const vm2 = new GatewayVM(vm.outputs, vm.maxStack, vm.trace);
           let count = Math.min(numberFromHex(n), vm.stack.length);
           while (count) {
             --count;
@@ -810,7 +859,6 @@ export abstract class AbstractProver {
               break;
             }
           }
-          vm.allocBudget = vm2.allocBudget;
           continue;
         }
         case OP.ASSERT: {
@@ -827,7 +875,7 @@ export abstract class AbstractProver {
         }
         case OP.CONCAT: {
           const v = concat(await Promise.all(vm.popSlice(2).map(unwrap)));
-          vm.checkAlloc((v.length - 2) >> 1);
+          vm.trace.consumeAlloc((v.length - 2) >> 1);
           vm.push(v);
           continue;
         }
@@ -835,7 +883,7 @@ export abstract class AbstractProver {
           const [v, x, n] = await Promise.all(vm.popSlice(3).map(unwrap));
           const pos = numberFromHex(x);
           const size = numberFromHex(n);
-          vm.checkAlloc(size);
+          vm.trace.consumeAlloc(size);
           const len = (v.length - 2) >> 1;
           const end = pos + size;
           if (len >= end) {
@@ -952,20 +1000,21 @@ export abstract class AbstractProver {
             this.readBytesAtSupported.set(target, false);
         }
       }
-      const { value } = await this.getStorageBytes(target, slot, true);
+      const { value } = await this.getStorageBytes(target, slot);
       return unwrap(value);
     });
   }
   async getStorageBytes(
     target: HexAddress,
     slot: bigint,
-    fast?: boolean
+    trace?: GatewayTrace
   ): Promise<{
     value: HexFuture;
     size: number;
     slots: bigint[]; // note: does not include header slot!
   }> {
     // https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html#bytes-and-string
+    const fast = !trace;
     const first = await this.getStorage(target, slot, fast);
     let size = parseInt(first.slice(64), 16); // last byte
     if ((size & 1) == 0) {
@@ -976,7 +1025,7 @@ export abstract class AbstractProver {
     }
     size = checkSize(
       BigInt(first) >> 1n,
-      fast ? this.maxSuppliedBytes : this.maxProvableBytes
+      fast ? this.maxSuppliedBytes : trace.remainingProvableBytes
     );
     if (size < 32) {
       throw new Error(`invalid storage encoding: ${target} @ ${slot}`);
@@ -1083,7 +1132,6 @@ export abstract class BlockProver extends AbstractProver {
         return ref;
       }
     });
-    this.checkProofCount(refs.length);
     for (const bucket of buckets.values()) {
       // NOTE: technically, we only need to prove the account
       // if the state was accessed or storage was read

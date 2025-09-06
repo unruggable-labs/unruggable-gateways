@@ -6,7 +6,6 @@ import {
 import type {
   HexAddress,
   HexString,
-  HexString32,
   ProviderPair,
   ProofSequence,
 } from '../types.js';
@@ -26,7 +25,7 @@ import { CachedValue } from '../cached.js';
 
 // https://docs.taiko.xyz/taiko-alethia-protocol/codebase-analysis/taikol1-contract
 const ROLLUP_ABI = new Interface([
-  `function getConfig() view returns (tuple(
+  `function getConfig() view returns ((
      uint64 chainId,
      uint64 blockMaxProposals,
      uint64 blockRingBufferSize,
@@ -37,74 +36,31 @@ const ROLLUP_ABI = new Interface([
      bool checkEOAForCalldataDA
   ))`,
   `function getLastSyncedTransition() view returns (uint64 batchId)`,
-  // `function getLastSyncedBlock() view returns (uint64 blockId, bytes32 blockHash, bytes32 stateRoot)`,
-  // `function getConfig() view returns (tuple(
-  //    uint64 chainId,
-  //    uint64 blockMaxProposals,
-  //    uint64 blockRingBufferSize,
-  //    uint64 maxBlocksToVerify,
-  //    uint32 blockMaxGasLimit,
-  //    uint96 livenessBond,
-  //    uint8 stateRootSyncInternal,
-  //    bool checkEOAForCalldataDA
-  // ))`,
-  //`function getLastVerifiedTransition() view returns (uint64)`,
-  // `function getLastSyncedTransition() view returns (
-  //   uint64 batchId,
-  //   uint64 blockId,
-  //   (
-  //     bytes32 parentHash,
-  //     bytes32 blockHash,
-  //     bytes32 stateRoot,
-  //     address prover,
-  //     bool inProvingWindow,
-  //     uint48 createdAt
-  //   ) tr
-  // )`,
-  // `function getBatch(uint64 batchId) view returns ((
-  //   bytes32 metaHash,
-  //   uint64 lastBlockId,
-  //   uint96 reserved3,
-  //   uint96 livenessBond,
-  //   uint64 batchId,
-  //   uint64 lastBlockTimestamp,
-  //   uint64 anchorBlockId,
-  //   uint24 nextTransitionId,
-  //   uint8 reserved4,
-  //   uint24 verifiedTransitionId
-  //  ))`,
-  // `function getTransitionByParentHash(uint64 batchId, bytes32 parentHash) view returns ((
-  //   bytes32 parentHash,
-  //   bytes32 blockHash,
-  //   bytes32 stateRoot,
-  //   address prover,
-  //   bool inProvingWindow,
-  //   uint48 createdAt
-  // ))`,
-  //`event BlockVerified(uint256 blockId, address verifier, bytes32 stateRoot)`,
-  // `event TransitionProvedV2(
-  //   uint256 indexed blockId,
-  //   (
-  //     bytes32 parentHash,
-  //     bytes32 blockHash,
-  //     bytes32 stateRoot,
-  //     address prover,
-  //     bool inProvingWindow,
-  //     uint48 createdAt
-  //   ) tr,
-  //   address prover,
-  //   uint96 validityBond,
-  //   uint16 tier,
-  //   uint64 proposedIn
-  // )`,
+  `function getBatch(uint64 batchId) view returns ((
+     bytes32 metaHash,
+     uint64 lastBlockId,
+     uint96 reserved3,
+     uint96 livenessBond,
+     uint64 batchId,
+     uint64 lastBlockTimestamp,
+     uint64 anchorBlockId,
+     uint24 nextTransitionId,
+     uint8 reserved4,
+     uint24 verifiedTransitionId
+  ))`,
 ]);
+
+type ABIBatch = {
+  verifiedTransitionId: number;
+  lastBlockId: bigint;
+};
 
 export type TaikoConfig = {
   TaikoL1: HexAddress;
 };
 
 export type TaikoCommit = RollupCommit<EthProver> & {
-  readonly parentHash: HexString32;
+  readonly tid: number;
 };
 
 export class TaikoRollup extends AbstractRollup<TaikoCommit> {
@@ -146,24 +102,23 @@ export class TaikoRollup extends AbstractRollup<TaikoCommit> {
     return commit.index - (await this.commitStep.get());
   }
   protected override async _fetchCommit(index: bigint): Promise<TaikoCommit> {
-    const prover = new EthProver(this.provider2, index);
-    const { parentHash } = await prover.fetchBlock();
-    return { index, prover, parentHash };
+    const batch: ABIBatch = await this.TaikoL1.getBatch(index);
+    if (!batch.verifiedTransitionId) throw new Error('unverified');
+    const prover = new EthProver(this.provider2, batch.lastBlockId);
+    return { index, prover, tid: batch.verifiedTransitionId };
   }
   override encodeWitness(
     commit: TaikoCommit,
     proofSeq: ProofSequence
   ): HexString {
     return ABI_CODER.encode(
-      ['(uint256, bytes32, bytes[], bytes)'],
-      [[commit.index, commit.parentHash, proofSeq.proofs, proofSeq.order]]
+      ['(uint256, uint24, bytes[], bytes)'],
+      [[commit.index, commit.tid, proofSeq.proofs, proofSeq.order]]
     );
   }
   override windowFromSec(sec: number): number {
     // taiko is a based rollup
-    const avgBlockSec = 16; // block every block 12-20 sec
-    return Math.ceil(sec / avgBlockSec); // units of blocks
-    //  time is now available onchain
-    //return sec;
+    // createdAt is available onchain
+    return sec;
   }
 }

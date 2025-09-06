@@ -14,6 +14,8 @@ error OffchainLookup(
 );
 
 abstract contract GatewayFetchTarget {
+    error TooManyProofs(uint256 max);
+
     struct Session {
         IGatewayVerifier verifier;
         bytes context;
@@ -52,6 +54,13 @@ abstract contract GatewayFetchTarget {
         bytes calldata response,
         bytes calldata carry
     ) external view {
+        if ((response.length & 31) != 0) {
+            // this is an abi-encoded error
+            bytes memory v = response;
+            assembly {
+                revert(add(v, 32), mload(v))
+            }
+        }
         Session memory ses = abi.decode(carry, (Session));
         (bytes[] memory values, uint8 exitCode) = ses.verifier.getStorageValues(
             ses.context,

@@ -4,12 +4,11 @@ import { keccak256 } from 'ethers/crypto';
 import { EthProver } from '../../src/eth/EthProver.js';
 import { afterAll, test, expect } from 'bun:test';
 import { describe } from '../bun-describe-fix.js';
-import { toPaddedHex } from '../../src/utils.js';
 
 describe('limits', async () => {
   const foundry = await Foundry.launch({ infoLog: false });
   afterAll(foundry.shutdown);
-  const MAX_BYTES = 257;
+  const MAX_BYTES = 256;
   const contract = await foundry.deploy(`
     contract X {
       bytes pass = new bytes(${MAX_BYTES});
@@ -38,22 +37,9 @@ describe('limits', async () => {
     expect(exec(prover, req)).rejects.toThrow('stack overflow');
   });
 
-  test('max targets', async () => {
-    const prover = await EthProver.latest(foundry.provider);
-    prover.maxUniqueTargets = 10;
-    const req = new GatewayRequest();
-    for (let i = 0; i < prover.maxUniqueTargets; i++) {
-      req.setTarget(toPaddedHex(i, 20));
-    }
-    await exec(prover, req);
-    req.setTarget('0x51050ec063d393217B436747617aD1C2285Aeeee'); // one more
-    expect(exec(prover, req)).rejects.toThrow('too many targets');
-  });
-
   test('max provable bytes', async () => {
     const prover = await EthProver.latest(foundry.provider);
     prover.maxUniqueProofs = 2 + Math.ceil(MAX_BYTES / 32); // account + length + slots
-    prover.maxProvableBytes = MAX_BYTES;
     const passReq = new GatewayRequest()
       .setTarget(contract.target)
       .setSlot(0)
@@ -63,7 +49,7 @@ describe('limits', async () => {
       .setSlot(1)
       .readBytes();
     await exec(prover, passReq);
-    expect(exec(prover, failReq)).rejects.toThrow(/^too many bytes:/);
+    expect(exec(prover, failReq)).rejects.toThrow(/^too many proofs:/);
   });
 
   test('max supplied bytes', async () => {
@@ -91,7 +77,7 @@ describe('limits', async () => {
     req.push(1).push(2).concat();
     await exec(prover, req);
     prover.maxAllocBytes--;
-    expect(exec(prover, req)).rejects.toThrow('too much allocation');
+    expect(exec(prover, req)).rejects.toThrow(/^too much allocation:/);
   });
 
   test('max alloc bytes: total', async () => {
@@ -103,7 +89,7 @@ describe('limits', async () => {
     for (let i = 0; i < N; i++) req.slice(0, N);
     await exec(prover, req);
     prover.maxAllocBytes--;
-    expect(exec(prover, req)).rejects.toThrow('too much allocation');
+    expect(exec(prover, req)).rejects.toThrow(/^too much allocation:/);
   });
 
   test('max proofs', async () => {

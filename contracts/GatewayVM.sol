@@ -24,7 +24,6 @@ error StackOverflow();
 uint256 constant MAX_STACK = 256;
 
 library GatewayVM {
-
     function dump(Machine memory vm, string memory label) internal view {
         console.log('DEBUG(%s)', label);
         console.log('[pos=%s/%s]', vm.pos, vm.buf.length);
@@ -234,6 +233,15 @@ library GatewayVM {
         return p.proofs[uint8(p.order[p.index++])];
     }
 
+    function getStorageRoot(Machine memory vm) internal view returns (bytes32) {
+        return
+            vm.proofs.hooks.verifyAccountState(
+                vm.proofs.stateRoot,
+                vm.target,
+                vm.readProof()
+            );
+    }
+
     function getStorage(
         Machine memory vm,
         uint256 slot
@@ -351,11 +359,7 @@ library GatewayVM {
                 vm.pushBytes(vm.readBytes(vm.readUint(vm.readByte())));
             } else if (op == GatewayOP.SET_TARGET) {
                 vm.target = address(uint160(vm.popAsUint256()));
-                vm.storageRoot = vm.proofs.hooks.verifyAccountState(
-                    vm.proofs.stateRoot,
-                    vm.target,
-                    vm.readProof()
-                );
+                vm.storageRoot = vm.getStorageRoot();
                 vm.slot = 0;
             } else if (op == GatewayOP.SET_OUTPUT) {
                 uint256 i = vm.popAsUint256();
@@ -374,8 +378,9 @@ library GatewayVM {
                 vm.pushBytes(vm.proveBytes());
             } else if (op == GatewayOP.READ_HASHED_BYTES) {
                 bytes memory v = vm.readProof();
-                if (keccak256(v) != bytes32(vm.popAsUint256()))
+                if (keccak256(v) != bytes32(vm.popAsUint256())) {
                     revert InvalidProof();
+                }
                 vm.pushBytes(v);
             } else if (op == GatewayOP.READ_ARRAY) {
                 vm.pushBytes(vm.proveArray(vm.popAsUint256()));
