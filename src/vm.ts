@@ -274,11 +274,18 @@ export class GatewayProgram {
   keccak() {
     return this.addByte(OP.KECCAK);
   }
-  slice(x: number, n: number) {
-    return this.push(x).push(n).addByte(OP.SLICE);
+  slice(): this;
+  slice(x: number, n: number): this;
+  slice(x?: number, n?: number) {
+    if (x !== undefined) this.push(x).push(n!);
+    return this.addByte(OP.SLICE);
   }
   length() {
     return this.addByte(OP.LENGTH);
+  }
+  chunk(n?: number) {
+    if (n !== undefined) this.push(n);
+    return this.addByte(OP.CHUNK);
   }
 
   plus() {
@@ -783,7 +790,7 @@ export abstract class AbstractProver {
           const { value, slots } = await this.getStorageBytes(
             target,
             slot,
-            vm.trace
+            vm.trace.remainingProvableBytes
           );
           vm.trace.addSlots(target, [slot, ...slots]);
           vm.push(value);
@@ -898,6 +905,20 @@ export abstract class AbstractProver {
           vm.pushUint256(await peekSize(vm.pop()));
           continue;
         }
+        case OP.CHUNK: {
+          const [v, n] = await Promise.all(vm.popSlice(2).map(unwrap));
+          const chunk = numberFromHex(n);
+          if (chunk) {
+            let end = (v.length - 2) >> 1;
+            end -= end % chunk;
+            vm.trace.consumeAlloc(end);
+            while (end >= chunk) {
+              vm.push(dataSlice(v, end - chunk, end));
+              end -= chunk;
+            }
+          }
+          continue;
+        }
         case OP.PLUS: {
           await vm.binaryOp((a, b) => a + b);
           continue;
@@ -1007,14 +1028,14 @@ export abstract class AbstractProver {
   async getStorageBytes(
     target: HexAddress,
     slot: bigint,
-    trace?: GatewayTrace
+    limit?: number
   ): Promise<{
     value: HexFuture;
     size: number;
     slots: bigint[]; // note: does not include header slot!
   }> {
     // https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html#bytes-and-string
-    const fast = !trace;
+    const fast = !limit;
     const first = await this.getStorage(target, slot, fast);
     let size = parseInt(first.slice(64), 16); // last byte
     if ((size & 1) == 0) {
@@ -1023,10 +1044,7 @@ export abstract class AbstractProver {
       const value = dataSlice(first, 0, size); // will throw if size is invalid
       return { value, size, slots: [] };
     }
-    size = checkSize(
-      BigInt(first) >> 1n,
-      fast ? this.maxSuppliedBytes : trace.remainingProvableBytes
-    );
+    size = checkSize(BigInt(first) >> 1n, fast ? this.maxSuppliedBytes : limit);
     if (size < 32) {
       throw new Error(`invalid storage encoding: ${target} @ ${slot}`);
     }

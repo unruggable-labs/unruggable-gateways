@@ -455,6 +455,16 @@ library GatewayVM {
                 vm.pushUint256(
                     vm.isStackRaw(i) ? 32 : vm.stackAsBytes(i).length
                 );
+            } else if (op == GatewayOP.CHUNK) {
+                uint256 chunk = vm.popAsUint256();
+                bytes memory v = vm.popAsBytes();
+                if (chunk > 0) {
+                    uint256 end = v.length - (v.length % chunk);
+                    while (end >= chunk) {
+                        vm.pushBytes(Bytes.slice(v, end - chunk, chunk));
+                        end -= chunk;
+                    }
+                }
             } else if (op == GatewayOP.CONCAT) {
                 bytes memory last = vm.popAsBytes();
                 vm.pushBytes(bytes.concat(vm.popAsBytes(), last));
