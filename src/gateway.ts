@@ -76,7 +76,7 @@ export class Gateway<R extends Rollup> extends EZCCIP {
           }
         });
       },
-      // timestamp: async () => {`
+      // timestamp: async () => {
       //   const commit = await this.getLatestCommit();
       //   return [await commit.prover.fetchTimestamp()];
       // },

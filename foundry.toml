@@ -17,3 +17,24 @@ optimizer_runs = 1 # https://docs.soliditylang.org/en/latest/internals/optimizer
 test = "contracts" # disables tests
 out = "artifacts"
 cache = false
+
+[lint]
+ignore = [
+	"test/**/*.sol",
+	# direct imports
+	"contracts/eth/MerkleTrie.sol",
+	"contracts/eth/SecureMerkleTrie.sol",
+	"contracts/linea/Mimc.sol",
+	"contracts/linea/SparseMerkleProof.sol",
+	"contracts/zksync/Blake2S.sol",
+	"contracts/zksync/ZKSyncSMT.sol",
+]
+exclude_lints = [
+	"mixed-case-function",
+	"mixed-case-variable",
+	"asm-keccak256",
+	"screaming-snake-case-const",
+	"screaming-snake-case-immutable",
+	"pascal-case-struct",
+	"incorrect-shift", # incorrect
+]

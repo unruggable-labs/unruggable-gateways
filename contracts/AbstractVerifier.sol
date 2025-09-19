@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IGatewayVerifier, CommitTooOld, CommitTooNew} from './IGatewayVerifier.sol';
-import {IVerifierHooks} from './IVerifierHooks.sol';
 import {Ownable} from '@openzeppelin/contracts/access/Ownable.sol';
+import {ERC165} from '@openzeppelin/contracts/utils/introspection/ERC165.sol';
 
-abstract contract AbstractVerifier is IGatewayVerifier, Ownable {
+import {IStandardGatewayVerifier, IGatewayVerifier} from './IStandardGatewayVerifier.sol';
+import {IVerifierHooks} from './IVerifierHooks.sol';
+
+abstract contract AbstractVerifier is IStandardGatewayVerifier, Ownable, ERC165 {
     event GatewayURLsChanged();
 
     string[] _urls;
@@ -22,19 +24,32 @@ abstract contract AbstractVerifier is IGatewayVerifier, Ownable {
         _hooks = hooks;
     }
 
+    /// @inheritdoc ERC165
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override returns (bool) {
+        return
+            interfaceId == type(IGatewayVerifier).interfaceId ||
+            interfaceId == type(IStandardGatewayVerifier).interfaceId ||
+            super.supportsInterface(interfaceId);
+    }
+
     function setGatewayURLs(string[] memory urls) external onlyOwner {
         _urls = urls;
         emit GatewayURLsChanged();
     }
 
+    /// @inheritdoc IGatewayVerifier
     function gatewayURLs() external view returns (string[] memory) {
         return _urls;
     }
 
+    /// @inheritdoc IStandardGatewayVerifier
     function getWindow() external view returns (uint256) {
         return _window;
     }
 
+    /// @inheritdoc IStandardGatewayVerifier
     function getHooks() external view returns (IVerifierHooks) {
         return _hooks;
     }

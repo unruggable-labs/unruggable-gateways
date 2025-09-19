@@ -56,10 +56,7 @@ contract TaikoVerifier is AbstractVerifier {
         GatewayRequest memory req,
         bytes memory proof
     ) external view returns (bytes[] memory, uint8 exitCode) {
-        (uint64 batchId, uint256 createdAt) = abi.decode(
-            context,
-            (uint64, uint48)
-        );
+        (, uint256 createdAt) = abi.decode(context, (uint64, uint48));
         GatewayProof memory p = abi.decode(proof, (GatewayProof));
         TransitionState memory ts = _rollup.getTransitionById(p.batchId, p.tid); // reverts if invalid
         _checkWindow(createdAt, ts.createdAt);

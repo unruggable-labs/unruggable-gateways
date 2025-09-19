@@ -5,7 +5,7 @@ import {GatewayRequest, GatewayOP, EvalFlag} from './GatewayRequest.sol';
 import {IVerifierHooks, InvalidProof, NOT_A_CONTRACT} from './IVerifierHooks.sol';
 import {Bytes} from '../lib/optimism/packages/contracts-bedrock/src/libraries/Bytes.sol'; // Bytes.slice
 
-import 'forge-std/console.sol'; // DEBUG
+import {console} from 'forge-std/console.sol'; // DEBUG
 
 struct ProofSequence {
     uint256 index;

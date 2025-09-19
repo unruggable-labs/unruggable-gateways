@@ -3,7 +3,6 @@ pragma solidity ^0.8.23;
 
 import {AbstractVerifier, IVerifierHooks} from '../AbstractVerifier.sol';
 import {GatewayRequest, GatewayVM, ProofSequence} from '../GatewayVM.sol';
-import {IZKSyncSMT, TreeEntry, ACCOUNT_CODE_HASH} from './IZKSyncSMT.sol';
 
 interface IZKSyncDiamond {
     function storedBatchHash(

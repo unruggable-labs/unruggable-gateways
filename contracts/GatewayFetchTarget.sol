@@ -15,7 +15,7 @@ error OffchainLookup(
 
 abstract contract GatewayFetchTarget {
     error TooManyProofs(uint256 max);
-    error OutOfGas();
+    //error OutOfGas();
 
     struct Session {
         IGatewayVerifier verifier;
