@@ -40,6 +40,7 @@ jobs:
       - name: 'Create env file'
         run: |
           touch .env
+          echo PROVIDER_ORDER_HOODI=drpc >> .env
           echo ALCHEMY_KEY=${{ secrets.ALCHEMY_KEY }} >> .env
           echo INFURA_KEY=${{ secrets.INFURA_KEY }} >> .env
           echo DRPC_KEY=${{ secrets.DRPC_KEY }} >> .env
