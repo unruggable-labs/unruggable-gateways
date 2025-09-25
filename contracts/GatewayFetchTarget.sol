@@ -1,4 +1,4 @@
-//SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 import {GatewayRequest} from './GatewayRequest.sol';
@@ -14,6 +14,9 @@ error OffchainLookup(
 );
 
 abstract contract GatewayFetchTarget {
+    error TooManyProofs(uint256 max);
+    //error OutOfGas();
+
     struct Session {
         IGatewayVerifier verifier;
         bytes context;
@@ -52,7 +55,34 @@ abstract contract GatewayFetchTarget {
         bytes calldata response,
         bytes calldata carry
     ) external view {
+        if ((response.length & 31) != 0) {
+            bytes memory v = response;
+            assembly {
+                revert(add(v, 32), mload(v)) // propagate CallbackError
+            }
+        }
         Session memory ses = abi.decode(carry, (Session));
+        // bool ok;
+        // bytes memory ret;
+        // uint256 g = gasleft();
+        // try
+        //     ses.verifier.getStorageValues(ses.context, ses.req, response)
+        // returns (bytes[] memory values, uint8 exitCode) {
+        //     (ok, ret) = address(this).staticcall(
+        //         abi.encodeWithSelector(
+        //             ses.callback,
+        //             values,
+        //             exitCode,
+        //             ses.carry
+        //         )
+        //     );
+        // } catch (bytes memory err) {
+        //     if (err.length == 0 && gasleft() < (g * 3) >> 6) { // 1/64 + 1/32 ???
+        //         ret = abi.encodeWithSelector(OutOfGas.selector);
+        //     } else {
+        //         ret = err;
+        //     }
+        // }
         (bytes[] memory values, uint8 exitCode) = ses.verifier.getStorageValues(
             ses.context,
             ses.req,

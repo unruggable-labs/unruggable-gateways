@@ -70,7 +70,7 @@ If you are interested in building a solution for another chain, please take a lo
 
 1. [`foundryup`](https://book.getfoundry.sh/getting-started/installation)
 1. `forge i`
-1. `bun i`
+1. `bun i --frozen-lockfile`
 1. create [`.env`](./.env.example)
 
 ## Running a Gateway

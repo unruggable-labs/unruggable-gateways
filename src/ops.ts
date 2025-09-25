@@ -69,6 +69,7 @@ export const GATEWAY_OP = {
   CONCAT: 91,
   SLICE: 92,
   LENGTH: 93,
+  CHUNK: 94,
 
   PLUS: 100,
   TIMES: 101,

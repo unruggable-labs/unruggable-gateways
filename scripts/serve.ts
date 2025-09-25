@@ -498,10 +498,8 @@ function chainDetails(provider: Provider) {
 function proverDetails(prover: AbstractProver) {
   const {
     maxUniqueProofs,
-    maxUniqueTargets,
     proofBatchSize,
     maxSuppliedBytes,
-    maxProvableBytes,
     maxAllocBytes,
     maxEvalDepth,
     fast,
@@ -510,10 +508,8 @@ function proverDetails(prover: AbstractProver) {
   return {
     prover: prover.constructor.name,
     maxUniqueProofs,
-    maxUniqueTargets,
     proofBatchSize,
     maxSuppliedBytes,
-    maxProvableBytes,
     maxAllocBytes,
     maxEvalDepth,
     fast,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IVerifierHooks, InvalidProof, NOT_A_CONTRACT, NULL_CODE_HASH} from '../IVerifierHooks.sol';
+import {IVerifierHooks, InvalidProof, NOT_A_CONTRACT} from '../IVerifierHooks.sol';
 import {IZKSyncSMT, TreeEntry, ACCOUNT_CODE_HASH} from './IZKSyncSMT.sol';
 
 contract ZKSyncVerifierHooks is IVerifierHooks {
@@ -44,15 +44,12 @@ contract ZKSyncVerifierHooks is IVerifierHooks {
             proof,
             (bytes32, uint64, bytes32[])
         );
-        require(
-            root ==
-                _smt.getRootHash(
-                    path,
-                    TreeEntry(slot, value, leafIndex),
-                    target
-                ),
-            'ZKS: proof'
+        bytes32 computed = _smt.getRootHash(
+            path,
+            TreeEntry(slot, value, leafIndex),
+            target
         );
+        if (root != computed) revert InvalidProof();
         return value;
     }
 }

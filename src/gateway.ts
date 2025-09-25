@@ -7,6 +7,7 @@ import { CachedMap, CachedValue, LRU } from './cached.js';
 import { ABI_CODER } from './utils.js';
 import { GatewayRequestV1 } from './v1.js';
 import { EZCCIP } from '@namestone/ezccip';
+import { CallbackError } from './vm.js';
 
 export const GATEWAY_ABI = new Interface([
   `function proveRequest(bytes context, tuple(bytes)) returns (bytes)`,
@@ -63,9 +64,16 @@ export class Gateway<R extends Rollup> extends EZCCIP {
         history.show = [commit.index, shortHash(hash)];
         // NOTE: for a given commit + request, calls are pure
         return this.callLRU.cache(hash, async () => {
-          const state = await commit.prover.evalDecoded(req);
-          const proofSeq = await commit.prover.prove(state.needs);
-          return getBytes(this.rollup.encodeWitness(commit, proofSeq));
+          try {
+            const state = await commit.prover.evalDecoded(req);
+            const proofSeq = await commit.prover.prove(state.needs);
+            return getBytes(this.rollup.encodeWitness(commit, proofSeq));
+          } catch (err: unknown) {
+            if (err instanceof CallbackError) {
+              return getBytes(err.data);
+            }
+            throw err;
+          }
         });
       },
       // timestamp: async () => {
