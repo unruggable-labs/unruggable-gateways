@@ -45,6 +45,8 @@
   ],
   "devDependencies": {
     "@adraffy/blocksmith": "^0.1.53",
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.36.0",
     "@types/bun": "latest",
     "@typescript-eslint/eslint-plugin": "^8.43.0",
     "@typescript-eslint/parser": "^8.43.0",

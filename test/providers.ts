@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import type { Chain, ChainPair, Provider, ProviderPair } from '../src/types.js';
 import { CHAINS, chainName } from '../src/chains.js';
 import { FetchRequest } from 'ethers/utils';

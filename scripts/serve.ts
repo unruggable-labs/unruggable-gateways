@@ -155,7 +155,7 @@ const config: Record<string, any> = {
     (version, cmd) => {
       try {
         version ||= execSync(cmd, { stdio: 'pipe' }).toString().trim();
-      } catch (err) {
+      } catch (_err) {
         // empty
       }
       return version;
