@@ -71,6 +71,9 @@ export class ZKSyncProver extends AbstractProver {
   override get context() {
     return { batch: this.batchIndex };
   }
+  override get requireTargetBeforeSlot() {
+    return false;
+  }
   fetchBatchDetails(): Promise<
     Omit<RPCZKSyncL1BatchDetails, 'rootHash'> & { rootHash: HexString32 }
   > {
@@ -166,7 +169,6 @@ export class ZKSyncProver extends AbstractProver {
         return ref;
       }
     });
-    this.checkProofCount(refs.length);
     await Promise.all(
       promises.concat(
         Array.from(buckets, async ([target, map]) => {
@@ -184,8 +186,16 @@ export class ZKSyncProver extends AbstractProver {
       order: Uint8Array.from(order, (x) => x.id),
     };
   }
+  async getAccountCodeHashProof(
+    target: HexAddress
+  ): Promise<ZKSyncStorageProof> {
+    const [proof] = await this.getStorageProofs(ZKSYNC_ACCOUNT_CODEHASH, [
+      BigInt(target),
+    ]);
+    return proof;
+  }
   async getStorageProofs(
-    target: HexString,
+    target: HexAddress,
     slots: bigint[]
   ): Promise<ZKSyncStorageProof[]> {
     target = target.toLowerCase();

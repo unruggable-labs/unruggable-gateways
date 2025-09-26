@@ -149,6 +149,8 @@ export class LineaRollup extends AbstractRollup<LineaCommit> {
     // "Reminder: It takes at least 8 hours for the transaction to go through from L2 to L1."
     // 20240815: heuristic based on mainnet data
     // https://etherscan.io/advanced-filter?tadd=0x1335f1a2b3ff25f07f5fef07dd35d8fb4312c3c73b138e2fad9347b3319ab53c&ps=25&eladd=0xd19d4B5d358258f05D7B411E21A1460D11B0876F&eltpc=0x1335f1a2b3ff25f07f5fef07dd35d8fb4312c3c73b138e2fad9347b3319ab53c
+    // 20250716: updated url for v3
+    // https://etherscan.io/advanced-filter?tadd=0x1335f1a2b3ff25f07f5fef07dd35d8fb4312c3c73b138e2fad9347b3319ab53c&ps=25&eladd=0xd19d4B5d358258f05D7B411E21A1460D11B0876F&eltpc=0xa0262dc79e4ccb71ceac8574ae906311ae338aa4a2044fd4ec4b99fad5ab60cb
     const blocksPerCommit = 5000; // every 2000-8000+ L2 blocks
     const secPerCommit = 2 * 3600; // every ~2 hours
     return blocksPerCommit * Math.ceil(sec / secPerCommit); // units of commit

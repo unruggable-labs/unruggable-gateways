@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.23;
 
 import {AbstractVerifier, IVerifierHooks} from '../AbstractVerifier.sol';
 import {GatewayRequest, GatewayVM, ProofSequence} from '../GatewayVM.sol';

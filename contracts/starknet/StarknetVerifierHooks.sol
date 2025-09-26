@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IVerifierHooks, InvalidProof, NOT_A_CONTRACT, NULL_CODE_HASH} from '../IVerifierHooks.sol';
+import {IVerifierHooks} from '../IVerifierHooks.sol';
 
 // https://github.com/NethermindEth/starknet-state-verifier
 // https://github.com/Kelvyne/starknet-storage-proof-solidity

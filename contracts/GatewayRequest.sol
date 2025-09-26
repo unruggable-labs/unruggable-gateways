@@ -80,6 +80,7 @@ library GatewayOP {
     uint8 constant CONCAT = 91;
     uint8 constant SLICE = 92;
     uint8 constant LENGTH = 93;
+    uint8 constant CHUNK = 94;
 
     uint8 constant PLUS = 100;
     uint8 constant TIMES = 101;

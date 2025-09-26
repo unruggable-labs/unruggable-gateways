@@ -1,6 +1,6 @@
 {
   "name": "@unruggable/gateways",
-  "version": "1.2.2",
+  "version": "1.2.5",
   "description": "Trustless Ethereum Multichain CCIP-Read Gateway",
   "publishConfig": {
     "access": "public"
@@ -25,9 +25,9 @@
     "test": "IS_CI=1 bun test --timeout 50000",
     "test-all": "bun test --timeout 50000",
     "test-contracts": "forge test -C test/",
-    "test-components": "bun scripts/opcodes.ts quiet && bun run test-contracts && bun test test/components/*",
+    "test-components": "bun scripts/opcodes.ts quiet && bun run test-contracts && bun test test/components/* test/hooks/*",
     "test-gateways": "bun test test/gateway/* --timeout 50000",
-    "test-fast": "bun run check && bun run lint && bun run forge && bun run test-components && bun test test/gateway/op.test.ts && bun test test/gateway/reverse-op.test.ts",
+    "test-fast": "bun run check && bun run lint && bun run forge && bun run test-components test/gateway/op.test.ts test/gateway/reverse-op.test.ts",
     "lint": "eslint . --ext .ts",
     "build": "bun scripts/build-dist.ts",
     "loc": "rg -c '^' -g 'src/**/*.ts' -g 'test/**/*.ts' --no-filename | jq -s 'add'"
@@ -44,21 +44,23 @@
     "contracts/"
   ],
   "devDependencies": {
-    "@adraffy/blocksmith": "^0.1.52",
+    "@adraffy/blocksmith": "^0.1.53",
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.36.0",
     "@types/bun": "latest",
-    "@typescript-eslint/eslint-plugin": "^6.7.4",
-    "@typescript-eslint/parser": "^6.7.4",
-    "eslint": "^8.50.0",
-    "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-prettier": "^5.0.0",
-    "prettier": "^3.3.3"
+    "@typescript-eslint/eslint-plugin": "^8.43.0",
+    "@typescript-eslint/parser": "^8.43.0",
+    "eslint": "^9.35.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "prettier": "^3.6.2"
   },
   "dependencies": {
-    "@namestone/ezccip": "^0.1.0",
-    "ethers": "^6.13",
+    "@namestone/ezccip": "^0.1.1",
+    "ethers": "^6.15.0",
     "fzstd": "^0.1.1"
   },
   "peerDependencies": {
-    "typescript": "^5.5.2"
+    "typescript": "^5.6.3"
   }
 }

@@ -70,7 +70,7 @@ If you are interested in building a solution for another chain, please take a lo
 
 1. [`foundryup`](https://book.getfoundry.sh/getting-started/installation)
 1. `forge i`
-1. `bun i`
+1. `bun i --frozen-lockfile`
 1. create [`.env`](./.env.example)
 
 ## Running a Gateway
@@ -98,6 +98,8 @@ If you are interested in building a solution for another chain, please take a lo
 	* Include `--step=#` to adjust commit step
 	* Use [`PROVIDER_ORDER`](./test/providers.ts#L479) to customize global RPC provider priority.
 	* Use `PROVIDER_ORDER_{CHAIN_NAME}` to customize per-chain RPC provider priority.
+	* Use `PROVIDER_{CHAIN_NAME}` to customize per-chain RPC provider override.
+	* Use `BEACON_{CHAIN_NAME}` to customize per-chain Beacon RPC provider override.
 
 ## Testing
 

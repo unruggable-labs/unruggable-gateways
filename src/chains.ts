@@ -8,6 +8,7 @@ export const CHAINS = {
   MAINNET: 1n,
   SEPOLIA: 11155111n,
   HOLESKY: 17000n,
+  HOODI: 560048n,
   OP: 10n,
   OP_SEPOLIA: 11155420n,
   ZKSYNC: 324n,
@@ -81,6 +82,13 @@ export function chainName(chain: Chain): keyof typeof CHAINS {
   throw new TypeError(`unknown chain: ${chain}`);
 }
 
+export function chainFromName(slug: string): Chain {
+  if (/^(0x)?[0-9a-f]+$/i.test(slug)) return BigInt(slug);
+  const key = slug.toUpperCase().replaceAll('-', '_');
+  if (key in CHAINS) return CHAINS[key as keyof typeof CHAINS];
+  throw new Error(`unknown chain: ${slug}`);
+}
+
 // idea: chainType? chainKind?
 // at the moment, the only distinction needed is address type
 export function isStarknet(chain: Chain) {
@@ -98,6 +106,7 @@ export function isL1(chain: Chain) {
     case CHAINS.MAINNET:
     case CHAINS.SEPOLIA:
     case CHAINS.HOLESKY:
+    case CHAINS.HOODI:
     case CHAINS.BSC:
       return true;
   }

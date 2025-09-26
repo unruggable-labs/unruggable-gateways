@@ -7,6 +7,7 @@ import { CachedMap, CachedValue, LRU } from './cached.js';
 import { ABI_CODER } from './utils.js';
 import { GatewayRequestV1 } from './v1.js';
 import { EZCCIP } from '@namestone/ezccip';
+import { CallbackError } from './vm.js';
 
 export const GATEWAY_ABI = new Interface([
   `function proveRequest(bytes context, tuple(bytes)) returns (bytes)`,
@@ -36,6 +37,9 @@ type CachedCommit<R extends Rollup> = {
 
 export class Gateway<R extends Rollup> extends EZCCIP {
   // the max number of non-latest commitments to keep in memory
+  // depth = 0 => latest
+  // depth = 1 => [latest, prev(latest)]
+  // depth = 2 => [latest, prev(latest), prev(prev(latest))]
   commitDepth = 1;
   // if true, requests beyond the commit depth are supported
   allowHistorical = false;
@@ -60,9 +64,16 @@ export class Gateway<R extends Rollup> extends EZCCIP {
         history.show = [commit.index, shortHash(hash)];
         // NOTE: for a given commit + request, calls are pure
         return this.callLRU.cache(hash, async () => {
-          const state = await commit.prover.evalDecoded(req);
-          const proofSeq = await commit.prover.prove(state.needs);
-          return getBytes(this.rollup.encodeWitness(commit, proofSeq));
+          try {
+            const state = await commit.prover.evalDecoded(req);
+            const proofSeq = await commit.prover.prove(state.needs);
+            return getBytes(this.rollup.encodeWitness(commit, proofSeq));
+          } catch (err: unknown) {
+            if (err instanceof CallbackError) {
+              return getBytes(err.data);
+            }
+            throw err;
+          }
         });
       },
       // timestamp: async () => {
@@ -127,7 +138,7 @@ export class Gateway<R extends Rollup> extends EZCCIP {
     // check recent cache in linear order
     for (let depth = 0; ; ) {
       if (index >= cursor.commit.index) return cursor.commit;
-      if (++depth >= this.commitDepth) break;
+      if (++depth > this.commitDepth) break;
       const prev = await cursor.parent.get();
       cursor = await this.cachedCommit(prev);
     }

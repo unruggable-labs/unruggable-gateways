@@ -7,7 +7,11 @@ const config = OPFaultRollup.mainnetConfig;
 const rollup = new OPFaultRollup(createProviderPair(config), config, 3600);
 
 console.log(await rollup.fetchLatestCommitIndex());
-console.log(await new OPFaultRollup(rollup, config).fetchLatestCommitIndex());
+console.log(
+  await new OPFaultRollup(rollup, config)
+    .fetchLatestCommitIndex()
+    .catch((x) => x)
+);
 
 const commits = await rollup.fetchRecentCommits(8);
 console.log(commits[0]);

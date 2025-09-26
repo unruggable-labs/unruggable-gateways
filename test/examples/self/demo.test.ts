@@ -4,6 +4,7 @@ import { EthSelfRollup } from '../../../src/eth/EthSelfRollup.js';
 import { Gateway } from '../../../src/gateway.js';
 import { describe } from '../../bun-describe-fix.js';
 import { afterAll, expect, test } from 'bun:test';
+import { LATEST_BLOCK_TAG } from '../../../src/utils.js';
 
 describe('local self', async () => {
   const foundry = await Foundry.launch({
@@ -11,7 +12,7 @@ describe('local self', async () => {
   });
   afterAll(foundry.shutdown);
   const rollup = new EthSelfRollup(foundry.provider);
-  rollup.latestBlockTag = 'latest';
+  rollup.latestBlockTag = LATEST_BLOCK_TAG;
   const gateway = new Gateway(rollup);
   const ccip = await serve(gateway, { protocol: 'raw', log: false });
   afterAll(ccip.shutdown);

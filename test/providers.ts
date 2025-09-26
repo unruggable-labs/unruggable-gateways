@@ -7,6 +7,7 @@ export type RPCInfo = {
   readonly chain: Chain;
   readonly publicHTTP: string;
   readonly publicWS?: string;
+  readonly publicBeacon?: string;
   readonly ankr?: string;
   readonly ankrPremium?: boolean;
   readonly ankrBeaconPremium?: boolean;
@@ -28,6 +29,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       {
         chain: CHAINS.MAINNET,
         publicHTTP: 'https://rpc.ankr.com/eth', // https://cloudflare-eth.com is too rate limited
+        publicBeacon: 'https://ethereum-beacon-api.publicnode.com',
         ankr: 'eth',
         ankrBeaconPremium: true,
         infura: 'mainnet',
@@ -38,6 +40,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       {
         chain: CHAINS.SEPOLIA,
         publicHTTP: 'https://rpc.ankr.com/eth_sepolia',
+        publicBeacon: 'https://ethereum-sepolia-beacon-api.publicnode.com',
         ankr: 'eth_sepolia',
         infura: 'sepolia',
         alchemy: 'eth-sepolia',
@@ -47,11 +50,20 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       {
         chain: CHAINS.HOLESKY,
         publicHTTP: 'https://rpc.ankr.com/eth_holesky', //'https://rpc.holesky.ethpandaops.io',
+        publicBeacon: 'https://ethereum-holesky-beacon-api.publicnode.com',
         ankr: 'eth_holesky',
         infura: 'holesky',
         alchemy: 'eth-holesky',
         drpc: 'holesky',
         drpcBeacon: 'eth-beacon-chain-holesky',
+      },
+      {
+        chain: CHAINS.HOODI,
+        publicHTTP: 'https://ethereum-hoodi-rpc.publicnode.com',
+        publicBeacon: 'https://ethereum-hoodi-beacon-api.publicnode.com',
+        infura: 'hoodi',
+        drpc: 'hoodi',
+        drpcBeacon: 'eth-beacon-chain-hoodi',
       },
       {
         // https://docs.optimism.io/chain/networks#op-mainnet
@@ -475,14 +487,20 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
   ).map((x) => [x.chain, x])
 );
 
+function envForChain(prefix: string, chain: Chain) {
+  return (
+    process.env[`${prefix}_${chainName(chain)}`] ||
+    process.env[`${prefix}_${chain}`]
+  );
+}
+
 export function providerOrder(chain?: Chain): string[] {
+  const key = 'PROVIDER_ORDER';
   let env;
-  if (chain) {
-    env = process.env[`PROVIDER_ORDER_${chainName(chain)}`]; // by name
-    if (!env) env = process.env[`PROVIDER_ORDER_${chain}`]; // by id
-  }
-  if (!env) env = process.env.PROVIDER_ORDER; // global
+  if (chain) env = envForChain(key, chain);
+  if (!env) env = process.env[key]; // global
   if (env) return env.split(/[,\s+]/).flatMap((x) => x.trim() || []);
+  // 20240830: so far, alchemy has the best support
   return ['alchemy', 'infura', 'ankr', 'drpc', 'public']; // global default
 }
 
@@ -497,7 +515,8 @@ type ProviderInfo = {
 export function decideProvider(chain: Chain, order?: string[]): ProviderInfo {
   const info = RPC_INFO.get(chain);
   if (!info) throw new Error(`unknown chain: ${chain}`);
-  // 20240830: so far, alchemy has the best support
+  const env = envForChain('PROVIDER', chain);
+  if (env) return { info, type: 'custom', url: env };
   order ??= providerOrder(chain);
   for (const type of order) {
     let slug, apiKey;
@@ -600,6 +619,8 @@ export function createProviderPair(a: Chain | ChainPair, b?: Chain) {
 
 // https://docs.arbitrum.io/run-arbitrum-node/l1-ethereum-beacon-chain-rpc-providers
 export function beaconURL(chain: Chain): string {
+  const env = envForChain('BEACON', chain);
+  if (env) return env;
   const info = RPC_INFO.get(chain);
   if (!info) throw new Error(`unknown chain: ${chain}`);
   let apiKey;
@@ -611,6 +632,8 @@ export function beaconURL(chain: Chain): string {
     process.env.ANKR_PREMIUM
   ) {
     return `https://rpc.ankr.com/premium-http/${info.ankr}_beacon/${apiKey}`;
+  } else if (info.publicBeacon) {
+    return info.publicBeacon;
   }
   throw new Error(`${chainName(chain)} beacon chain unsupported`);
 }

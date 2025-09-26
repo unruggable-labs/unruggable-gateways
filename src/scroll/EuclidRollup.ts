@@ -55,8 +55,6 @@ const ROLLUP_ABI = new Interface([
   )`,
 ]);
 
-const BATCH_VERSION = 7;
-
 export type EuclidConfig = {
   ScrollChain: HexAddress;
 };
@@ -142,9 +140,6 @@ export class EuclidRollup extends AbstractRollup<EuclidCommit> {
       default:
         throw new Error(`unsupported commit tx: ${desc.name}`);
     }
-    if (desc.args.version != BATCH_VERSION) {
-      throw new Error(`unexpected version: ${desc.args.version}`);
-    }
     if (!tx.blobVersionedHashes || !tx.blobVersionedHashes.length) {
       throw new Error(`expected blobs`);
     }
@@ -167,7 +162,7 @@ export class EuclidRollup extends AbstractRollup<EuclidCommit> {
       // https://github.com/scroll-tech/da-codec/blob/344f2d5e33e1930c63cd6a082ef77e27dbe50cea/encoding/codecv7_types.go#L125
       batchHash = keccak256(
         concat([
-          toPaddedHex(BATCH_VERSION, 1),
+          toPaddedHex(desc.args.version, 1),
           toPaddedHex(batchIndex++, 8),
           bvh,
           batchHash,
@@ -180,7 +175,7 @@ export class EuclidRollup extends AbstractRollup<EuclidCommit> {
     }
     const prover = new EthProver(
       this.provider2,
-      lastBlockFromBlobV7(sidecar.blob)
+      lastBlockFromBlob(sidecar.blob)
     );
     return { index, prover, l1BlockNumber: finalEvent.blockNumber };
   }
@@ -213,11 +208,16 @@ function makeBlobCanonical(blob: HexString): Uint8Array {
   return v;
 }
 
-function lastBlockFromBlobV7(blob: HexString) {
-  //https://github.com/scroll-tech/da-codec/blob/344f2d5e33e1930c63cd6a082ef77e27dbe50cea/encoding/codecv7.go#L176
+function lastBlockFromBlob(blob: HexString) {
+  // https://github.com/scroll-tech/da-codec/blob/344f2d5e33e1930c63cd6a082ef77e27dbe50cea/encoding/codecv7.go#L176
+  // https://github.com/scroll-tech/da-codec/blob/2cfec8c99547b68dc64e2b020fa2b83cfb9c0e99/encoding/codecv8.go
   let v = makeBlobCanonical(blob);
-  if (v[0] != BATCH_VERSION) {
-    throw new Error(`unexpected version: ${v[0]}`);
+  switch (v[0]) {
+    case 7:
+    case 8:
+      break;
+    default:
+      throw new Error(`unexpected version: ${v[0]}`);
   }
   const compressed = v[4];
   if (compressed != 0 && compressed != 1) {
