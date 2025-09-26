@@ -3,7 +3,7 @@ import { createProviderPair } from '../providers.js';
 
 console.log(new Date());
 
-const config = OPRollup.cyberMainnetConfig;
+const config = OPRollup.blastMainnnetConfig;
 const rollup = new OPRollup(createProviderPair(config), config);
 
 console.log(
