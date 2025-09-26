@@ -129,7 +129,7 @@ export class UnfinalizedLineaRollup extends AbstractRollup<UnfinalizedLineaCommi
     if (!blobs.length) throw new Error('expected blobs');
     const parentShnarf = desc.args.parentShnarf as HexString32;
     let computedShnarf = parentShnarf;
-    let abiEncodedTuple!: HexString;
+    let abiEncodedTuple: HexString;
     for (let i = 0; i < blobs.length; i++) {
       const blob = blobs[i];
       const currentDataEvaluationPoint = keccak256(

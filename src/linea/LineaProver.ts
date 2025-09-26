@@ -36,8 +36,9 @@ export class LineaProver extends BlockProver {
       await this.getProofs(ZeroAddress);
       return true;
     } catch (cause) {
-      if (isRPCError(cause, BLOCK_MISSING_IN_CHAIN, UNKNOWN_RPC_ERROR))
+      if (isRPCError(cause, BLOCK_MISSING_IN_CHAIN, UNKNOWN_RPC_ERROR)) {
         return false;
+      }
       throw new Error(`isShomeiReady()`, { cause });
     }
   }

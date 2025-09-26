@@ -1,4 +1,4 @@
-import type { Chain, ChainPair, Provider, ProviderPair } from '../src/types.js';
+import type { Chain, ChainPair, ProviderPair } from '../src/types.js';
 import { CHAINS, chainName } from '../src/chains.js';
 import { FetchRequest } from 'ethers/utils';
 import { GatewayProvider } from '../src/GatewayProvider.js';
@@ -592,7 +592,7 @@ export function providerURL(chain: Chain): string {
   return decideProvider(chain).url;
 }
 
-export function createProvider(chain: Chain): Provider {
+export function createProvider(chain: Chain) {
   const fr = new FetchRequest(providerURL(chain));
   fr.timeout = 10000; // 5 minutes is too long
   // fr.preflightFunc = async (req) => {
@@ -602,10 +602,7 @@ export function createProvider(chain: Chain): Provider {
   return new GatewayProvider(fr, chain);
 }
 
-export function createProviderPair(
-  a: Chain | ChainPair,
-  b?: Chain
-): ProviderPair {
+export function createProviderPair(a: Chain | ChainPair, b?: Chain) {
   if (typeof a !== 'bigint') {
     b = a.chain2;
     a = a.chain1;
@@ -617,7 +614,7 @@ export function createProviderPair(
   return {
     provider1: createProvider(a),
     provider2: createProvider(b),
-  };
+  } satisfies ProviderPair;
 }
 
 // https://docs.arbitrum.io/run-arbitrum-node/l1-ethereum-beacon-chain-rpc-providers

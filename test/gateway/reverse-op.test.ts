@@ -18,7 +18,7 @@ describe.skipIf(!!process.env.IS_CV)(
       infoLog: false,
     });
     afterAll(foundry.shutdown);
-    const rollup = new ReverseOPRollup(createProviderPair(config), config);
+    const rollup = new ReverseOPRollup(createProviderPair(config));
     // NOTE: prove against prefork block, since state diverged on our fork
     rollup.latestBlockTag = await fetchBlockNumber(foundry.provider, -5);
     const gateway = new Gateway(rollup);
