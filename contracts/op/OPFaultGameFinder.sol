@@ -3,7 +3,7 @@ pragma solidity ^0.8.23;
 
 // https://github.com/ethereum-optimism/optimism/issues/11269
 
-// https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/src/L1/OptimismPortal.sol
+// https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/src/L1/OptimismPortal2.sol
 interface IOptimismPortal {
     function disputeGameFactory() external view returns (IDisputeGameFactory);
     function respectedGameType() external view returns (uint256);
@@ -14,7 +14,7 @@ interface IOptimismPortal {
     function respectedGameTypeUpdatedAt() external view returns (uint64);
 }
 
-// https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/src/dispute/interfaces/IDisputeGameFactory.sol
+// https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/interfaces/dispute/IDisputeGameFactory.sol
 interface IDisputeGameFactory {
     function gameCount() external view returns (uint256);
     function gameAtIndex(
@@ -25,7 +25,7 @@ interface IDisputeGameFactory {
         returns (uint256 gameType, uint256 created, IDisputeGame gameProxy);
 }
 
-// https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/src/dispute/interfaces/IDisputeGame.sol
+// https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/interfaces/dispute/IDisputeGame.sol
 interface IDisputeGame {
     function status() external view returns (uint256);
     function l2BlockNumber() external view returns (uint256);
@@ -38,16 +38,16 @@ struct FinalizationParams {
     uint64 gameTypeUpdatedAt;
 }
 
-// https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/src/dispute/lib/Types.sol#L7
+// https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/src/dispute/lib/Types.sol
 uint256 constant CHALLENGER_WINS = 1;
 uint256 constant DEFENDER_WINS = 2;
 
-// https://github.com/ethereum-optimism/optimism/blob/42acc178b262b4cdcc75f9b3f4f63941c65bcb8a/packages/contracts-bedrock/interfaces/dispute/IFaultDisputeGame.sol
+// https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/interfaces/dispute/IFaultDisputeGame.sol
 interface IFaultDisputeGame {
     function l2BlockNumberChallenged() external view returns (bool);
 }
 
-// https://github.com/ethereum-optimism/optimism/blob/42acc178b262b4cdcc75f9b3f4f63941c65bcb8a/packages/contracts-bedrock/src/dispute/lib/Types.sol
+// https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/src/dispute/lib/Types.sol
 uint32 constant GAME_TYPE_CANNON = 0;
 uint32 constant GAME_TYPE_PERMISSIONED_CANNON = 1;
 
