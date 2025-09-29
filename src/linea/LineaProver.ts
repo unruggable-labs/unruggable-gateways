@@ -171,8 +171,12 @@ export class LineaProver extends BlockProver {
       storageProofs: v as LineaProof[],
     };
   }
-  async fetchProofs(target: HexString, slots: bigint[] = []) {
-    const ps: Promise<RPCLineaGetProof>[] = [];
+  async fetchProofs(
+    target: HexString,
+    slots: bigint[] = []
+  ): Promise<RPCLineaGetProof> {
+    type Proof = RPCLineaGetProof & { storageProof?: LineaProof[] };
+    const ps: Promise<Proof>[] = [];
     for (let i = 0; ; ) {
       ps.push(
         // 20240825: most cloud providers seem to reject batched getProof
@@ -190,6 +194,13 @@ export class LineaProver extends BlockProver {
       if (i >= slots.length) break;
     }
     const vs = await Promise.all(ps);
+    // 20250929: for some reason there rpcs are returning 2 different keys
+    // official docs are also confused: https://docs.linea.build/api/reference/linea-getproof
+    for (const x of vs) {
+      if (!x.storageProofs) {
+        x.storageProofs = x.storageProof ?? [];
+      }
+    }
     for (let i = 1; i < vs.length; i++) {
       vs[0].storageProofs.push(...vs[i].storageProofs);
     }
