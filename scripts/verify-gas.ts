@@ -66,7 +66,7 @@ const setups: Setup[] = [
         [
           rollup.OptimismPortal,
           gameFinder,
-          rollup.gameTypeBitMask,
+          await rollup.gameTypes(),
           rollup.minAgeSec,
         ],
       ],

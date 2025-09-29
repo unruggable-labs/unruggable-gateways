@@ -15,13 +15,13 @@ interface IOPFaultGameFinder {
     function findGameIndex(
         IOptimismPortal portal,
         uint256 minAgeSec,
-        uint256 gameTypeBitMask,
+        uint256[] memory allowedGameTypes,
         uint256 gameCount
     ) external view returns (uint256);
     function gameAtIndex(
         IOptimismPortal portal,
         uint256 minAgeSec,
-        uint256 gameTypeBitMask,
+        uint256[] memory allowedGameTypes,
         uint256 gameIndex
     )
         external
@@ -37,14 +37,14 @@ interface IOPFaultGameFinder {
 struct OPFaultParams {
     IOptimismPortal portal;
     IOPFaultGameFinder gameFinder;
-    uint256 gameTypeBitMask;
+    uint256[] allowedGameTypes;
     uint256 minAgeSec;
 }
 
 contract OPFaultVerifier is AbstractVerifier {
     IOptimismPortal immutable _portal;
     IOPFaultGameFinder immutable _gameFinder;
-    uint256 immutable _gameTypeBitMask;
+    uint256[] private _allowedGameTypes;
     uint256 immutable _minAgeSec;
 
     constructor(
@@ -55,7 +55,7 @@ contract OPFaultVerifier is AbstractVerifier {
     ) AbstractVerifier(urls, window, hooks) {
         _portal = params.portal;
         _gameFinder = params.gameFinder;
-        _gameTypeBitMask = params.gameTypeBitMask;
+        _allowedGameTypes = params.allowedGameTypes;
         _minAgeSec = params.minAgeSec;
     }
 
@@ -65,7 +65,7 @@ contract OPFaultVerifier is AbstractVerifier {
                 _gameFinder.findGameIndex(
                     _portal,
                     _minAgeSec,
-                    _gameTypeBitMask,
+                    _allowedGameTypes,
                     0
                 )
             );
@@ -86,7 +86,7 @@ contract OPFaultVerifier is AbstractVerifier {
         uint256 gameIndex1 = abi.decode(context, (uint256));
         GatewayProof memory p = abi.decode(proof, (GatewayProof));
         (, , IDisputeGame gameProxy, uint256 blockNumber) = _gameFinder
-            .gameAtIndex(_portal, _minAgeSec, _gameTypeBitMask, p.gameIndex);
+            .gameAtIndex(_portal, _minAgeSec, _allowedGameTypes, p.gameIndex);
         require(blockNumber != 0, 'OPFault: invalid game');
         if (p.gameIndex != gameIndex1) {
             (, , IDisputeGame gameProxy1) = _portal

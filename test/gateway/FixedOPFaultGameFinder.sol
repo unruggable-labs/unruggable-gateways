@@ -10,7 +10,7 @@ contract FixedOPFaultGameFinder is OPFaultGameFinder {
         _gameIndex = gameIndex;
     }
 
-    function findGameIndex(IOptimismPortal, uint256, uint256, uint256) external view override returns (uint256) {
+    function findGameIndex(IOptimismPortal, uint256, uint256[] memory, uint256) external view override returns (uint256) {
         return _gameIndex;
     }
 }

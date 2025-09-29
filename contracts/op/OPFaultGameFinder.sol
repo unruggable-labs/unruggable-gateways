@@ -52,16 +52,14 @@ uint32 constant GAME_TYPE_CANNON = 0;
 uint32 constant GAME_TYPE_PERMISSIONED_CANNON = 1;
 
 error GameNotFound();
-error InvalidGameTypeBitMask();
 
 contract OPFaultGameFinder {
     function findGameIndex(
         IOptimismPortal portal,
         uint256 minAgeSec,
-        uint256 gameTypeBitMask,
+        uint256[] memory allowedGameTypes,
         uint256 gameCount
     ) external view virtual returns (uint256) {
-        gameTypeBitMask = _gameTypeBitMask(portal, gameTypeBitMask);
         FinalizationParams memory finalizationParams = FinalizationParams({
             finalityDelay: portal.disputeGameFinalityDelaySeconds(),
             gameTypeUpdatedAt: portal.respectedGameTypeUpdatedAt()
@@ -80,7 +78,7 @@ contract OPFaultGameFinder {
                     gameProxy,
                     gameType,
                     created,
-                    gameTypeBitMask,
+                    allowedGameTypes,
                     minAgeSec,
                     finalizationParams
                 )
@@ -94,7 +92,7 @@ contract OPFaultGameFinder {
     function gameAtIndex(
         IOptimismPortal portal,
         uint256 minAgeSec,
-        uint256 gameTypeBitMask,
+        uint256[] memory allowedGameTypes,
         uint256 gameIndex
     )
         external
@@ -107,7 +105,6 @@ contract OPFaultGameFinder {
             bytes32 rootClaim
         )
     {
-        gameTypeBitMask = _gameTypeBitMask(portal, gameTypeBitMask);
         FinalizationParams memory finalizationParams = FinalizationParams({
             finalityDelay: portal.disputeGameFinalityDelaySeconds(),
             gameTypeUpdatedAt: portal.respectedGameTypeUpdatedAt()
@@ -120,7 +117,7 @@ contract OPFaultGameFinder {
                 gameProxy,
                 gameType,
                 created,
-                gameTypeBitMask,
+                allowedGameTypes,
                 minAgeSec,
                 finalizationParams
             )
@@ -135,12 +132,11 @@ contract OPFaultGameFinder {
         IDisputeGame gameProxy,
         uint256 gameType,
         uint256 created,
-        uint256 gameTypeBitMask,
+        uint256[] memory allowedGameTypes,
         uint256 minAgeSec,
         FinalizationParams memory finalizationParams
     ) internal view returns (bool) {
-        if (gameType > 255) return false;
-        if (gameTypeBitMask & (1 << gameType) == 0) return false;
+        if (!_isAllowedGameType(gameType, allowedGameTypes)) return false;
         // https://specs.optimism.io/fault-proof/stage-one/bridge-integration.html#blacklisting-disputegames
         if (portal.disputeGameBlacklist(gameProxy)) return false;
         if (minAgeSec > 0) {
@@ -169,15 +165,11 @@ contract OPFaultGameFinder {
         return false;
     }
 
-    function _gameTypeBitMask(
-        IOptimismPortal portal,
-        uint256 mask
-    ) internal view returns (uint256) {
-        if (mask == 0) {
-            // use respected game type
-            mask = 1 << portal.respectedGameType();
-            if (mask == 0) revert InvalidGameTypeBitMask();
+
+    function _isAllowedGameType(uint256 gameType, uint256[] memory allowedGameTypes) pure internal returns (bool) {
+        for (uint i = 0; i < allowedGameTypes.length; i++) {
+            if (allowedGameTypes[i] == gameType) return true;
         }
-        return mask;
+        return false;
     }
 }
