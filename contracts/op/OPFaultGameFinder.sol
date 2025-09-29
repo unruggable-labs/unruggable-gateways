@@ -145,12 +145,8 @@ contract OPFaultGameFinder {
                 gameType == GAME_TYPE_CANNON ||
                 gameType == GAME_TYPE_PERMISSIONED_CANNON
             ) {
-                if (
-                    IFaultDisputeGame(address(gameProxy))
-                        .l2BlockNumberChallenged()
-                ) return gameProxy.status() == DEFENDER_WINS;
-
-                return true;
+                return IFaultDisputeGame(address(gameProxy))
+                        .l2BlockNumberChallenged() ? false : true;
             }
             // Testing for an unchallenged game falls back to finalized mode if unknown game type
         }
