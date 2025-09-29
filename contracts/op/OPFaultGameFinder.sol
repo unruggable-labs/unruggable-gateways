@@ -31,6 +31,7 @@ interface IDisputeGame {
     function l2BlockNumber() external view returns (uint256);
     function rootClaim() external view returns (bytes32);
     function resolvedAt() external view returns (uint64);
+    function wasRespectedGameTypeWhenCreated() external view returns (bool);
 }
 
 struct FinalizationParams {
@@ -139,6 +140,7 @@ contract OPFaultGameFinder {
         if (!_isAllowedGameType(gameType, allowedGameTypes)) return false;
         // https://specs.optimism.io/fault-proof/stage-one/bridge-integration.html#blacklisting-disputegames
         if (portal.disputeGameBlacklist(gameProxy)) return false;
+        if (!gameProxy.wasRespectedGameTypeWhenCreated()) return false;
         if (minAgeSec > 0) {
             if (created > block.timestamp - minAgeSec) return false;
             if (
