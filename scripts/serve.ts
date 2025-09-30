@@ -36,13 +36,12 @@ import {
   LATEST_BLOCK_TAG,
   toUnpaddedHex,
 } from '../src/utils.js';
+import { AbstractProver } from '../src/vm.js';
 import { EthProver } from '../src/eth/EthProver.js';
-//import { LineaProver } from '../src/linea/LineaProver.js';
 import { ZKSyncProver } from '../src/zksync/ZKSyncProver.js';
 import { Contract } from 'ethers/contract';
 import { SigningKey } from 'ethers/crypto';
 import { execSync } from 'child_process';
-import { AbstractProver } from '../src/vm.js';
 
 // NOTE: you can use CCIPRewriter to test an existing setup against a local gateway!
 // [raffy] https://adraffy.github.io/ens-normalize.js/test/resolver.html#raffy.linea.eth.nb2hi4dthixs62dpnvss4ylooruxg5dvobuwiltdn5ws62duoryc6.ccipr.eth
@@ -115,7 +114,11 @@ if (printCalls) {
       if (x.action === 'sendRpcPayload') {
         console.log(chainName(p._network.chainId), x.action, x.payload);
       } else if (x.action == 'receiveRpcResult') {
-        console.log(chainName(p._network.chainId), x.action, x.result);
+        console.log(
+          chainName(p._network.chainId),
+          x.action,
+          JSON.stringify(x.result, null, '  ')
+        );
       }
     });
   });
