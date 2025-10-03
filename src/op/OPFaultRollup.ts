@@ -46,8 +46,8 @@ type ABIFoundGame = {
   rootClaim: string;
 };
 
-const GAME_FINDER_MAINNET = '0x7512acaac95c0f4a934cf227cca22fe784f35adc';
-const GAME_FINDER_SEPOLIA = '0x550F3fb7BD6f9932A6d343B91E678e37FF49eaAD';
+const GAME_FINDER_MAINNET = '0xe9ba7d0de9f2826f3b40a42e79cc268e237da5e7';
+const GAME_FINDER_SEPOLIA = '0xeb2a2Be19351C3CE217671b5A857c862Ee44E5e2';
 //const GAME_FINDER_HOLESKY = '0xedb18cd8d9D6AF54C4Ac1FbDBF2E098F413c3fe9';
 
 export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
