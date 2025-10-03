@@ -6,6 +6,7 @@ import {
   createProvider,
   createProviderPair,
   providerURL,
+  providerName,
 } from '../providers.js';
 import { chainName, CHAINS } from '../../src/chains.js';
 import { serve } from '@namestone/ezccip/serve';
@@ -96,6 +97,7 @@ export function testOP(
         opts.minAgeSec
       );
       await rollup.provider2.getBlockNumber(); // check provider
+      console.log('Provider name: ', providerName(config.chain1));
       const foundry = await Foundry.launch({
         fork: providerURL(config.chain1),
         infoLog: !!opts.log,
@@ -135,6 +137,7 @@ export function testOPFault(
         config,
         opts.minAgeSec
       );
+      console.log('Provider name: ', providerName(config.chain1));
       const foundry = await Foundry.launch({
         fork: providerURL(config.chain1),
         infoLog: !!opts.log,
@@ -183,6 +186,7 @@ export function testArbitrum(
         config,
         opts.minAgeBlocks
       );
+      console.log('Provider name: ', providerName(config.chain1));
       const foundry = await Foundry.launch({
         fork: providerURL(config.chain1),
         infoLog: !!opts.log,
@@ -232,6 +236,7 @@ export function testScroll(
           config,
           beaconURL(config.chain1)
         );
+    console.log('Provider name: ', providerName(config.chain1));
     const foundry = await Foundry.launch({
       fork: providerURL(config.chain1),
       infoLog: !!opts.log,
@@ -265,6 +270,7 @@ export function testScroll(
 
 export function testSelfEth(chain: Chain, opts: TestOptions) {
   describe.skipIf(shouldSkip(opts))(chainName(chain), async () => {
+    console.log('Provider name: ', providerName(chain));
     const foundry = await Foundry.launch({
       fork: providerURL(chain),
       infoLog: !!opts.log,
@@ -289,6 +295,7 @@ export function testTrustedEth(chain2: Chain, opts: TestOptions) {
   describe.skipIf(!!process.env.IS_CI)(
     testName({ chain1: CHAINS.VOID, chain2 }, { unfinalized: true }),
     async () => {
+      console.log('Provider name: ', providerName(chain2));
       const foundry = await Foundry.launch({
         fork: providerURL(chain2),
         infoLog: !!opts.log,
@@ -321,6 +328,7 @@ export function testLinea(
 ) {
   describe.skipIf(shouldSkip(opts))(testName(config), async () => {
     const rollup = new LineaRollup(createProviderPair(config), config);
+    console.log('Provider name: ', providerName(config.chain1));
     const foundry = await Foundry.launch({
       fork: providerURL(config.chain1),
       infoLog: !!opts.log,
@@ -356,6 +364,7 @@ export function testZKSync(
 ) {
   describe.skipIf(shouldSkip(opts))(testName(config), async () => {
     const rollup = new ZKSyncRollup(createProviderPair(config), config);
+    console.log('Provider name: ', providerName(config.chain1));
     const foundry = await Foundry.launch({
       fork: providerURL(config.chain1),
       infoLog: !!opts.log,
@@ -391,6 +400,7 @@ export function testTaiko(
 ) {
   describe.skipIf(shouldSkip(opts))(testName(config), async () => {
     const rollup = new TaikoRollup(createProviderPair(config), config);
+    console.log('Provider name: ', providerName(config.chain1));
     const foundry = await Foundry.launch({
       fork: providerURL(config.chain1),
       infoLog: !!opts.log,

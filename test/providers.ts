@@ -1,4 +1,5 @@
-import type { Chain, ChainPair, ProviderPair } from '../src/types.js';
+/* eslint-disable prettier/prettier */
+import type { Chain, ChainPair, Provider, ProviderPair } from '../src/types.js';
 import { CHAINS, chainName } from '../src/chains.js';
 import { FetchRequest } from 'ethers/utils';
 import { GatewayProvider } from '../src/GatewayProvider.js';
@@ -42,8 +43,8 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         publicHTTP: 'https://rpc.ankr.com/eth_sepolia',
         publicBeacon: 'https://ethereum-sepolia-beacon-api.publicnode.com',
         ankr: 'eth_sepolia',
-        infura: 'sepolia',
-        alchemy: 'eth-sepolia',
+        //infura: 'sepolia', // 20251003: no eth_getProof depth
+        //alchemy: 'eth-sepolia', // 20251003: no eth_getProof depth
         drpc: 'sepolia',
         drpcBeacon: 'eth-beacon-chain-sepolia',
       },
@@ -495,13 +496,18 @@ function envForChain(prefix: string, chain: Chain) {
 }
 
 export function providerOrder(chain?: Chain): string[] {
+
+  // 20240830: so far, alchemy has the best support
+  const defaultOrder = ['alchemy', 'infura', 'ankr', 'drpc', 'public']; // global default
+
   const key = 'PROVIDER_ORDER';
+  let order: string[] = [];
   let env;
   if (chain) env = envForChain(key, chain);
   if (!env) env = process.env[key]; // global
-  if (env) return env.split(/[,\s+]/).flatMap((x) => x.trim() || []);
-  // 20240830: so far, alchemy has the best support
-  return ['alchemy', 'infura', 'ankr', 'drpc', 'public']; // global default
+  if (env) order = env.split(/[,\s+]/).flatMap((x) => x.trim() || []);
+
+  return [...order, ...defaultOrder.filter(x => !order.includes(x))];
 }
 
 type ProviderInfo = {
@@ -592,7 +598,11 @@ export function providerURL(chain: Chain): string {
   return decideProvider(chain).url;
 }
 
-export function createProvider(chain: Chain) {
+export function providerName(chain: Chain): string {
+  return decideProvider(chain).type;
+}
+
+export function createProvider(chain: Chain): Provider {
   const fr = new FetchRequest(providerURL(chain));
   fr.timeout = 10000; // 5 minutes is too long
   // fr.preflightFunc = async (req) => {
@@ -602,7 +612,10 @@ export function createProvider(chain: Chain) {
   return new GatewayProvider(fr, chain);
 }
 
-export function createProviderPair(a: Chain | ChainPair, b?: Chain) {
+export function createProviderPair(
+  a: Chain | ChainPair,
+  b?: Chain
+): ProviderPair {
   if (typeof a !== 'bigint') {
     b = a.chain2;
     a = a.chain1;
@@ -614,7 +627,7 @@ export function createProviderPair(a: Chain | ChainPair, b?: Chain) {
   return {
     provider1: createProvider(a),
     provider2: createProvider(b),
-  } satisfies ProviderPair;
+  };
 }
 
 // https://docs.arbitrum.io/run-arbitrum-node/l1-ethereum-beacon-chain-rpc-providers
