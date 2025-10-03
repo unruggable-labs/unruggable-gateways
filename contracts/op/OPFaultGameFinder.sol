@@ -4,8 +4,6 @@ pragma solidity ^0.8.23;
 import { IOptimismPortal, IDisputeGameFactory, IDisputeGame, IFaultDisputeGame } from './OPInterfaces.sol';
 import { OPFaultParams, FinalizationParams } from './OPStructs.sol';
 
-import { GameStatus, GameTypes } from '../../lib/optimism/packages/contracts-bedrock/src/dispute/lib/Types.sol';
-
 // https://github.com/ethereum-optimism/optimism/issues/11269
 
 // https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/src/dispute/lib/Types.sol

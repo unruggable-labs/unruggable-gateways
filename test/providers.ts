@@ -603,7 +603,6 @@ export function providerName(chain: Chain): string {
 }
 
 export function createProvider(chain: Chain): Provider {
-  console.log(providerName(chain));
   const fr = new FetchRequest(providerURL(chain));
   fr.timeout = 10000; // 5 minutes is too long
   // fr.preflightFunc = async (req) => {
