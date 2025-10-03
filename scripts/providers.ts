@@ -37,7 +37,7 @@ function formatChain(chain: Chain): string {
   try {
     const s = Buffer.from(chain.toString(16), 'hex').toString('ascii');
     if (/^[A-Z_-]{3,}$/.test(s)) return s;
-  } catch (err) {
+  } catch (_err) {
     // ignore
   }
   return chain.toString();

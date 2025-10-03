@@ -1,16 +1,13 @@
 import { ZKSyncRollup } from '../../src/zksync/ZKSyncRollup.js';
 import { createProviderPair } from '../providers.js';
 
+console.log(new Date());
+
 const config = ZKSyncRollup.mainnetConfig;
 const rollup = new ZKSyncRollup(createProviderPair(config), config);
 
-console.log({
-  DiamondProxy: rollup.DiamondProxy.target,
-  defaultWindow: rollup.defaultWindow,
-});
-
-const commits = await rollup.fetchRecentCommits(10);
-
+const commits = await rollup.fetchRecentCommits(8);
+console.log(commits[0]);
 const v = commits.map((x) => Number(x.index));
 console.log(v);
 console.log(v.slice(1).map((x, i) => v[i] - x));

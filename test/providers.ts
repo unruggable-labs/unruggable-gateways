@@ -41,20 +41,30 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       {
         chain: CHAINS.SEPOLIA,
         publicHTTP: 'https://rpc.ankr.com/eth_sepolia',
+        publicBeacon: 'https://ethereum-sepolia-beacon-api.publicnode.com',
         ankr: 'eth_sepolia',
-        infura: 'sepolia',
-        alchemy: 'eth-sepolia',
+        //infura: 'sepolia', // 20251003: no eth_getProof depth
+        //alchemy: 'eth-sepolia', // 20251003: no eth_getProof depth
         drpc: 'sepolia',
         drpcBeacon: 'eth-beacon-chain-sepolia',
       },
       {
         chain: CHAINS.HOLESKY,
         publicHTTP: 'https://rpc.ankr.com/eth_holesky', //'https://rpc.holesky.ethpandaops.io',
+        publicBeacon: 'https://ethereum-holesky-beacon-api.publicnode.com',
         ankr: 'eth_holesky',
         infura: 'holesky',
         alchemy: 'eth-holesky',
         drpc: 'holesky',
         drpcBeacon: 'eth-beacon-chain-holesky',
+      },
+      {
+        chain: CHAINS.HOODI,
+        publicHTTP: 'https://ethereum-hoodi-rpc.publicnode.com',
+        publicBeacon: 'https://ethereum-hoodi-beacon-api.publicnode.com',
+        infura: 'hoodi',
+        drpc: 'hoodi',
+        drpcBeacon: 'eth-beacon-chain-hoodi',
       },
       {
         // https://docs.optimism.io/chain/networks#op-mainnet

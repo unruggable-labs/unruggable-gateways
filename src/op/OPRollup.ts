@@ -2,15 +2,15 @@ import type { RollupDeployment } from '../rollup.js';
 import type { HexAddress, HexString32, ProviderPair } from '../types.js';
 import { AbstractOPRollup, type AbstractOPCommit } from './AbstractOPRollup.js';
 import { CHAINS } from '../chains.js';
-import { isRevert } from '../utils.js';
 import { Contract } from 'ethers/contract';
 import { Interface } from 'ethers/abi';
+import { isCallException } from 'ethers';
 
-export const OUTPUT_FINDER_ABI = new Interface([
+const FINDER_ABI = new Interface([
   `error OutputNotFound()`,
   `function findOutputIndex(address portal, uint256 minAgeSec) view returns (uint256)`,
   `function getOutput(address portal, uint256 outputIndex) view returns (
-     (bytes32 outputRoot, uint128 timestamp, uint128 l2BlockNumber)
+    (bytes32 outputRoot, uint128 timestamp, uint128 l2BlockNumber)
    )`,
 ]);
 
@@ -19,7 +19,7 @@ export type OPConfig = {
   OutputFinder: HexAddress;
 };
 
-export type OPCommit = AbstractOPCommit & { output: ABIOutputTuple };
+export type OPCommit = AbstractOPCommit & { readonly output: ABIOutputTuple };
 
 type ABIOutputTuple = {
   outputRoot: HexString32;
@@ -27,14 +27,24 @@ type ABIOutputTuple = {
   l2BlockNumber: bigint;
 };
 
-const OUTPUT_FINDER_MAINNET = '0xFe75ecc04DB4f46762126924d21Ae3d35087c482';
-const OUTPUT_FINDER_SEPOLIA = ''; //to deploy
-const OUTPUT_FINDER_HOLESKY = '0x35FF17ae0a5ac38F66E7994401a3c304023881Ad';
-const OUTPUT_FINDER_OP_BNB = '0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05';
+const FINDER_MAINNET = '0xFe75ecc04DB4f46762126924d21Ae3d35087c482';
+const FINDER_SEPOLIA = '0x152Efe905aE77730103edD31691303025075C24D';
+const FINDER_HOLESKY = '0x35FF17ae0a5ac38F66E7994401a3c304023881Ad';
+const FINDER_OP_BNB = '0x57C2F437E0a5E155ced91a7A17bfc372C0aF7B05';
 
 export class OPRollup extends AbstractOPRollup<OPCommit> {
+  static readonly FINDER_ABI = FINDER_ABI;
+
+  static readonly FINDERS = new Map([
+    [CHAINS.MAINNET, FINDER_MAINNET],
+    [CHAINS.SEPOLIA, FINDER_SEPOLIA],
+    [CHAINS.HOLESKY, FINDER_HOLESKY],
+    [CHAINS.OP_BNB, FINDER_OP_BNB],
+  ]);
+
   // 20241030: changed to fault proofs
   // https://x.com/base/status/1851672364439814529
+  // https://base.mirror.xyz/eOsedW4tm8MU5OhdGK107A9wsn-aU7MAb8f3edgX5Tk
   // static readonly baseMainnetConfig: RollupDeployment<OPConfig> = {
   //   chain1: CHAINS.MAINNET,
   //   chain2: CHAINS.BASE,
@@ -55,7 +65,7 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.BLAST,
     OptimismPortal: '0x0Ec68c5B10F21EFFb74f2A5C61DFe6b08C0Db6Cb',
-    OutputFinder: OUTPUT_FINDER_MAINNET,
+    OutputFinder: FINDER_MAINNET,
   };
 
   // https://docs.frax.com/fraxtal/addresses/fraxtal-contracts#mainnet
@@ -63,23 +73,23 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.FRAXTAL,
     OptimismPortal: '0x36cb65c1967A0Fb0EEE11569C51C2f2aA1Ca6f6D',
-    OutputFinder: OUTPUT_FINDER_MAINNET,
+    OutputFinder: FINDER_MAINNET,
   };
 
+  // not sure when this changed to fault proofs
   // https://docs.zora.co/zora-network/network#zora-network-mainnet-1
-  static readonly zoraMainnetConfig: RollupDeployment<OPConfig> = {
-    chain1: CHAINS.MAINNET,
-    chain2: CHAINS.ZORA,
-    OptimismPortal: '0x1a0ad011913A150f69f6A19DF447A0CfD9551054',
-    OutputFinder: OUTPUT_FINDER_MAINNET,
-  };
+  // static readonly zoraMainnetConfig: RollupDeployment<OPConfig> = {
+  //   chain1: CHAINS.MAINNET,
+  //   chain2: CHAINS.ZORA,
+  //   OptimismPortal: '0x1a0ad011913A150f69f6A19DF447A0CfD9551054',
+  // };
 
   // https://docs.mantle.xyz/network/system-information/on-chain-system/key-l1-contract-address
   static readonly mantleMainnetConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.MANTLE,
     OptimismPortal: '0x31d543e7BE1dA6eFDc2206Ef7822879045B9f481',
-    OutputFinder: OUTPUT_FINDER_MAINNET,
+    OutputFinder: FINDER_MAINNET,
   };
 
   // https://docs.mode.network/general-info/mainnet-contract-addresses/l1-l2-contracts
@@ -87,7 +97,7 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.MODE,
     OptimismPortal: '0xc54cb22944F2bE476E02dECfCD7e3E7d3e15A8Fb',
-    OutputFinder: OUTPUT_FINDER_MAINNET,
+    OutputFinder: FINDER_MAINNET,
   };
 
   // https://docs.cyber.co/build-on-cyber/addresses-mainnet
@@ -96,7 +106,7 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.CYBER,
     OptimismPortal: '0x1d59bc9fcE6B8E2B1bf86D4777289FFd83D24C99',
-    OutputFinder: OUTPUT_FINDER_MAINNET,
+    OutputFinder: FINDER_MAINNET,
   };
 
   // https://redstone.xyz/docs/contract-addresses
@@ -104,7 +114,7 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.REDSTONE,
     OptimismPortal: '0xa426A052f657AEEefc298b3B5c35a470e4739d69',
-    OutputFinder: OUTPUT_FINDER_MAINNET,
+    OutputFinder: FINDER_MAINNET,
   };
 
   // https://docs.shape.network/documentation/technical-details/contract-addresses#mainnet
@@ -112,7 +122,7 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.SHAPE,
     OptimismPortal: '0xEB06fFa16011B5628BaB98E29776361c83741dd3',
-    OutputFinder: OUTPUT_FINDER_MAINNET,
+    OutputFinder: FINDER_MAINNET,
   };
 
   // https://docs.bnbchain.org/bnb-opbnb/core-concepts/opbnb-protocol-addresses/
@@ -120,7 +130,7 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     chain1: CHAINS.BSC,
     chain2: CHAINS.OP_BNB,
     OptimismPortal: '0x4386C8ABf2009aC0c263462Da568DD9d46e52a31',
-    OutputFinder: OUTPUT_FINDER_OP_BNB,
+    OutputFinder: FINDER_MAINNET,
   };
 
   // https://storage.googleapis.com/cel2-rollup-files/alfajores/deployment-l1.json
@@ -128,7 +138,7 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     chain1: CHAINS.HOLESKY,
     chain2: CHAINS.CELO_ALFAJORES,
     OptimismPortal: '0x82527353927d8D069b3B452904c942dA149BA381',
-    OutputFinder: OUTPUT_FINDER_HOLESKY,
+    OutputFinder: FINDER_HOLESKY,
   };
 
   // https://docs.worldcoin.org/world-chain/developers/world-chain-contracts
@@ -136,7 +146,7 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.WORLD,
     OptimismPortal: '0xd5ec14a83B7d95BE1E2Ac12523e2dEE12Cbeea6C',
-    OutputFinder: OUTPUT_FINDER_MAINNET,
+    OutputFinder: FINDER_MAINNET,
   };
 
   // https://docs.zircuit.com/smart-contracts/contract_addresses
@@ -144,14 +154,14 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.ZIRCUIT,
     OptimismPortal: '0x17bfAfA932d2e23Bd9B909Fd5B4D2e2a27043fb1',
-    OutputFinder: OUTPUT_FINDER_MAINNET,
+    OutputFinder: FINDER_MAINNET,
   };
   // https://docs.zircuit.com/testnet/contract_addresses
   static readonly zircuitSepoliaConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.ZIRCUIT_SEPOLIA,
     OptimismPortal: '0x787f1C8c5924178689E0560a43D848bF8E54b23e',
-    OutputFinder: OUTPUT_FINDER_SEPOLIA,
+    OutputFinder: FINDER_SEPOLIA,
   };
 
   // https://docs.lisk.com/about-lisk/contracts
@@ -159,13 +169,13 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.LISK,
     OptimismPortal: '0x26dB93F8b8b4f7016240af62F7730979d353f9A7',
-    OutputFinder: OUTPUT_FINDER_MAINNET,
+    OutputFinder: FINDER_MAINNET,
   };
   static readonly liskSepoliaConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.LISK_SEPOLIA,
     OptimismPortal: '0xe3d90F21490686Ec7eF37BE788E02dfC12787264',
-    OutputFinder: OUTPUT_FINDER_SEPOLIA,
+    OutputFinder: FINDER_SEPOLIA,
   };
 
   // https://docs.mintchain.io/deploy/contracts#l1-contract-addresses
@@ -173,14 +183,14 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.MINT,
     OptimismPortal: '0x59625d1FE0Eeb8114a4d13c863978F39b3471781',
-    OutputFinder: OUTPUT_FINDER_MAINNET,
+    OutputFinder: FINDER_MAINNET,
     //commitFreqSec: 12 * 60 * 60 // 12hr
   };
   static readonly mintSepoliaConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.MINT_SEPOLIA,
     OptimismPortal: '0x0f598aFc1c303BF2d0Ee82435b58c7b47BC56Ed1',
-    OutputFinder: OUTPUT_FINDER_SEPOLIA,
+    OutputFinder: FINDER_SEPOLIA,
   };
 
   // https://docs.gobob.xyz/learn/reference/contracts/#ethereum-l1
@@ -188,14 +198,14 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.BOB,
     OptimismPortal: '0x994e3B01D130944a3E67BFd3B8Fc73069b959FEc',
-    OutputFinder: OUTPUT_FINDER_MAINNET,
+    OutputFinder: FINDER_MAINNET,
     // commitFreqSec: 12hr
   };
   static readonly bobSepoliaConfig: RollupDeployment<OPConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.BOB_SEPOLIA,
     OptimismPortal: '0x7FA8cA1ED6F50D829cD960aE398949B5Bc339615',
-    OutputFinder: OUTPUT_FINDER_SEPOLIA,
+    OutputFinder: FINDER_SEPOLIA,
   };
 
   readonly OptimismPortal: HexAddress;
@@ -209,8 +219,8 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     this.OptimismPortal = config.OptimismPortal;
     this.OutputFinder = new Contract(
       config.OutputFinder,
-      OUTPUT_FINDER_ABI,
-      providers.provider1
+      FINDER_ABI,
+      this.provider1
     );
   }
 
@@ -222,7 +232,7 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     try {
       return await this.OutputFinder.getOutput(this.OptimismPortal, index);
     } catch (err) {
-      if (isRevert(err) && err.revert?.name === 'OutputNotFound') return;
+      if (isCallException(err) && err.revert?.name === 'OutputNotFound') return;
       throw err;
     }
   }

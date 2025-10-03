@@ -36,13 +36,13 @@ import {
   LATEST_BLOCK_TAG,
   toUnpaddedHex,
 } from '../src/utils.js';
+import { AbstractProver } from '../src/vm.js';
 import { EthProver } from '../src/eth/EthProver.js';
 //import { LineaProver } from '../src/linea/LineaProver.js';
 import { ZKSyncProver } from '../src/zksync/ZKSyncProver.js';
 import { Contract } from 'ethers/contract';
 import { SigningKey } from 'ethers/crypto';
 import { execSync } from 'child_process';
-import { AbstractProver } from '../src/vm.js';
 
 // NOTE: you can use CCIPRewriter to test an existing setup against a local gateway!
 // [raffy] https://adraffy.github.io/ens-normalize.js/test/resolver.html#raffy.linea.eth.nb2hi4dthixs62dpnvss4ylooruxg5dvobuwiltdn5ws62duoryc6.ccipr.eth
@@ -150,12 +150,12 @@ gateway.rollup.configure = (c: RollupCommitType<typeof gateway.rollup>) => {
   // c.prover.maxEvalDepth = 0;
 };
 
-const config: Record<string, any> = {
+const config = toJSON({
   git: ['git describe --tags --exact-match', 'git rev-parse HEAD'].reduce(
     (version, cmd) => {
       try {
         version ||= execSync(cmd, { stdio: 'pipe' }).toString().trim();
-      } catch (err) {
+      } catch (_err) {
         // empty
       }
       return version;
@@ -171,9 +171,16 @@ const config: Record<string, any> = {
   supportsV1: supportsV1(gateway.rollup),
   supportsV2: gateway instanceof Gateway,
   prefetch,
+  callCacheSize: gateway.callLRU.max,
   ...toJSON(gateway),
-  ...toJSON(gateway.rollup),
-};
+  ...Object.fromEntries(
+    await Promise.all(
+      Object.entries(gateway.rollup).map(async ([k, v]) => {
+        return [k, v instanceof Contract ? v.getAddress() : v];
+      })
+    )
+  ),
+});
 
 if (gateway.rollup instanceof TrustedRollup) {
   config.signer = gateway.rollup.signerAddress;
@@ -346,7 +353,6 @@ async function createGateway(name: string) {
     return new Gateway(
       new ReverseOPRollup(
         createProviderPair(config.chain2, config.chain1),
-        {},
         commitStep ?? 150 // 5 minutes (5*60/2)
       )
     );
@@ -498,10 +504,8 @@ function chainDetails(provider: Provider) {
 function proverDetails(prover: AbstractProver) {
   const {
     maxUniqueProofs,
-    maxUniqueTargets,
     proofBatchSize,
     maxSuppliedBytes,
-    maxProvableBytes,
     maxAllocBytes,
     maxEvalDepth,
     fast,
@@ -510,10 +514,8 @@ function proverDetails(prover: AbstractProver) {
   return {
     prover: prover.constructor.name,
     maxUniqueProofs,
-    maxUniqueTargets,
     proofBatchSize,
     maxSuppliedBytes,
-    maxProvableBytes,
     maxAllocBytes,
     maxEvalDepth,
     fast,
@@ -528,30 +530,26 @@ function proverDetails(prover: AbstractProver) {
 function toJSON(x: object) {
   const info: Record<string, any> = {};
   for (const [k, v] of Object.entries(x)) {
-    if (v instanceof Contract) {
-      info[k] = v.target;
-    } else {
-      switch (typeof v) {
-        case 'bigint': {
-          info[k] = bigintToJSON(v);
-          break;
-        }
-        case 'string': {
-          info[k] = concealKeys(v);
-          break;
-        }
-        case 'boolean':
-        case 'number':
-          info[k] = v;
-          break;
-        case 'object':
-          if (Array.isArray(v)) {
-            info[k] = v.map(toJSON);
-          } else if (v && v.constructor === Object) {
-            info[k] = toJSON(v);
-          }
-          break;
+    switch (typeof v) {
+      case 'bigint': {
+        info[k] = bigintToJSON(v);
+        break;
       }
+      case 'string': {
+        info[k] = concealKeys(v);
+        break;
+      }
+      case 'boolean':
+      case 'number':
+        info[k] = v;
+        break;
+      case 'object':
+        if (Array.isArray(v)) {
+          info[k] = v.map(toJSON);
+        } else if (v && v.constructor === Object) {
+          info[k] = toJSON(v);
+        }
+        break;
     }
   }
   return info;

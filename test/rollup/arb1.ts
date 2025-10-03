@@ -6,14 +6,10 @@ console.log(new Date());
 const config = BoLDRollup.arb1MainnetConfig;
 const rollup = new BoLDRollup(createProviderPair(config), config);
 
-console.log({
-  Rollup: rollup.Rollup.target,
-  defaultWindow: rollup.defaultWindow,
-});
-
-const commits = await rollup.fetchRecentCommits(10);
+const commits = await rollup.fetchRecentCommits(8);
 console.log(commits[0]);
 const v = commits.map((x) => Number(x.index));
+console.log(v);
 console.log(v.slice(1).map((x, i) => v[i] - x));
 
 // 2025-03-06T01:52:08.195Z

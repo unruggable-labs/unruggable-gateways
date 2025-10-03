@@ -71,6 +71,9 @@ export class ZKSyncProver extends AbstractProver {
   override get context() {
     return { batch: this.batchIndex };
   }
+  override get requireTargetBeforeSlot() {
+    return false;
+  }
   fetchBatchDetails(): Promise<
     Omit<RPCZKSyncL1BatchDetails, 'rootHash'> & { rootHash: HexString32 }
   > {
@@ -166,7 +169,6 @@ export class ZKSyncProver extends AbstractProver {
         return ref;
       }
     });
-    this.checkProofCount(refs.length);
     await Promise.all(
       promises.concat(
         Array.from(buckets, async ([target, map]) => {

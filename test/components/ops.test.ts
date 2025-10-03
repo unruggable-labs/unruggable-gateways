@@ -1,4 +1,4 @@
-import type { KeyOf, BigNumberish } from '../../src/types.js';
+import type { KeyOf } from '../../src/types.js';
 import { GatewayProgram, GatewayRequest, pow256 } from '../../src/vm.js';
 import { EthProver } from '../../src/eth/EthProver.js';
 import { Foundry } from '@adraffy/blocksmith';
@@ -168,6 +168,28 @@ describe('ops', async () => {
     req.concat().concat().addOutput();
     const { values } = await verify(req);
     expect(values[0]).toEqual(utf8Hex('raffy'));
+  });
+
+  test('chunk(0)', async () => {
+    const req = new GatewayRequest();
+    req.pushBytes('0x0102030405').chunk(0);
+    req.stackSize().addOutput();
+    const { values } = await verify(req);
+    expect(values[0]).toEqual(toPaddedHex(0));
+  });
+
+  test('chunk(1)', async () => {
+    const req = new GatewayRequest();
+    req.pushBytes('0x0102030405').chunk(1);
+    const { values } = await verify(req.drain(5));
+    expect(values).toEqual(['0x05', '0x04', '0x03', '0x02', '0x01']);
+  });
+
+  test('chunk(2)', async () => {
+    const req = new GatewayRequest();
+    req.pushBytes('0x0102030405').chunk(2);
+    const { values } = await verify(req.drain(2));
+    expect(values).toEqual(['0x0304', '0x0102']);
   });
 
   function testBinary(
@@ -728,24 +750,5 @@ describe('ops', async () => {
     req.pushProgram(new GatewayProgram().setOutput(0)).push(true).evalIf();
     const { values } = await verify(req);
     expect(values).toEqual(toPaddedArray([1337]));
-  });
-
-  // experimental
-  test('IF(c, t, f) == t f c IS_ZERO SWAP POP', async () => {
-    async function f(c: boolean, t: BigNumberish, f: BigNumberish) {
-      const { values } = await verify(
-        new GatewayRequest()
-          .push(t)
-          .push(f)
-          .push(c)
-          .isZero()
-          .op('SWAP')
-          .pop()
-          .addOutput()
-      );
-      expect(values).toEqual(toPaddedArray([c ? t : f]));
-    }
-    await f(true, 1, 2);
-    await f(false, 1, 2);
   });
 });

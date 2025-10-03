@@ -3,6 +3,7 @@ import { EthProver } from '../../src/eth/EthProver.js';
 import { Foundry } from '@adraffy/blocksmith';
 import { test, afterAll, expect } from 'bun:test';
 import { describe } from '../bun-describe-fix.js';
+import { BigNumberish } from '../../src/types.js';
 
 describe('microcode', async () => {
   const foundry = await Foundry.launch({ infoLog: false });
@@ -111,5 +112,23 @@ describe('microcode', async () => {
         .pop()
         .addOutput()
     );
+  });
+
+  test('c ? t : f == t f c IS_ZERO SWAP POP', async () => {
+    async function f(c: boolean, t: BigNumberish, f: BigNumberish) {
+      await compare(
+        new GatewayRequest().push(c ? t : f).addOutput(),
+        new GatewayRequest()
+          .push(t)
+          .push(f)
+          .push(c)
+          .isZero()
+          .op('SWAP')
+          .pop()
+          .addOutput()
+      );
+    }
+    await f(true, 1, 2);
+    await f(false, 1, 2);
   });
 });
