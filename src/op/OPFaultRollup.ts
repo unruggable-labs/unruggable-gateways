@@ -21,8 +21,8 @@ export const PORTAL_ABI = new Interface([
 
 export const GAME_FINDER_ABI = new Interface([
   `error GameNotFound()`,
-  `function findGameIndex(address portal, uint256 minAge, uint256[] allowedGameTypes, uint256 gameCount) view returns (uint256)`,
-  `function gameAtIndex(address portal, uint256 minAge, uint256[] allowedGameTypes, uint256 gameIndex) view returns (
+  `function findGameIndex((address portal, uint256 minAge, uint256[] allowedGameTypes, address[] allowedProposers), uint256 gameCount) view returns (uint256)`,
+  `function gameAtIndex((address portal, uint256 minAge, uint256[] allowedGameTypes, address[] allowedProposers), uint256 gameIndex) view returns (
 	 uint256 gameType, uint256 created, address gameProxy, uint256 l2BlockNumber, bytes32 rootClaim
    )`,
 ]);
@@ -47,7 +47,7 @@ type ABIFoundGame = {
 };
 
 const GAME_FINDER_MAINNET = '0x7512acaac95c0f4a934cf227cca22fe784f35adc';
-const GAME_FINDER_SEPOLIA = '0x505e1e172667fec4a55514ccfc7fd240b409a299';
+const GAME_FINDER_SEPOLIA = '0x550F3fb7BD6f9932A6d343B91E678e37FF49eaAD';
 //const GAME_FINDER_HOLESKY = '0xedb18cd8d9D6AF54C4Ac1FbDBF2E098F413c3fe9';
 
 export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
@@ -156,6 +156,7 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   readonly OptimismPortal: Contract;
   readonly GameFinder: Contract;
   private _gameTypes: bigint[] = [];
+  private _allowedProposers: HexAddress[] = [];
   unfinalizedRootClaimTimeoutMs = 30000;
   constructor(
     providers: ProviderPair,
@@ -189,6 +190,14 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
       : this._gameTypes;
   }
 
+  setAllowedProposers(allowedProposers: HexAddress[]) {
+    this._allowedProposers = allowedProposers;
+  }
+
+  allowedProposers(): HexAddress[] {
+    return this._allowedProposers;
+  }
+
   async fetchRespectedGameType(): Promise<bigint> {
     return this.OptimismPortal.respectedGameType({
       blockTag: this.latestBlockTag,
@@ -214,9 +223,12 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
           if (Date.now() > timeout)
             throw new Error(`timeout _ensureRootClaim()`);
           index = await this.GameFinder.findGameIndex(
-            this.OptimismPortal.target,
-            this.minAgeSec,
-            await this.gameTypes(),
+            [
+              this.OptimismPortal.target,
+              this.minAgeSec,
+              await this.gameTypes(),
+              this.allowedProposers(),
+            ],
             index
           );
         }
@@ -235,9 +247,12 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     // 20240822: once again uses a helper contract to reduce rpc burden
     return this._ensureRootClaim(
       await this.GameFinder.findGameIndex(
-        this.OptimismPortal.target,
-        this.minAgeSec,
-        await this.gameTypes(),
+        [
+          this.OptimismPortal.target,
+          this.minAgeSec,
+          await this.gameTypes(),
+          this.allowedProposers(),
+        ],
         0, // most recent game
         { blockTag: this.latestBlockTag }
       )
@@ -248,9 +263,12 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   ): Promise<bigint> {
     return this._ensureRootClaim(
       await this.GameFinder.findGameIndex(
-        this.OptimismPortal.target,
-        this.minAgeSec,
-        await this.gameTypes,
+        [
+          this.OptimismPortal.target,
+          this.minAgeSec,
+          await this.gameTypes(),
+          this.allowedProposers(),
+        ],
         commit.index
       )
     );
@@ -259,9 +277,12 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     // note: GameFinder checks isCommitStillValid()
     const game: ABIFoundGame = (
       await this.GameFinder.gameAtIndex(
-        this.OptimismPortal.target,
-        this.minAgeSec,
-        await this.gameTypes(),
+        [
+          this.OptimismPortal.target,
+          this.minAgeSec,
+          await this.gameTypes(),
+          this.allowedProposers(),
+        ],
         index
       )
     ).toObject();

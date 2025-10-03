@@ -47,7 +47,7 @@ type Setup = (
 
 const setups: Setup[] = [
   async (launch) => {
-    const config = OPFaultRollup.mainnetConfig;
+    const config = OPFaultRollup.sepoliaConfig;
     const { foundry, providers } = await launch(config);
     const rollup = new OPFaultRollup(providers, config);
     const commit = await rollup.fetchLatestCommit();
@@ -63,15 +63,18 @@ const setups: Setup[] = [
         [],
         rollup.defaultWindow,
         hooks,
+        gameFinder,
+        // This is the OPFaultParams struct
         [
           rollup.OptimismPortal,
-          gameFinder,
-          await rollup.gameTypes(),
           rollup.minAgeSec,
+          await rollup.gameTypes(),
+          rollup.allowedProposers(),
         ],
       ],
       libs: { GatewayVM },
     });
+
     const estimator = await createEstimator(verifier, rollup, commit);
     return {
       config,
