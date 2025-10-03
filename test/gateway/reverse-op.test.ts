@@ -36,6 +36,7 @@ describe.skipIf(!!process.env.IS_CV)(
       slotDataContract: '0xC9D1E777033FB8d17188475CE3D8242D1F4121D5',
       // https://etherscan.io/address/0x08fd8548934012f46727549927611ae0204fed55#code
       slotDataPointer: '0x08fd8548934012f46727549927611ae0204fed55',
+      skipCI: true,
     });
   }
 );

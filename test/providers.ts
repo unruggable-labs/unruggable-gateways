@@ -486,13 +486,18 @@ function envForChain(prefix: string, chain: Chain) {
 }
 
 export function providerOrder(chain?: Chain): string[] {
+
+  // 20240830: so far, alchemy has the best support
+  const defaultOrder = ['alchemy', 'infura', 'ankr', 'drpc', 'public']; // global default
+
   const key = 'PROVIDER_ORDER';
+  let order: string[] = [];
   let env;
   if (chain) env = envForChain(key, chain);
   if (!env) env = process.env[key]; // global
-  if (env) return env.split(/[,\s+]/).flatMap((x) => x.trim() || []);
-  // 20240830: so far, alchemy has the best support
-  return ['alchemy', 'infura', 'ankr', 'drpc', 'public']; // global default
+  if (env) order = env.split(/[,\s+]/).flatMap((x) => x.trim() || []);
+
+  return [...order, ...defaultOrder.filter(x => !order.includes(x))];
 }
 
 type ProviderInfo = {
@@ -583,7 +588,12 @@ export function providerURL(chain: Chain): string {
   return decideProvider(chain).url;
 }
 
+export function providerName(chain: Chain): string {
+  return decideProvider(chain).type;
+}
+
 export function createProvider(chain: Chain): Provider {
+  console.log(providerName(chain));
   const fr = new FetchRequest(providerURL(chain));
   fr.timeout = 10000; // 5 minutes is too long
   // fr.preflightFunc = async (req) => {

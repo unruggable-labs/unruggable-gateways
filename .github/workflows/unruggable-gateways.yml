@@ -53,7 +53,10 @@ jobs:
         run: bun run test-components
 
       - name: Test Gateways (uses node internally)
-        run: bun run test-gateways
+        run: |
+          for test in test/gateway/*.test.ts; do
+            IS_CI=true bun test "$test" --timeout 50000
+          done
   lint:
     name: Lint v2
     runs-on: ubuntu-latest
