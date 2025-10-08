@@ -70,10 +70,13 @@ let signingKey =
 const args = process.argv.slice(2).filter((x) => {
   let match: RegExpMatchArray | null;
   if (x === '--prefetch') {
+    // Periodically pull the latest commit data into the cache so it's always fresh
     prefetch = true;
   } else if (x === '--latest') {
+    // RPC calls will utilize the 'latest' block tag. Default is 'finalized'
     latestBlockTag = LATEST_BLOCK_TAG;
   } else if ((match = x.match(/^--unfinalized(|=\d+)$/))) {
+    // Chain specific configuration value to indicate what unfinalized state is acceptable
     unfinalized = Math.max(1, parseInt(match[1].slice(1)) | 0);
   } else if ((match = x.match(/^--depth=(\d+)$/))) {
     commitDepth = parseInt(match[1]);
@@ -82,12 +85,16 @@ const args = process.argv.slice(2).filter((x) => {
   } else if (x === '--dump') {
     dumpAndExit = true;
   } else if (x === '--debug') {
+    // Display debug output
     debugMode = true;
   } else if (x === '--calls') {
+    // Logs the RPC calls and their results for each provider
     printCalls = true;
   } else if (x === '--no-fast') {
+    // Disables caching
     disableFast = true;
   } else if (x === '--no-cache') {
+    // Disables caching
     disableCache = true;
   } else if (x === '--no-double') {
     disableDouble = true;
