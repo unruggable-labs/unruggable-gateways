@@ -4,8 +4,9 @@ import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
 
 const base_dir = fileURLToPath(new URL('../', import.meta.url));
 
-const branch = 'v1.9.3'; // checked on 20241009
-const src_url = `https://raw.githubusercontent.com/ethereum-optimism/optimism/${branch}/packages/contracts-bedrock/`;
+const branch = 'v1.13.7'; // checked on 20241009
+const src_url = `https://raw.githubusercontent.com/ethereum-optimism/optimism/refs/tags/${branch}/packages/contracts-bedrock/`;
+
 
 // clean output directory
 const out_dir = join(base_dir, 'lib/optimism/packages/contracts-bedrock');
@@ -19,7 +20,7 @@ const files = [
   'src/libraries/rlp/RLPReader.sol',
   'src/libraries/Hashing.sol',
   'src/libraries/Bytes.sol',
-  'src/dispute/interfaces/IDisputeGameFactory.sol',
+  'interfaces/dispute/IDisputeGameFactory.sol',
 ];
 
 const src_map = new Map<string, string>();
@@ -32,7 +33,7 @@ const needs = new Set<string>();
 while (files.length) {
   const file = files.pop()!;
   if (!file.startsWith(PREFIX)) {
-    throw new Error(`expected ${PREFIX}: ${file}`);
+    //throw new Error(`expected ${PREFIX}: ${file}`);
   }
   needs.add(file);
   for (const need of await parse_needs(file)) {
@@ -74,7 +75,7 @@ async function parse_needs(file: string) {
       code.matchAll(/import\s+(?:|{[^}]*}\s+from\s+)(["'])(.*?)\1/g),
       (match) => {
         const frag = match[2];
-        if (frag.startsWith(PREFIX)) {
+        if (frag.startsWith(PREFIX) || frag.startsWith('interfaces/')) {
           // project relative
           return frag;
         } else if (frag.startsWith('./')) {
