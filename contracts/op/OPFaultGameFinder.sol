@@ -90,6 +90,7 @@ contract OPFaultGameFinder {
         FinalizationParams memory finalizationParams
     ) internal view returns (bool) {
         if (!_isAllowedGameType(gameType, params.allowedGameTypes)) return false;
+        if (!_isAllowedProposer(gameProxy.gameCreator(), params.allowedProposers)) return false;
         // https://specs.optimism.io/fault-proof/stage-one/bridge-integration.html#blacklisting-disputegames
         if (params.portal.disputeGameBlacklist(gameProxy)) return false;
         if (!gameProxy.wasRespectedGameTypeWhenCreated()) return false;
