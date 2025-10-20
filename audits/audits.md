@@ -60,6 +60,6 @@ Commit hash: [`128a7c6`](https://github.com/unruggable-labs/unruggable-gateways/
 
 Alexis Williams from [Coinbase](https://coinbase.com) provided an impromptu audit of code related to [ENSIP-19](https://docs.ens.domains/ensip/21) primary resolution for [Base](https://base.org/).
 
-Please see the [following report](./2025-08-18_Coinbase_OPFault.pdf) for an indepth look at the findings.
+Please see the [following report](./coinbase-audit-aug-oct-2025/2025-08-18_Coinbase_OPFault.pdf) for an indepth look at the findings.
 
-TODO: describe findings, implement mitigations
+The mitigations were implemented in [Pull Request 38](https://github.com/unruggable-labs/unruggable-gateways/pull/38), and the changes were reviewed by Alexis. The [following report](./coinbase-audit-aug-oct-2025/2025-10-16_Mitigation_Review.pdf) was completed on October 16th 2025.
