@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {OPFaultGameFinder, IOptimismPortal} from "../../contracts/op/OPFaultGameFinder.sol";
+import {OPFaultGameFinder, IOptimismPortal, OPFaultParams} from "../../contracts/op/OPFaultGameFinder.sol";
 
 contract FixedOPFaultGameFinder is OPFaultGameFinder {
     uint256 immutable _gameIndex;
@@ -10,7 +10,7 @@ contract FixedOPFaultGameFinder is OPFaultGameFinder {
         _gameIndex = gameIndex;
     }
 
-    function findGameIndex(IOptimismPortal, uint256, uint256, uint256) external view override returns (uint256) {
+    function findGameIndex(OPFaultParams memory, uint256) external view override returns (uint256) {
         return _gameIndex;
     }
 }

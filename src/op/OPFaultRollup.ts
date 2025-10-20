@@ -23,10 +23,9 @@ const GAME_ABI = new Interface([`function rootClaim() view returns (bytes32)`]);
 
 const FINDER_ABI = new Interface([
   `error GameNotFound()`,
-  `error InvalidGameTypeBitMask()`,
-  `function findGameIndex(address portal, uint256 minAge, uint256 gameTypeBitMask, uint256 gameCount) view returns (uint256)`,
-  `function gameAtIndex(address portal, uint256 minAge, uint256 gameTypeBitMask, uint256 gameIndex) view returns (
-     uint256 gameType, uint256 created, address gameProxy, uint256 l2BlockNumber, bytes32 rootClaim
+  `function findGameIndex((address portal, uint256 minAge, uint256[] allowedGameTypes, address[] allowedProposers), uint256 gameCount) view returns (uint256)`,
+  `function gameAtIndex((address portal, uint256 minAge, uint256[] allowedGameTypes, address[] allowedProposers), uint256 gameIndex) view returns (
+	 uint256 gameType, uint256 created, address gameProxy, uint256 l2BlockNumber, bytes32 rootClaim
    )`,
 ]);
 
@@ -45,9 +44,9 @@ type ABIFoundGame = {
   rootClaim: string;
 };
 
-const FINDER_MAINNET = '0x61F50A76bfb2Ad8620A3E8F81aa27f3bEb1Db0D7';
-const FINDER_SEPOLIA = '0x1577670E6AC3307D17A8f81464ADc2070A2EFcaa';
-const FINDER_HOLESKY = '0xedb18cd8d9D6AF54C4Ac1FbDBF2E098F413c3fe9';
+const FINDER_MAINNET = '0x165386f8699ce2609a8903e25d00e1debd24a277';
+const FINDER_SEPOLIA = '0xf182be4292749cf414708eb517e858954e09bcb9';
+const FINDER_HOLESKY = '';
 
 export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   static readonly PORTAL_ABI = PORTAL_ABI;
@@ -172,7 +171,8 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   // 20240917: delayed constructor not needed
   readonly OptimismPortal: Contract;
   readonly GameFinder: Contract;
-  gameTypes: number[] = []; // if empty, dynamically uses respectedGameType()
+  private _gameTypes: bigint[] = [];
+  private _allowedProposers: HexAddress[] = [];
   unfinalizedRootClaimTimeoutMs = 30000;
   constructor(
     providers: ProviderPair,
@@ -192,12 +192,26 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     );
   }
 
-  get gameTypeBitMask() {
-    return this.gameTypes.reduce((a, x) => a | (1 << x), 0);
-  }
-
   override get unfinalized() {
     return !!this.minAgeSec; // nonzero => unfinalized
+  }
+
+  setGameTypes(gameTypes: bigint[]) {
+    this._gameTypes = gameTypes;
+  }
+
+  async gameTypes(): Promise<bigint[]> {
+    return this._gameTypes.length == 0
+      ? [await this.fetchRespectedGameType()]
+      : this._gameTypes;
+  }
+
+  setAllowedProposers(allowedProposers: HexAddress[]) {
+    this._allowedProposers = allowedProposers;
+  }
+
+  allowedProposers(): HexAddress[] {
+    return this._allowedProposers;
   }
 
   async fetchRespectedGameType(): Promise<bigint> {
@@ -234,9 +248,12 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
             throw new Error(`timeout _ensureRootClaim()`);
           }
           index = await this.GameFinder.findGameIndex(
-            this.OptimismPortal,
-            this.minAgeSec,
-            this.gameTypeBitMask,
+            [
+              this.OptimismPortal.target,
+              this.minAgeSec,
+              await this.gameTypes(),
+              this.allowedProposers(),
+            ],
             index
           );
           // index = await staticCall<bigint>(
@@ -262,10 +279,13 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     // 20240822: once again uses a helper contract to reduce rpc burden
     return this._ensureRootClaim(
       await this.GameFinder.findGameIndex(
-        this.OptimismPortal,
-        this.minAgeSec,
-        this.gameTypeBitMask,
-        0,
+        [
+          this.OptimismPortal.target,
+          this.minAgeSec,
+          await this.gameTypes(),
+          this.allowedProposers(),
+        ],
+        0, // most recent game
         { blockTag: this.latestBlockTag }
       )
       // this.provider1,
@@ -281,9 +301,12 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   ): Promise<bigint> {
     return this._ensureRootClaim(
       await this.GameFinder.findGameIndex(
-        this.OptimismPortal,
-        this.minAgeSec,
-        this.gameTypeBitMask,
+        [
+          this.OptimismPortal.target,
+          this.minAgeSec,
+          await this.gameTypes(),
+          this.allowedProposers(),
+        ],
         commit.index
       )
     );
@@ -292,9 +315,12 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     // note: GameFinder checks isCommitStillValid()
     const game: ABIFoundGame = (
       await this.GameFinder.gameAtIndex(
-        this.OptimismPortal,
-        this.minAgeSec,
-        this.gameTypeBitMask,
+        [
+          this.OptimismPortal.target,
+          this.minAgeSec,
+          await this.gameTypes(),
+          this.allowedProposers(),
+        ],
         index
       )
     ).toObject();
