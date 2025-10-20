@@ -7,7 +7,6 @@ const base_dir = fileURLToPath(new URL('../', import.meta.url));
 const branch = 'v1.13.7'; // checked on 20241009
 const src_url = `https://raw.githubusercontent.com/ethereum-optimism/optimism/refs/tags/${branch}/packages/contracts-bedrock/`;
 
-
 // clean output directory
 const out_dir = join(base_dir, 'lib/optimism/packages/contracts-bedrock');
 rmSync(out_dir, { recursive: true });
