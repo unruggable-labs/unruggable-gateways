@@ -90,8 +90,8 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         publicHTTP: 'https://mainnet.base.org',
         //ankr: 'base', // 202405XX: eth_getProof depth is 10000
         //infura: 'base-mainnet', // 20250214: eth_getProof depth is still insufficient
-        alchemy: 'base-mainnet', // 20250107 eth_getProof depth now seems OK
-        drpc: 'base', // 20250115: no eth_getProof
+        //alchemy: 'base-mainnet', // 20251008 eth_getProof depth insufficient.. again
+        drpc: 'base',
       },
       {
         // https://docs.base.org/docs/network-information#base-testnet-sepolia
