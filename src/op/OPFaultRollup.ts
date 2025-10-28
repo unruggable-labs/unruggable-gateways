@@ -159,6 +159,13 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     OptimismPortal: '0xc5c5D157928BDBD2ACf6d0777626b6C75a9EAEDC',
     GameFinder: FINDER_MAINNET,
   };
+  // https://storage.googleapis.com/cel2-rollup-files/celo-sepolia/deployment-l1.json
+  static readonly celoSepoliaConfig: RollupDeployment<OPFaultConfig> = {
+    chain1: CHAINS.SEPOLIA,
+    chain2: CHAINS.CELO_SEPOLIA,
+    OptimismPortal: '0x44ae3d41a335a7d05eb533029917aad35662dcc2',
+    GameFinder: FINDER_SEPOLIA,
+  };
 
   // https://nft.docs.zora.co/zora-network/intro
   static readonly zoraMainnetConfig: RollupDeployment<OPFaultConfig> = {

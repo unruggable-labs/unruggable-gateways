@@ -3,6 +3,7 @@ import type { Chain, ChainPair, Provider, ProviderPair } from '../src/types.js';
 import { CHAINS, chainName } from '../src/chains.js';
 import { FetchRequest } from 'ethers/utils';
 import { GatewayProvider } from '../src/GatewayProvider.js';
+import { EventEmitter } from 'node:events';
 
 export type RPCInfo = {
   readonly chain: Chain;
@@ -300,7 +301,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         //drpc: 'opbnb', // 20250115: no depth
       },
       {
-        // https://docs.celo.org/network#celo-mainnet
+        // https://docs.celo.org/tooling/overview/network-overview#celo-mainnet
         chain: CHAINS.CELO,
         publicHTTP: 'https://forno.celo.org',
         publicWS: 'wss://forno.celo.org/ws',
@@ -310,14 +311,10 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         drpc: 'celo',
       },
       {
-        // https://docs.celo.org/network#celo-alfajores
-        chain: CHAINS.CELO_ALFAJORES,
-        publicHTTP: 'https://alfajores-forno.celo-testnet.org',
-        alchemy: 'celo-alfajores',
-        infura: 'celo-alfajores', // 20241002: eth_getProof doesn't work
-        ankr: 'celo-alfajores',
-        ankrPremium: true,
-        drpc: 'celo-alfajores',
+        // https://docs.celo.org/tooling/overview/network-overview#celo-sepolia-testnet
+        chain: CHAINS.CELO_SEPOLIA,
+        publicHTTP: 'https://forno.celo-sepolia.celo-testnet.org',
+        drpc: 'celo-sepolia',
       },
       {
         // https://docs.worldcoin.org/world-chain/quick-start/info
@@ -496,7 +493,6 @@ function envForChain(prefix: string, chain: Chain) {
 }
 
 export function providerOrder(chain?: Chain): string[] {
-
   // 20240830: so far, alchemy has the best support
   const defaultOrder = ['alchemy', 'infura', 'ankr', 'drpc', 'public']; // global default
 
@@ -507,8 +503,12 @@ export function providerOrder(chain?: Chain): string[] {
   if (!env) env = process.env[key]; // global
   if (env) order = env.split(/[,\s+]/).flatMap((x) => x.trim() || []);
 
-  return [...order, ...defaultOrder.filter(x => !order.includes(x))];
+  return [...order, ...defaultOrder.filter((x) => !order.includes(x))];
 }
+
+export const PROVIDER_EVENTS = new EventEmitter<{
+  create: [chain: Chain, fr: FetchRequest];
+}>();
 
 type ProviderInfo = {
   info: RPCInfo;
@@ -609,6 +609,7 @@ export function createProvider(chain: Chain): Provider {
   //   console.log(req.url);
   //   return req;
   // };
+  PROVIDER_EVENTS.emit('create', chain, fr);
   return new GatewayProvider(fr, chain);
 }
 

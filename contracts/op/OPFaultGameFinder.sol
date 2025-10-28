@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import { IOptimismPortal, IDisputeGameFactory, IDisputeGame, IFaultDisputeGame } from './OPInterfaces.sol';
+import { IDisputeGameFactory, IDisputeGame, IFaultDisputeGame } from './OPInterfaces.sol';
 import { OPFaultParams, FinalizationParams } from './OPStructs.sol';
 
 // https://github.com/ethereum-optimism/optimism/issues/11269
