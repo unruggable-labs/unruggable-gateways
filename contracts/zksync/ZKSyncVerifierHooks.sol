@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IVerifierHooks, InvalidProof, NOT_A_CONTRACT} from '../IVerifierHooks.sol';
+import {
+    IVerifierHooks,
+    InvalidProof,
+    NOT_A_CONTRACT,
+    NULL_CODE_HASH
+} from '../IVerifierHooks.sol';
 import {IZKSyncSMT, TreeEntry, ACCOUNT_CODE_HASH} from './IZKSyncSMT.sol';
 
 contract ZKSyncVerifierHooks is IVerifierHooks {
@@ -23,6 +28,21 @@ contract ZKSyncVerifierHooks is IVerifierHooks {
                 0
                 ? NOT_A_CONTRACT
                 : root;
+    }
+
+    function verifyCode(
+        bytes32 root,
+        address target,
+        bytes memory proof,
+        bytes memory code
+    ) external view returns (bool) {
+        if (proof.length > 0) {
+            return
+                _verifyProof(root, ACCOUNT_CODE_HASH, uint160(target), proof) ==
+                keccak256(code);
+        } else {
+            return code.length == 0;
+        }
     }
 
     function verifyStorageValue(

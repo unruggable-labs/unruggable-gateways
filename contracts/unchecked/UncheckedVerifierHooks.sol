@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {IVerifierHooks} from '../IVerifierHooks.sol';
+import {StandardVerifierHooks} from '../StandardVerifierHooks.sol';
 
-contract UncheckedVerifierHooks is IVerifierHooks {
-    function verifyAccountState(
+contract UncheckedVerifierHooks is StandardVerifierHooks {
+    function verifyAccount(
         bytes32 /*stateRoot*/,
         address /*target*/,
         bytes memory proof
-    ) external pure returns (bytes32 storageRoot) {
-        return bytes32(proof);
+    ) public pure override returns (bytes32, bytes32) {
+        return abi.decode(proof, (bytes32, bytes32));
     }
 
     function verifyStorageValue(

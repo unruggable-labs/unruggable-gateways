@@ -1,4 +1,4 @@
-import type { HexAddress, HexString, ProofRef } from '../types.js';
+import type { HexAddress, HexString, HexString32, ProofRef } from '../types.js';
 import {
   type EthAccountProof,
   type EthStorageProof,
@@ -17,15 +17,7 @@ export class EthProver extends BlockProver {
   static readonly isContract = isContract;
   static readonly latest = this._createLatest();
   override async isContract(target: HexAddress): Promise<boolean> {
-    target = target.toLowerCase();
-    if (this.fast) {
-      return this.cache.get(target, async (a) => {
-        // note: this actually reverts when the block is bad
-        // eg. {"code": -32602, "message": "Unknown block number"}
-        const code = await this.provider.getCode(a, this.block);
-        return code.length > 2;
-      });
-    }
+    if (this.fast) return this.hasCode(target);
     return isContract(await this.getProofs(target));
   }
   override async getStorage(
@@ -155,12 +147,17 @@ export class EthProver extends BlockProver {
       );
       if (i >= slots.length) break;
     }
-    const vs = await Promise.all(ps);
+    const [x0, ...xs] = await Promise.all(ps);
     // note: this returns null when block is bad
-    if (!vs[0]) throw new Error(`unprovable block: ${this.block}`);
-    for (let i = 1; i < vs.length; i++) {
-      vs[0].storageProof.push(...vs[i].storageProof);
+    if (!x0) throw new Error(`unprovable block: ${this.block}`);
+    for (const x of xs) {
+      x0.storageProof.push(...x.storageProof);
     }
-    return vs[0];
+    x0.codeHash ??= (x0 as any).keccakCodeHash; // scroll reeee
+    return x0;
+  }
+  override async getCodeHash(target: HexAddress): Promise<HexString32> {
+    const proofs = await this.getProofs(target);
+    return proofs.codeHash;
   }
 }
