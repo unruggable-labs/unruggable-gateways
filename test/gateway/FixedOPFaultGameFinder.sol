@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {OPFaultGameFinder, IOptimismPortal, OPFaultParams} from "../../contracts/op/OPFaultGameFinder.sol";
+import {OPFaultGameFinder, OPFaultParams} from "../../contracts/op/OPFaultGameFinder.sol";
 
 contract FixedOPFaultGameFinder is OPFaultGameFinder {
     uint256 immutable _gameIndex;
