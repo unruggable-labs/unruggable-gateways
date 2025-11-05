@@ -67,6 +67,7 @@ library GatewayOP {
     uint8 constant READ_ARRAY = 62;
     uint8 constant READ_HASHED_BYTES = 63;
     uint8 constant READ_SLOTS = 64;
+    uint8 constant READ_CODE = 65;
 
     uint8 constant SET_SLOT = 70;
     uint8 constant ADD_SLOT = 71;

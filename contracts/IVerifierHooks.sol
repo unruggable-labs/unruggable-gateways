@@ -12,6 +12,14 @@ interface IVerifierHooks {
         address target,
         bytes memory proof
     ) external view returns (bytes32 storageRoot);
+
+    function verifyCode(
+        bytes32 stateRoot,
+        address target,
+        bytes memory proof,
+        bytes memory code
+    ) external view returns (bool);
+
     function verifyStorageValue(
         bytes32 storageRoot,
         address target,

@@ -1,6 +1,7 @@
 import type {
   HexAddress,
   HexString,
+  HexString32,
   ProofRef,
   ProofSequence,
   Provider,
@@ -14,21 +15,21 @@ import {
   LATEST_BLOCK_TAG,
 } from './utils.js';
 import { VOID_PROVIDER } from './VoidProvider.js';
+import { keccak256 } from 'ethers/crypto';
 
 export class UncheckedProver extends BlockProver {
   static readonly latest = this._createLatest();
   override isContract(target: HexAddress): Promise<boolean> {
-    target = target.toLowerCase();
-    return this.cache.get(target, async (a) => {
-      const code = await this.provider.getCode(a, this.block);
-      return code.length > 2;
-    });
+    return this.hasCode(target);
   }
   override getStorage(target: HexAddress, slot: bigint): Promise<HexString> {
     target = target.toLowerCase();
     return this.cache.get(makeStorageKey(target, slot), () => {
       return fetchStorage(this.provider, target, slot, this.block);
     });
+  }
+  override async getCodeHash(target: HexAddress): Promise<HexString32> {
+    return keccak256(await this.getCode(target));
   }
   protected override async _proveNeed(
     need: TargetNeed,

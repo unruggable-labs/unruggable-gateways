@@ -2,8 +2,14 @@
 pragma solidity ^0.8.0;
 
 import {GatewayRequest, GatewayOP, EvalFlag} from './GatewayRequest.sol';
-import {IVerifierHooks, InvalidProof, NOT_A_CONTRACT} from './IVerifierHooks.sol';
-import {Bytes} from '../lib/optimism/packages/contracts-bedrock/src/libraries/Bytes.sol'; // Bytes.slice
+import {
+    IVerifierHooks,
+    InvalidProof,
+    NOT_A_CONTRACT
+} from './IVerifierHooks.sol';
+import {
+    Bytes
+} from '../lib/optimism/packages/contracts-bedrock/src/libraries/Bytes.sol'; // Bytes.slice
 
 import {console} from 'forge-std/console.sol'; // DEBUG
 
@@ -57,11 +63,7 @@ library GatewayVM {
             let x
             ret := 1 // assume zero
             // while (p < e)
-            for {
-
-            } lt(p, e) {
-
-            } {
+            for {} lt(p, e) {} {
                 x := mload(p) // remember last
                 p := add(p, 32) // step by word
                 if x {
@@ -233,15 +235,6 @@ library GatewayVM {
         return p.proofs[uint8(p.order[p.index++])];
     }
 
-    function getStorageRoot(Machine memory vm) internal view returns (bytes32) {
-        return
-            vm.proofs.hooks.verifyAccountState(
-                vm.proofs.stateRoot,
-                vm.target,
-                vm.readProof()
-            );
-    }
-
     function getStorage(
         Machine memory vm,
         uint256 slot
@@ -326,13 +319,13 @@ library GatewayVM {
     }
 
     function createMachine() internal pure returns (Machine memory vm) {
-        vm.pos = 0;
+        //vm.pos = 0;
         vm.stack = new uint256[](MAX_STACK);
-        vm.stackBits = 0;
-        vm.stackSize = 0;
+        //vm.stackBits = 0;
+        //vm.stackSize = 0;
         vm.target = address(0);
         vm.storageRoot = NOT_A_CONTRACT;
-        vm.slot = 0;
+        //vm.slot = 0;
     }
 
     function evalRequest(
@@ -359,7 +352,11 @@ library GatewayVM {
                 vm.pushBytes(vm.readBytes(vm.readUint(vm.readByte())));
             } else if (op == GatewayOP.SET_TARGET) {
                 vm.target = address(uint160(vm.popAsUint256()));
-                vm.storageRoot = vm.getStorageRoot();
+                vm.storageRoot = vm.proofs.hooks.verifyAccountState(
+                    vm.proofs.stateRoot,
+                    vm.target,
+                    vm.readProof()
+                );
                 vm.slot = 0;
             } else if (op == GatewayOP.SET_OUTPUT) {
                 uint256 i = vm.popAsUint256();
@@ -382,6 +379,20 @@ library GatewayVM {
                     revert InvalidProof();
                 }
                 vm.pushBytes(v);
+            } else if (op == GatewayOP.READ_CODE) {
+                bytes memory proof = vm.readProof();
+                bytes memory code = vm.readProof();
+                if (
+                    !vm.proofs.hooks.verifyCode(
+                        vm.proofs.stateRoot,
+                        address(uint160(vm.popAsUint256())),
+                        proof,
+                        code
+                    )
+                ) {
+                    revert InvalidProof();
+                }
+                vm.pushBytes(code);
             } else if (op == GatewayOP.READ_ARRAY) {
                 vm.pushBytes(vm.proveArray(vm.popAsUint256()));
             } else if (op == GatewayOP.SET_SLOT) {

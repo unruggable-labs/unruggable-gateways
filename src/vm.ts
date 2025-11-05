@@ -154,6 +154,10 @@ export class GatewayProgram {
   readArray(step: number) {
     return this.push(step).addByte(OP.READ_ARRAY);
   }
+  readCode(x?: HexString) {
+    if (x) this.push(x);
+    return this.addByte(OP.READ_CODE);
+  }
 
   setTarget(x: HexString) {
     return this.push(x).target();
@@ -655,7 +659,7 @@ export abstract class AbstractProver {
     target: HexAddress,
     slot: bigint,
     fast?: boolean
-  ): Promise<HexString>;
+  ): Promise<HexString32>;
   abstract prove(needs: Need[]): Promise<ProofSequence>;
   async proveV1(needs: Need[]): Promise<ProofSequenceV1> {
     requireV1Needs(needs);
@@ -671,6 +675,12 @@ export abstract class AbstractProver {
   // whereas LineaRollup => getCommit() => prover does (from L1)
   abstract fetchStateRoot(): Promise<HexString32>;
   abstract fetchTimestamp(): Promise<number>;
+  abstract getCodeHash(target: HexAddress): Promise<HexString32>;
+  abstract getCode(target: HexAddress): Promise<HexString>;
+  async hasCode(target: HexAddress) {
+    const code = await this.getCode(target);
+    return code.length > 2; // "0x..."
+  }
 
   // machine interface
   async evalDecoded(v: BytesLike) {
@@ -805,6 +815,18 @@ export abstract class AbstractProver {
           const { target, slot } = vm;
           const hash = vm.pop();
           const value = this.fetchUnprovenStorageBytes(target, slot);
+          vm.trace.needs.push({ hash, value });
+          vm.push(value);
+          continue;
+        }
+        case OP.READ_CODE: {
+          const target = addressFromHex(await unwrap(vm.pop()));
+          const [value, hash] = await Promise.all([
+            this.getCode(target),
+            this.getCodeHash(target),
+          ]);
+          vm.trace.addTarget(target);
+          vm.trace.requireTarget(target);
           vm.trace.needs.push({ hash, value });
           vm.push(value);
           continue;
@@ -1098,6 +1120,14 @@ export abstract class BlockProver extends AbstractProver {
   }
   override async fetchTimestamp() {
     return parseInt((await this.fetchBlock()).timestamp);
+  }
+  override async getCode(target: HexAddress) {
+    // note: this actually reverts when the block is bad
+    // eg. {"code": -32602, "message": "Unknown block number"}
+    target = target.toLowerCase();
+    return this.cache.get(target, () =>
+      this.provider.getCode(target, this.block)
+    );
   }
   protected abstract _proveNeed(
     need: TargetNeed,
