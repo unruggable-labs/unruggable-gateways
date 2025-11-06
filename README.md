@@ -96,6 +96,7 @@ If you are interested in building a solution for another chain, please take a lo
 		* eg. if `APE`, serves L2 &rarr; L3 instead of L1 &rarr; L2 &rarr; L3
 	* Include `--depth=#` to adjust commit depth
 	* Include `--step=#` to adjust commit step
+	* Include `--gameTypes=1,2...` to set allowed game types for `OPFaultRollup`
 	* Use [`PROVIDER_ORDER`](./test/providers.ts#L479) to customize global RPC provider priority.
 	* Use `PROVIDER_ORDER_{CHAIN_NAME}` to customize per-chain RPC provider priority.
 	* Use `PROVIDER_{CHAIN_NAME}` to customize per-chain RPC provider override.

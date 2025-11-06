@@ -146,7 +146,7 @@ export function testOPFault(
         infoLog: !!opts.log,
       });
       await rollup.provider2.getBlockNumber(); // check provider
-      afterAll(foundry.shutdown);
+	  afterAll(foundry.shutdown);
       const gateway = new Gateway(rollup);
       const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
       afterAll(ccip.shutdown);
@@ -164,12 +164,7 @@ export function testOPFault(
           opts.window ?? rollup.defaultWindow,
           hooks,
           gameFinder,
-          [
-            rollup.OptimismPortal,
-            rollup.minAgeSec,
-            await rollup.gameTypes(),
-            rollup.allowedProposers(),
-          ],
+          rollup.paramTuple,
         ],
         libs: { GatewayVM },
       });

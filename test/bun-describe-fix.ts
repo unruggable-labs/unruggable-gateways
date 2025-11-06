@@ -1,4 +1,4 @@
-import { test, describe as describe0 } from 'bun:test';
+import { describe as describe0 } from 'bun:test';
 
 // bun:test is shit
 // using a beforeAll() is disgusting for test setup
@@ -7,14 +7,8 @@ import { test, describe as describe0 } from 'bun:test';
 
 export function describe(label: string, fn: () => void | Promise<void>) {
   describe0(label, async () => {
-    try {
-      await fn(); // must be awaited
-    } catch (cause) {
-      test('init()', () => {
-        // failure shows up as a synthetic test
-        throw cause;
-      });
-    }
+    await fn(); // must be awaited
+    // 20251105: throw as failure outside of test() instead
   });
 }
 

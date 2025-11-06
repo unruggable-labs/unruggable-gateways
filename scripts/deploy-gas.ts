@@ -46,7 +46,7 @@ await foundry.deploy({
 });
 await foundry.deploy({
   file: 'OPFaultVerifier',
-  args: [U, 1, A, [A, A, 0, 0]],
+  args: [U, 1, A, [A, A, [], []]],
   libs: { GatewayVM },
 });
 await foundry.deploy({

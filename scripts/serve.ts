@@ -61,6 +61,7 @@ let prefetch = false;
 let latestBlockTag = '';
 let commitDepth: number | undefined = undefined;
 let commitStep: number | undefined = undefined;
+let gameTypes: bigint[] = [];
 let disableFast = false;
 let disableCache = false;
 let disableDouble = false;
@@ -82,6 +83,8 @@ const args = process.argv.slice(2).filter((x) => {
     commitDepth = parseInt(match[1]);
   } else if ((match = x.match(/^--step=(\d+)$/))) {
     commitStep = parseInt(match[1]);
+  } else if ((match = x.match(/^--gameTypes=(\d+(?:,\d+)*)$/))) {
+    gameTypes = match[1].split(',').map((x) => BigInt(x));
   } else if (x === '--dump') {
     dumpAndExit = true;
   } else if (x === '--debug') {
@@ -375,9 +378,13 @@ async function createGateway(name: string) {
       (x) => x.chain2 === chain
     );
     if (config) {
-      return new Gateway(
-        new OPFaultRollup(createProviderPair(config), config, unfinalized)
+      const rollup = new OPFaultRollup(
+        createProviderPair(config),
+        config,
+        unfinalized
       );
+      rollup.gameTypes = gameTypes;
+      return new Gateway(rollup);
     }
   }
   {
@@ -534,32 +541,32 @@ function proverDetails(prover: AbstractProver) {
   };
 }
 
+function toJSONValue(x: any): any {
+  switch (typeof x) {
+    case 'bigint':
+      return bigintToJSON(x);
+    case 'string':
+      return concealKeys(x);
+    case 'boolean':
+    case 'number':
+      return x;
+  }
+  if (Array.isArray(x)) {
+    return x.map(toJSONValue);
+  } else if (x && x.constructor === Object) {
+    return toJSON(x);
+  }
+}
+
 function toJSON(x: object) {
-  const info: Record<string, any> = {};
+  const json: Record<string, any> = {};
   for (const [k, v] of Object.entries(x)) {
-    switch (typeof v) {
-      case 'bigint': {
-        info[k] = bigintToJSON(v);
-        break;
-      }
-      case 'string': {
-        info[k] = concealKeys(v);
-        break;
-      }
-      case 'boolean':
-      case 'number':
-        info[k] = v;
-        break;
-      case 'object':
-        if (Array.isArray(v)) {
-          info[k] = v.map(toJSON);
-        } else if (v && v.constructor === Object) {
-          info[k] = toJSON(v);
-        }
-        break;
+    const value = toJSONValue(v);
+    if (value !== undefined) {
+      json[k] = value;
     }
   }
-  return info;
+  return json;
 }
 
 // use number when it fits

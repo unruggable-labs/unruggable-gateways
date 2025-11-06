@@ -9,8 +9,3 @@ struct OPFaultParams {
     uint256[] allowedGameTypes;
     address[] allowedProposers;
 }
-
-struct FinalizationParams {
-    uint256 finalityDelay;
-    uint64 gameTypeUpdatedAt;
-}

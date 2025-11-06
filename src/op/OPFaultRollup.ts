@@ -44,9 +44,8 @@ type ABIFoundGame = {
   rootClaim: string;
 };
 
-const FINDER_MAINNET = '0x165386f8699ce2609a8903e25d00e1debd24a277';
-const FINDER_SEPOLIA = '0xf182be4292749cf414708eb517e858954e09bcb9';
-const FINDER_HOLESKY = '';
+const FINDER_MAINNET = '0x4E63bFa938fA1235A0ad7AaFA5165c6511f970eC';
+const FINDER_SEPOLIA = '0xda1B8f851965BfE75451222a0a898722765747e2';
 
 export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   static readonly PORTAL_ABI = PORTAL_ABI;
@@ -56,7 +55,8 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   static readonly FINDERS = new Map([
     [CHAINS.MAINNET, FINDER_MAINNET],
     [CHAINS.SEPOLIA, FINDER_SEPOLIA],
-    [CHAINS.HOLESKY, FINDER_HOLESKY],
+    //[CHAINS.HOLESKY, FINDER_HOLESKY],
+    //[CHAINS.HOODI, FINDER_HOODI],
   ]);
 
   // https://docs.optimism.io/chain/addresses
@@ -178,8 +178,8 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   // 20240917: delayed constructor not needed
   readonly OptimismPortal: Contract;
   readonly GameFinder: Contract;
-  private _gameTypes: bigint[] = [];
-  private _allowedProposers: HexAddress[] = [];
+  public gameTypes: bigint[] = [];
+  public allowedProposers: HexAddress[] = [];
   unfinalizedRootClaimTimeoutMs = 30000;
   constructor(
     providers: ProviderPair,
@@ -203,22 +203,19 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     return !!this.minAgeSec; // nonzero => unfinalized
   }
 
-  setGameTypes(gameTypes: bigint[]) {
-    this._gameTypes = gameTypes;
+  get paramTuple() {
+    return [
+      this.OptimismPortal.target,
+      this.minAgeSec,
+      this.gameTypes,
+      this.allowedProposers,
+    ];
   }
 
-  async gameTypes(): Promise<bigint[]> {
-    return this._gameTypes.length == 0
-      ? [await this.fetchRespectedGameType()]
-      : this._gameTypes;
-  }
-
-  setAllowedProposers(allowedProposers: HexAddress[]) {
-    this._allowedProposers = allowedProposers;
-  }
-
-  allowedProposers(): HexAddress[] {
-    return this._allowedProposers;
+  async getGameTypes(): Promise<bigint[]> {
+    return this.gameTypes.length
+      ? this.gameTypes
+      : [await this.fetchRespectedGameType()];
   }
 
   async fetchRespectedGameType(): Promise<bigint> {
@@ -254,15 +251,7 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
           if (Date.now() > timeout) {
             throw new Error(`timeout _ensureRootClaim()`);
           }
-          index = await this.GameFinder.findGameIndex(
-            [
-              this.OptimismPortal.target,
-              this.minAgeSec,
-              await this.gameTypes(),
-              this.allowedProposers(),
-            ],
-            index
-          );
+          index = await this.GameFinder.findGameIndex(this.paramTuple, index);
           // index = await staticCall<bigint>(
           //   this.provider1,
           //   this.GameFinder,
@@ -286,50 +275,23 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     // 20240822: once again uses a helper contract to reduce rpc burden
     return this._ensureRootClaim(
       await this.GameFinder.findGameIndex(
-        [
-          this.OptimismPortal.target,
-          this.minAgeSec,
-          await this.gameTypes(),
-          this.allowedProposers(),
-        ],
+        this.paramTuple,
         0, // most recent game
         { blockTag: this.latestBlockTag }
       )
-      // this.provider1,
-      // this.GameFinder,
-      // FINDER_ABI,
-      // 'findGameIndex',
-      // [this.OptimismPortal, this.minAgeSec, this.gameTypeBitMask, 0],
-      // this.latestBlockTag
     );
   }
   protected override async _fetchParentCommitIndex(
     commit: OPFaultCommit
   ): Promise<bigint> {
     return this._ensureRootClaim(
-      await this.GameFinder.findGameIndex(
-        [
-          this.OptimismPortal.target,
-          this.minAgeSec,
-          await this.gameTypes(),
-          this.allowedProposers(),
-        ],
-        commit.index
-      )
+      await this.GameFinder.findGameIndex(this.paramTuple, commit.index)
     );
   }
   protected override async _fetchCommit(index: bigint) {
     // note: GameFinder checks isCommitStillValid()
     const game: ABIFoundGame = (
-      await this.GameFinder.gameAtIndex(
-        [
-          this.OptimismPortal.target,
-          this.minAgeSec,
-          await this.gameTypes(),
-          this.allowedProposers(),
-        ],
-        index
-      )
+      await this.GameFinder.gameAtIndex(this.paramTuple, index)
     ).toObject();
     if (!game.l2BlockNumber) throw new Error('invalid game');
     const commit = await this.createCommit(index, game.l2BlockNumber);
