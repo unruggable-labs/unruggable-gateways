@@ -18,7 +18,7 @@ const ownerWallet = await foundry.ensureWallet('owner');
 const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
 const impl = await foundry.deploy({
   file: 'OPFaultVerifier',
-  args: [[], 0, ZeroAddress, [ZeroAddress, ZeroAddress, [], []]],
+  args: [[], 0, ZeroAddress, [ZeroAddress, 0, [], []]],
   libs: { GatewayVM },
   from: ownerWallet,
 });

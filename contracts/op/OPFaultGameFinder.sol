@@ -17,7 +17,7 @@ uint256 constant DEFENDER_WINS = 2;
 
 error GameNotFound();
 
-struct Config {
+struct PortalParams {
     uint256 finalityDelay;
     uint256 respectedGameType;
 }
@@ -27,7 +27,7 @@ contract OPFaultGameFinder {
         OPFaultParams memory params,
         uint256 gameCount
     ) external view virtual returns (uint256) {
-        Config memory config = _config(params.portal);
+        PortalParams memory portalParams = _portalParams(params.portal);
         IDisputeGameFactory factory = params.portal.disputeGameFactory();
         if (gameCount == 0) gameCount = factory.gameCount();
         while (gameCount > 0) {
@@ -36,7 +36,15 @@ contract OPFaultGameFinder {
                 uint256 created,
                 IDisputeGame gameProxy
             ) = factory.gameAtIndex(--gameCount);
-            if (_isGameUsable(gameProxy, gameType, created, params, config)) {
+            if (
+                _isGameUsable(
+                    gameProxy,
+                    gameType,
+                    created,
+                    params,
+                    portalParams
+                )
+            ) {
                 return gameCount;
             }
         }
@@ -65,7 +73,7 @@ contract OPFaultGameFinder {
                 gameType,
                 created,
                 params,
-                _config(params.portal)
+                _portalParams(params.portal)
             )
         ) {
             l2BlockNumber = gameProxy.l2BlockNumber();
@@ -78,17 +86,20 @@ contract OPFaultGameFinder {
         uint256 gameType,
         uint256 created,
         OPFaultParams memory params,
-        Config memory config
+        PortalParams memory portalParams
     ) internal view returns (bool) {
         // if allowed gameTypes is empty, accept a respected game OR a previously respected game
         if (
-            params.allowedGameTypes.length == 0
-                ? (gameType != config.respectedGameType &&
-                    !gameProxy.wasRespectedGameTypeWhenCreated())
-                : !_isAllowedGameType(gameType, params.allowedGameTypes)
+            !(
+                params.allowedGameTypes.length == 0
+                    ? (gameType == portalParams.respectedGameType ||
+                        gameProxy.wasRespectedGameTypeWhenCreated())
+                    : _isAllowedGameType(gameType, params.allowedGameTypes)
+            )
         ) {
             return false;
         }
+        // if no proposer restrictions or proposer is whitelisted
         if (
             !_isAllowedProposer(
                 gameProxy.gameCreator(),
@@ -102,17 +113,16 @@ contract OPFaultGameFinder {
             (bool ok, bytes memory v) = address(gameProxy).staticcall(
                 abi.encodeCall(IFaultDisputeGame.l2BlockNumberChallenged, ())
             );
-            if (ok && bytes32(v) != bytes32(0)) {
-				return false; // block number was challenged
-            }
-            if (gameProxy.status() != CHALLENGER_WINS) {
-                return true; // not successfully challenged
+            // effectively: supportsInterface(IFaultDisputeGame)
+            if (ok && v.length == 32) {
+                return bytes32(v) == bytes32(0); // usable if not challenged
             }
         }
         // require resolved + sufficiently aged
         return
             gameProxy.status() == DEFENDER_WINS &&
-            (block.timestamp - gameProxy.resolvedAt()) >= config.finalityDelay;
+            (block.timestamp - gameProxy.resolvedAt()) >=
+            portalParams.finalityDelay;
     }
 
     function _isAllowedGameType(
@@ -135,11 +145,11 @@ contract OPFaultGameFinder {
         return allowedProposers.length == 0;
     }
 
-    function _config(
+    function _portalParams(
         IOptimismPortal portal
-    ) internal view returns (Config memory) {
+    ) internal view returns (PortalParams memory) {
         return
-            Config({
+            PortalParams({
                 finalityDelay: portal.disputeGameFinalityDelaySeconds(),
                 respectedGameType: portal.respectedGameType()
             });
