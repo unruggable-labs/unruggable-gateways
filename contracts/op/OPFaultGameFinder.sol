@@ -17,17 +17,12 @@ uint256 constant DEFENDER_WINS = 2;
 
 error GameNotFound();
 
-struct PortalParams {
-    uint256 finalityDelay;
-    uint256 respectedGameType;
-}
-
 contract OPFaultGameFinder {
     function findGameIndex(
         OPFaultParams memory params,
         uint256 gameCount
     ) external view virtual returns (uint256) {
-        PortalParams memory portalParams = _portalParams(params.portal);
+        uint256 respectedGameType = params.portal.respectedGameType();
         IDisputeGameFactory factory = params.portal.disputeGameFactory();
         if (gameCount == 0) gameCount = factory.gameCount();
         while (gameCount > 0) {
@@ -42,7 +37,7 @@ contract OPFaultGameFinder {
                     gameType,
                     created,
                     params,
-                    portalParams
+                    respectedGameType
                 )
             ) {
                 return gameCount;
@@ -73,7 +68,7 @@ contract OPFaultGameFinder {
                 gameType,
                 created,
                 params,
-                _portalParams(params.portal)
+                params.portal.respectedGameType()
             )
         ) {
             l2BlockNumber = gameProxy.l2BlockNumber();
@@ -86,13 +81,13 @@ contract OPFaultGameFinder {
         uint256 gameType,
         uint256 created,
         OPFaultParams memory params,
-        PortalParams memory portalParams
+        uint256 respectedGameType
     ) internal view returns (bool) {
         // if allowed gameTypes is empty, accept a respected game OR a previously respected game
         if (
             !(
                 params.allowedGameTypes.length == 0
-                    ? (gameType == portalParams.respectedGameType ||
+                    ? (gameType == respectedGameType ||
                         gameProxy.wasRespectedGameTypeWhenCreated())
                     : _isAllowedGameType(gameType, params.allowedGameTypes)
             )
@@ -117,12 +112,9 @@ contract OPFaultGameFinder {
             if (ok && v.length == 32) {
                 return bytes32(v) == bytes32(0); // usable if not challenged
             }
+            // fallthru if not IFaultDisputeGame
         }
-        // require resolved + sufficiently aged
-        return
-            gameProxy.status() == DEFENDER_WINS &&
-            (block.timestamp - gameProxy.resolvedAt()) >=
-            portalParams.finalityDelay;
+        return gameProxy.status() == DEFENDER_WINS; // require resolved
     }
 
     function _isAllowedGameType(
@@ -143,15 +135,5 @@ contract OPFaultGameFinder {
             if (allowedProposers[i] == proposer) return true;
         }
         return allowedProposers.length == 0;
-    }
-
-    function _portalParams(
-        IOptimismPortal portal
-    ) internal view returns (PortalParams memory) {
-        return
-            PortalParams({
-                finalityDelay: portal.disputeGameFinalityDelaySeconds(),
-                respectedGameType: portal.respectedGameType()
-            });
     }
 }
