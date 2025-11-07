@@ -196,6 +196,10 @@ if (gateway.rollup instanceof TrustedRollup) {
   config.signer = gateway.rollup.signerAddress;
 }
 
+if (gateway.rollup instanceof OPFaultRollup) {
+  config.gameTypes = toJSONValue(await gateway.rollup.getGameTypes());
+}
+
 if (dumpAndExit) {
   console.log('Config:', config);
   const t0 = Date.now();

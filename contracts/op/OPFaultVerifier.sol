@@ -37,7 +37,7 @@ contract OPFaultVerifier is AbstractVerifier {
         return _params.minAgeSec;
     }
 
-    function gameTypes() external view returns (uint256[] memory) {
+    function allowedGameTypes() external view returns (uint256[] memory) {
         return _params.allowedGameTypes;
     }
 

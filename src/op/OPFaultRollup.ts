@@ -180,7 +180,7 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   readonly GameFinder: Contract;
   public gameTypes: bigint[] = [];
   public allowedProposers: HexAddress[] = [];
-  unfinalizedRootClaimTimeoutMs = 30000;
+  unfinalizedRootClaimTimeoutMs = 15000;
   constructor(
     providers: ProviderPair,
     config: OPFaultConfig,
@@ -222,14 +222,6 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     return this.OptimismPortal.respectedGameType({
       blockTag: this.latestBlockTag,
     });
-    // return staticCall<bigint>(
-    //   this.provider1,
-    //   this.OptimismPortal,
-    //   PORTAL_ABI,
-    //   'respectedGameType',
-    //   [],
-    //   this.latestBlockTag
-    // );
   }
   private async _ensureRootClaim(index: bigint) {
     // dodge canary by requiring a valid root claim
@@ -252,13 +244,6 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
             throw new Error(`timeout _ensureRootClaim()`);
           }
           index = await this.GameFinder.findGameIndex(this.paramTuple, index);
-          // index = await staticCall<bigint>(
-          //   this.provider1,
-          //   this.GameFinder,
-          //   FINDER_ABI,
-          //   'findGameIndex',
-          //   [this.OptimismPortal, this.minAgeSec, this.gameTypeBitMask, index]
-          // );
         }
       }
     }
