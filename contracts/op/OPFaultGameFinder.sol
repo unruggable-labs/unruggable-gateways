@@ -5,7 +5,8 @@ import {
     IOptimismPortal,
     IDisputeGameFactory,
     IDisputeGame,
-    IFaultDisputeGame
+    IFaultDisputeGame,
+    IOPSuccinctFaultDisputeGame
 } from './OPInterfaces.sol';
 import {OPFaultParams} from './OPStructs.sol';
 
@@ -105,14 +106,7 @@ contract OPFaultGameFinder {
         if (params.portal.disputeGameBlacklist(gameProxy)) return false;
         if (params.minAgeSec > 0) {
             if (created > block.timestamp - params.minAgeSec) return false;
-            (bool ok, bytes memory v) = address(gameProxy).staticcall(
-                abi.encodeCall(IFaultDisputeGame.l2BlockNumberChallenged, ())
-            );
-            // effectively: supportsInterface(IFaultDisputeGame)
-            if (ok && v.length == 32) {
-                return bytes32(v) == bytes32(0); // usable if not challenged
-            }
-            // fallthru if not IFaultDisputeGame
+            if (_isUnchallenged(gameProxy)) return true;
         }
         return gameProxy.status() == DEFENDER_WINS; // require resolved
     }
@@ -135,5 +129,29 @@ contract OPFaultGameFinder {
             if (allowedProposers[i] == proposer) return true;
         }
         return allowedProposers.length == 0;
+    }
+
+	/// @dev Attempt to determine if the game is challenged in any sense.
+    function _isUnchallenged(
+        IDisputeGame gameProxy
+    ) internal view returns (bool) {
+        try
+            IFaultDisputeGame(address(gameProxy)).l2BlockNumberChallenged()
+        returns (bool challenged) {
+            return !challenged;
+        } catch {}
+        try IFaultDisputeGame(address(gameProxy)).claimDataLen() returns (
+            uint256 claims
+        ) {
+            return claims == 1;
+        } catch {}
+        try
+            IOPSuccinctFaultDisputeGame(address(gameProxy)).claimData()
+        returns (IOPSuccinctFaultDisputeGame.ClaimData memory data) {
+            return
+                data.status ==
+                IOPSuccinctFaultDisputeGame.ProposalStatus.Unchallenged;
+        } catch {}
+        return false;
     }
 }

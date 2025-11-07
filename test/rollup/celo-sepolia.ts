@@ -6,7 +6,7 @@ console.log(new Date());
 const config = OPFaultRollup.celoSepoliaConfig;
 const rollup = new OPFaultRollup(createProviderPair(config), config);
 
-// 20251106: OP Succinct => 46
+// 20251106: OP Succinct => 42
 console.log(await rollup.getGameTypes());
 
 const commits = await rollup.fetchRecentCommits(8);
