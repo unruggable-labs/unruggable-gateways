@@ -44,8 +44,8 @@ type ABIFoundGame = {
   rootClaim: string;
 };
 
-const FINDER_MAINNET = '0x4E63bFa938fA1235A0ad7AaFA5165c6511f970eC';
-const FINDER_SEPOLIA = '0xda1B8f851965BfE75451222a0a898722765747e2';
+const FINDER_MAINNET = '0xAe212442b5FE242cEedc862995cce0Be0d4D16f7'; // 20251107
+const FINDER_SEPOLIA = '0x4Db32cde04584854955822e081350606b41f472F'; // 20251107
 
 export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   static readonly PORTAL_ABI = PORTAL_ABI;
