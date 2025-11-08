@@ -59,6 +59,7 @@ interface IOPFaultGameFinder {
 // https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/interfaces/dispute/IFaultDisputeGame.sol
 interface IFaultDisputeGame {
     function l2BlockNumberChallenged() external view returns (bool);
+	// note: this is also on ISuperFaultDisputeGame
     function claimDataLen() external view returns (uint256);
 }
 

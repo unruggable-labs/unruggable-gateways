@@ -15,20 +15,21 @@ const v = commits.map((x) => Number(x.index));
 console.log(v);
 console.log(v.slice(1).map((x, i) => v[i] - x));
 
-// 2025-10-28T21:44:47.206Z
+// 2025-11-08T00:54:23.537Z
+// [ 42n ]
 // {
-//   index: 720n,
-//   blockHash: "0x9d62ad6d8ca9e63aff55ada3e9cce4e0f0f558381edee30ab6d89868192c1d80",
-//   stateRoot: "0x418d6c135d8a0133e2dd19989edabe344676bb2d3f1d700de8778f34cc0acd06",
-//   passerRoot: "0x47eb03d8c215efbca17a3698fc1fc893685603d08e1c9240ef5249a59a1e9d78",
-//   prover: EthProver[block=7792862],
+//   index: 829n,
+//   blockHash: "0xe3dd18a8b67879253692ed7e22b913d300b301d0b4f0a80f623981d60d7aebe9",
+//   stateRoot: "0x492e1c458eba6c74446b1d5deea49bcfce4e444846dfc6c5c32be820634923f3",
+//   passerRoot: "0x2ccee89e537aa9843e497cdbc5f69c85f4103f758bb1e7c851bfe576a30b178b",
+//   prover: EthProver[block=8970602],
 //   game: {
 //     gameType: 1n,
-//     created: 1761079044n,
-//     gameProxy: "0x1eAc427D298312911bA06126D31c368DFD994E58",
-//     l2BlockNumber: 7792862n,
-//     rootClaim: "0x10d4bbfb4e2be93f119f78c884bd3ba34a6a5465588653bb260a92caffc3c8ad",
+//     created: 1762257576n,
+//     gameProxy: "0x4ebE05086edcAf69fc71a33012004EDaC365171f",
+//     l2BlockNumber: 8970602n,
+//     rootClaim: "0xbb787d616f0dbe98cdba1fb92de4f10075720c77421041b1e29f4e49c892ecfb",
 //   },
 // }
-// [ 720, 719, 718, 717, 716, 715, 714, 713 ]
+// [ 829, 828, 827, 826, 825, 824, 823, 822 ]
 // [ 1, 1, 1, 1, 1, 1, 1 ]

@@ -131,7 +131,7 @@ contract OPFaultGameFinder {
         return allowedProposers.length == 0;
     }
 
-	/// @dev Attempt to determine if the game is challenged in any sense.
+    /// @dev Attempt to determine if the game is challenged in any sense.
     function _isUnchallenged(
         IDisputeGame gameProxy
     ) internal view returns (bool) {
