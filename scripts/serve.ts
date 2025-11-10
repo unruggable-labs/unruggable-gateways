@@ -38,7 +38,6 @@ import {
 } from '../src/utils.js';
 import { AbstractProver } from '../src/vm.js';
 import { EthProver } from '../src/eth/EthProver.js';
-//import { LineaProver } from '../src/linea/LineaProver.js';
 import { ZKSyncProver } from '../src/zksync/ZKSyncProver.js';
 import { Contract } from 'ethers/contract';
 import { SigningKey } from 'ethers/crypto';
@@ -122,7 +121,11 @@ if (printCalls) {
       if (x.action === 'sendRpcPayload') {
         console.log(chainName(p._network.chainId), x.action, x.payload);
       } else if (x.action == 'receiveRpcResult') {
-        console.log(chainName(p._network.chainId), x.action, x.result);
+        console.log(
+          chainName(p._network.chainId),
+          x.action,
+          JSON.stringify(x.result, null, '  ')
+        );
       }
     });
   });
