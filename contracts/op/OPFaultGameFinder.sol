@@ -2,8 +2,6 @@
 pragma solidity ^0.8.23;
 
 import {
-    IOptimismPortal,
-    IAnchorStateRegistry,
     IDisputeGameFactory,
     IDisputeGame,
     IFaultDisputeGame,
@@ -24,9 +22,8 @@ contract OPFaultGameFinder {
         OPFaultParams memory params,
         uint256 gameBound
     ) external view virtual returns (uint256) {
-        IAnchorStateRegistry asr = params.portal.anchorStateRegistry();
-        uint256 respectedGameType = asr.respectedGameType();
-        IDisputeGameFactory dgf = params.portal.disputeGameFactory();
+        uint256 respectedGameType = params.asr.respectedGameType();
+        IDisputeGameFactory dgf = params.asr.disputeGameFactory();
         if (gameBound == 0) gameBound = dgf.gameCount();
         while (gameBound > 0) {
             (uint256 gameType, uint256 created, IDisputeGame gameProxy) = dgf
@@ -37,8 +34,7 @@ contract OPFaultGameFinder {
                     gameType,
                     created,
                     params,
-                    respectedGameType,
-                    asr
+                    respectedGameType
                 )
             ) {
                 return gameBound;
@@ -61,8 +57,7 @@ contract OPFaultGameFinder {
             bytes32 rootClaim
         )
     {
-        IAnchorStateRegistry asr = params.portal.anchorStateRegistry();
-        IDisputeGameFactory dgf = params.portal.disputeGameFactory();
+        IDisputeGameFactory dgf = params.asr.disputeGameFactory();
         (gameType, created, gameProxy) = dgf.gameAtIndex(gameIndex);
         if (
             _isGameUsable(
@@ -70,8 +65,7 @@ contract OPFaultGameFinder {
                 gameType,
                 created,
                 params,
-                asr.respectedGameType(),
-                asr
+                params.asr.respectedGameType()
             )
         ) {
             l2BlockNumber = gameProxy.l2BlockNumber();
@@ -84,8 +78,7 @@ contract OPFaultGameFinder {
         uint256 gameType,
         uint256 created,
         OPFaultParams memory params,
-        uint256 respectedGameType,
-        IAnchorStateRegistry asr
+        uint256 respectedGameType
     ) internal view returns (bool) {
         // if allowed gameTypes is empty, accept a respected game OR a previously respected game
         if (
@@ -107,7 +100,7 @@ contract OPFaultGameFinder {
         ) return false;
         // https://specs.optimism.io/fault-proof/stage-one/bridge-integration.html#blacklisting-disputegames
         // https://specs.optimism.io/fault-proof/stage-one/anchor-state-registry.html#proper-game
-        if (!asr.isGameProper(gameProxy)) return false;
+        if (!params.asr.isGameProper(gameProxy)) return false;
         if (params.minAgeSec > 0) {
             if (created > block.timestamp - params.minAgeSec) return false;
             if (_isUnchallenged(gameProxy)) return true;

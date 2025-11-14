@@ -8,7 +8,8 @@ import {
     Types
 } from '../../lib/optimism/packages/contracts-bedrock/src/libraries/Hashing.sol';
 import {
-    IOptimismPortal,
+    IAnchorStateRegistry,
+    IDisputeGameFactory,
     IOPFaultGameFinder,
     IDisputeGame,
     OPFaultParams
@@ -29,8 +30,16 @@ contract OPFaultVerifier is AbstractVerifier {
         _params = params;
     }
 
-    function portal() external view returns (IOptimismPortal) {
-        return _params.portal;
+    function anchorStateRegistry()
+        external
+        view
+        returns (IAnchorStateRegistry)
+    {
+        return _params.asr;
+    }
+
+    function disputeGameFactory() external view returns (IDisputeGameFactory) {
+        return _params.asr.disputeGameFactory();
     }
 
     function minAgeSec() external view returns (uint256) {
@@ -68,7 +77,7 @@ contract OPFaultVerifier is AbstractVerifier {
         require(blockNumber != 0, 'OPFault: invalid game');
         if (p.gameIndex != gameIndex1) {
             (, , IDisputeGame gameProxy1) = _params
-                .portal
+                .asr
                 .disputeGameFactory()
                 .gameAtIndex(gameIndex1);
             _checkWindow(_getGameTime(gameProxy1), _getGameTime(gameProxy));
@@ -81,13 +90,13 @@ contract OPFaultVerifier is AbstractVerifier {
         return
             GatewayVM.evalRequest(
                 req,
-                ProofSequence(
-                    0,
-                    p.outputRootProof.stateRoot,
-                    p.proofs,
-                    p.order,
-                    _hooks
-                )
+                ProofSequence({
+                    index: 0,
+                    stateRoot: p.outputRootProof.stateRoot,
+                    proofs: p.proofs,
+                    order: p.order,
+                    hooks: _hooks
+                })
             );
     }
 

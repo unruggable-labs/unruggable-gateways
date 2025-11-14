@@ -13,11 +13,19 @@ import {
 // https://docs.optimism.io/chain/differences
 // https://specs.optimism.io/fault-proof/stage-one/bridge-integration.html
 
-const PORTAL_ABI = new Interface([
+const ANCHOR_STATE_REGISTRY_ABI = new Interface([
   `function disputeGameFactory() view returns (address)`,
   `function respectedGameType() view returns (uint32)`,
-  `function disputeGameBlacklist(address game) view returns (bool)`,
+  //`function portal() view returns (address)`,
+  //`function isGameProper(address) view returns (bool)`,
+  //`function disputeGameBlacklist(address game) view returns (bool)`,
 ]);
+
+// const PORTAL_ABI = new Interface([
+//   `function disputeGameFactory() view returns (address)`,
+//   `function respectedGameType() view returns (uint32)`,
+//   `function disputeGameBlacklist(address game) view returns (bool)`,
+// ]);
 
 const GAME_ABI = new Interface([`function rootClaim() view returns (bytes32)`]);
 
@@ -30,7 +38,7 @@ const FINDER_ABI = new Interface([
 ]);
 
 export type OPFaultConfig = {
-  OptimismPortal: HexAddress;
+  AnchorStateRegistry: HexAddress;
   GameFinder: HexAddress;
 };
 
@@ -45,10 +53,10 @@ type ABIFoundGame = {
 };
 
 const FINDER_MAINNET = '0xA6FE3B15286D866CA1747a5C1c125d4dCFF5366e'; // 20251107
-const FINDER_SEPOLIA = '0xD9a5a31A6a789d8dD9A0A2d964BC6F0596341bC2'; // 20251113
+const FINDER_SEPOLIA = '0xd42962f7FCbe5e19cfF8A48deEAEd89fFb851748'; // 20251113
 
 export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
-  static readonly PORTAL_ABI = PORTAL_ABI;
+  static readonly ANCHOR_STATE_REGISTRY_ABI = ANCHOR_STATE_REGISTRY_ABI;
   static readonly GAME_ABI = GAME_ABI;
   static readonly FINDER_ABI = FINDER_ABI;
 
@@ -63,13 +71,13 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   static readonly mainnetConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.OP,
-    OptimismPortal: '0xbEb5Fc579115071764c7423A4f12eDde41f106Ed',
+    AnchorStateRegistry: '0x23B2C62946350F4246f9f9D027e071f0264FD113',
     GameFinder: FINDER_MAINNET,
   };
   static readonly sepoliaConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.OP_SEPOLIA,
-    OptimismPortal: '0x16Fc5058F25648194471939df75CF27A2fdC48BC',
+    AnchorStateRegistry: '0xa1Cec548926eb5d69aa3B7B57d371EdBdD03e64b',
     GameFinder: FINDER_SEPOLIA,
   };
 
@@ -77,14 +85,14 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   static readonly baseMainnetConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.BASE,
-    OptimismPortal: '0x49048044D57e1C92A77f79988d21Fa8fAF74E97e',
+    AnchorStateRegistry: '0x909f6cf47ed12f010A796527f562bFc26C7F4E72',
     GameFinder: FINDER_MAINNET,
   };
   // https://docs.base.org/docs/base-contracts/#ethereum-testnet-sepolia
   static readonly baseSepoliaConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.BASE_SEPOLIA,
-    OptimismPortal: '0x49f53e41452C74589E85cA1677426Ba426459e85',
+    AnchorStateRegistry: '0x2fF5cC82dBf333Ea30D8ee462178ab1707315355',
     GameFinder: FINDER_SEPOLIA,
   };
 
@@ -92,13 +100,13 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   static readonly inkMainnetConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.INK,
-    OptimismPortal: '0x5d66c1782664115999c47c9fa5cd031f495d3e4f',
+    AnchorStateRegistry: '0xEe018bAf058227872540AC60eFbd38b023d9dAe2',
     GameFinder: FINDER_MAINNET,
   };
   static readonly inkSepoliaConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.INK_SEPOLIA,
-    OptimismPortal: '0x5c1d29C6c9C8b0800692acC95D700bcb4966A1d7',
+    AnchorStateRegistry: '0x299D7Ea9f0B584cfaF2a5341D151B44967594cA9',
     GameFinder: FINDER_SEPOLIA,
   };
 
@@ -106,13 +114,13 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   static readonly unichainMainnetConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.UNICHAIN,
-    OptimismPortal: '0x0bd48f6B86a26D3a217d0Fa6FfE2B491B956A7a2',
+    AnchorStateRegistry: '0x27Cf508E4E3Aa8d30b3226aC3b5Ea0e8bcaCAFF9',
     GameFinder: FINDER_MAINNET,
   };
   static readonly unichainSepoliaConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.UNICHAIN_SEPOLIA,
-    OptimismPortal: '0x0d83dab629f0e0F9d36c0Cbc89B69a489f0751bD',
+    AnchorStateRegistry: '0xBb6cA820978442750B682663efA851AD4131127b',
     GameFinder: FINDER_SEPOLIA,
   };
 
@@ -120,13 +128,13 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   static readonly soneiumMainnetConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.SONEIUM,
-    OptimismPortal: '0x88e529a6ccd302c948689cd5156c83d4614fae92',
+    AnchorStateRegistry: '0x4890928941e62e273dA359374b105F803329F473',
     GameFinder: FINDER_MAINNET,
   };
   static readonly soneiumMinatoConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.SONEIUM_SEPOLIA,
-    OptimismPortal: '0x65ea1489741A5D72fFdD8e6485B216bBdcC15Af3',
+    AnchorStateRegistry: '0x90066735EE774b405C4f54bfeC05b07f16D67188',
     GameFinder: FINDER_SEPOLIA,
   };
 
@@ -134,13 +142,13 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   static readonly swellMainnetConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.SWELL,
-    OptimismPortal: '0x758E0EE66102816F5C3Ec9ECc1188860fbb87812',
+    AnchorStateRegistry: '0x511fB9E172f8A180735ACF9c2beeb208cD0061Ac',
     GameFinder: FINDER_MAINNET,
   };
   static readonly swellSepoliaConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.SWELL_SEPOLIA,
-    OptimismPortal: '0x595329c60c0b9e54a5246e98fb0fa7fcfd454f64',
+    AnchorStateRegistry: '0x6d1443dd3f58889c6a8de51e74b5fca9c7116513',
     GameFinder: FINDER_SEPOLIA,
   };
 
@@ -148,7 +156,7 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   static readonly worldMainnetConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.WORLD,
-    OptimismPortal: '0xd5ec14a83B7d95BE1E2Ac12523e2dEE12Cbeea6C',
+    AnchorStateRegistry: '0xD4D7A57DCC563756DeD99e224E144A6Bf0327099',
     GameFinder: FINDER_MAINNET,
   };
 
@@ -156,14 +164,14 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   static readonly celoMainnetConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.CELO,
-    OptimismPortal: '0xc5c5D157928BDBD2ACf6d0777626b6C75a9EAEDC',
+    AnchorStateRegistry: '0x9F18D91949731E766f294A14027bBFE8F28328CC',
     GameFinder: FINDER_MAINNET,
   };
   // https://storage.googleapis.com/cel2-rollup-files/celo-sepolia/deployment-l1.json
   static readonly celoSepoliaConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.SEPOLIA,
     chain2: CHAINS.CELO_SEPOLIA,
-    OptimismPortal: '0x44ae3d41a335a7d05eb533029917aad35662dcc2',
+    AnchorStateRegistry: '0xD73BA8168A61F3E917F0930D5C0401aA47e269D6',
     GameFinder: FINDER_SEPOLIA,
   };
 
@@ -171,12 +179,12 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   static readonly zoraMainnetConfig: RollupDeployment<OPFaultConfig> = {
     chain1: CHAINS.MAINNET,
     chain2: CHAINS.ZORA,
-    OptimismPortal: '0x1a0ad011913A150f69f6A19DF447A0CfD9551054',
+    AnchorStateRegistry: '0x54027b388330415a34b2dBa9E6d25895649eEFf1',
     GameFinder: FINDER_MAINNET,
   };
 
   // 20240917: delayed constructor not needed
-  readonly OptimismPortal: Contract;
+  readonly AnchorStateRegistry: Contract;
   readonly GameFinder: Contract;
   public gameTypes: bigint[] = [];
   public allowedProposers: HexAddress[] = [];
@@ -187,9 +195,9 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     public minAgeSec = 0
   ) {
     super(providers);
-    this.OptimismPortal = new Contract(
-      config.OptimismPortal,
-      PORTAL_ABI,
+    this.AnchorStateRegistry = new Contract(
+      config.AnchorStateRegistry,
+      ANCHOR_STATE_REGISTRY_ABI,
       this.provider1
     );
     this.GameFinder = new Contract(
@@ -205,7 +213,7 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
 
   get paramTuple() {
     return [
-      this.OptimismPortal.target,
+      this.AnchorStateRegistry.target,
       this.minAgeSec,
       this.gameTypes,
       this.allowedProposers,
@@ -219,10 +227,11 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
   }
 
   async fetchRespectedGameType(): Promise<bigint> {
-    return this.OptimismPortal.respectedGameType({
+    return this.AnchorStateRegistry.respectedGameType({
       blockTag: this.latestBlockTag,
     });
   }
+
   private async _ensureRootClaim(index: bigint) {
     // dodge canary by requiring a valid root claim
     // finalized claims are assumed valid
@@ -249,6 +258,7 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     }
     return index;
   }
+
   override async fetchLatestCommitIndex(): Promise<bigint> {
     // the primary assumption is that the anchor root is the finalized state
     // however, this is strangely conditional on the gameType
@@ -266,6 +276,7 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
       )
     );
   }
+
   protected override async _fetchParentCommitIndex(
     commit: OPFaultCommit
   ): Promise<bigint> {
@@ -273,8 +284,8 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
       await this.GameFinder.findGameIndex(this.paramTuple, commit.index)
     );
   }
+
   protected override async _fetchCommit(index: bigint) {
-    // note: GameFinder checks isCommitStillValid()
     const game: ABIFoundGame = (
       await this.GameFinder.gameAtIndex(this.paramTuple, index)
     ).toObject();
@@ -288,10 +299,13 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     }
     return { ...commit, game };
   }
+
   override async isCommitStillValid(commit: OPFaultCommit): Promise<boolean> {
-    return !(await this.OptimismPortal.disputeGameBlacklist(
-      commit.game.gameProxy
-    ));
+    const game: ABIFoundGame = await this.GameFinder.gameAtIndex(
+      this.paramTuple,
+      commit.index
+    );
+    return !!game.l2BlockNumber;
   }
 
   override windowFromSec(sec: number): number {

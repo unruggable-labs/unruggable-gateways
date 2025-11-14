@@ -3,25 +3,28 @@ pragma solidity ^0.8.0;
 
 import {OPFaultParams} from './OPStructs.sol';
 
-// https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/src/L1/OptimismPortal2.sol
-interface IOptimismPortal {
-	function anchorStateRegistry() external view returns (IAnchorStateRegistry);
-    function disputeGameFactory() external view returns (IDisputeGameFactory);
-    // function disputeGameBlacklist(
-    //     IDisputeGame game
-    // ) external view returns (bool);
-    // function disputeGameFinalityDelaySeconds() external view returns (uint256);
-    //function respectedGameTypeUpdatedAt() external view returns (uint64);
-}
-
 // https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/interfaces/dispute/IAnchorStateRegistry.sol
 interface IAnchorStateRegistry {
-	function isGameProper(IDisputeGame) external view returns (bool);
+    function isGameProper(IDisputeGame) external view returns (bool);
     function respectedGameType() external view returns (uint256);
+    function disputeGameFactory() external view returns (IDisputeGameFactory);
+    //function portal() external view returns (IOptimismPortal);
 }
+
+// https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/src/L1/OptimismPortal2.sol
+// interface IOptimismPortal {
+// 	function anchorStateRegistry() external view returns (IAnchorStateRegistry);
+//     function disputeGameFactory() external view returns (IDisputeGameFactory);
+//     function disputeGameBlacklist(
+//         IDisputeGame game
+//     ) external view returns (bool);
+//     function disputeGameFinalityDelaySeconds() external view returns (uint256);
+//     function respectedGameTypeUpdatedAt() external view returns (uint64);
+// }
 
 // https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/interfaces/dispute/IDisputeGameFactory.sol
 interface IDisputeGameFactory {
+    function portal() external view returns (address);
     function gameCount() external view returns (uint256);
     function gameAtIndex(
         uint256 index
@@ -65,7 +68,7 @@ interface IOPFaultGameFinder {
 // https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/interfaces/dispute/IFaultDisputeGame.sol
 interface IFaultDisputeGame {
     function l2BlockNumberChallenged() external view returns (bool);
-	// note: this is also on ISuperFaultDisputeGame
+    // note: this is also on ISuperFaultDisputeGame
     function claimDataLen() external view returns (uint256);
 }
 
