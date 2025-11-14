@@ -5,13 +5,19 @@ import {OPFaultParams} from './OPStructs.sol';
 
 // https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/src/L1/OptimismPortal2.sol
 interface IOptimismPortal {
+	function anchorStateRegistry() external view returns (IAnchorStateRegistry);
     function disputeGameFactory() external view returns (IDisputeGameFactory);
+    // function disputeGameBlacklist(
+    //     IDisputeGame game
+    // ) external view returns (bool);
+    // function disputeGameFinalityDelaySeconds() external view returns (uint256);
+    //function respectedGameTypeUpdatedAt() external view returns (uint64);
+}
+
+// https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/interfaces/dispute/IAnchorStateRegistry.sol
+interface IAnchorStateRegistry {
+	function isGameProper(IDisputeGame) external view returns (bool);
     function respectedGameType() external view returns (uint256);
-    function disputeGameBlacklist(
-        IDisputeGame game
-    ) external view returns (bool);
-    function disputeGameFinalityDelaySeconds() external view returns (uint256);
-    function respectedGameTypeUpdatedAt() external view returns (uint64);
 }
 
 // https://github.com/ethereum-optimism/optimism/blob/v1.13.7/packages/contracts-bedrock/interfaces/dispute/IDisputeGameFactory.sol

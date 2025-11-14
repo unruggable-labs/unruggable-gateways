@@ -3,6 +3,7 @@ pragma solidity ^0.8.23;
 
 import {
     IOptimismPortal,
+    IAnchorStateRegistry,
     IDisputeGameFactory,
     IDisputeGame,
     IFaultDisputeGame,
@@ -21,27 +22,26 @@ error GameNotFound();
 contract OPFaultGameFinder {
     function findGameIndex(
         OPFaultParams memory params,
-        uint256 gameCount
+        uint256 gameBound
     ) external view virtual returns (uint256) {
-        uint256 respectedGameType = params.portal.respectedGameType();
-        IDisputeGameFactory factory = params.portal.disputeGameFactory();
-        if (gameCount == 0) gameCount = factory.gameCount();
-        while (gameCount > 0) {
-            (
-                uint256 gameType,
-                uint256 created,
-                IDisputeGame gameProxy
-            ) = factory.gameAtIndex(--gameCount);
+        IAnchorStateRegistry asr = params.portal.anchorStateRegistry();
+        uint256 respectedGameType = asr.respectedGameType();
+        IDisputeGameFactory dgf = params.portal.disputeGameFactory();
+        if (gameBound == 0) gameBound = dgf.gameCount();
+        while (gameBound > 0) {
+            (uint256 gameType, uint256 created, IDisputeGame gameProxy) = dgf
+                .gameAtIndex(--gameBound);
             if (
                 _isGameUsable(
                     gameProxy,
                     gameType,
                     created,
                     params,
-                    respectedGameType
+                    respectedGameType,
+                    asr
                 )
             ) {
-                return gameCount;
+                return gameBound;
             }
         }
         revert GameNotFound();
@@ -61,15 +61,17 @@ contract OPFaultGameFinder {
             bytes32 rootClaim
         )
     {
-        IDisputeGameFactory factory = params.portal.disputeGameFactory();
-        (gameType, created, gameProxy) = factory.gameAtIndex(gameIndex);
+        IAnchorStateRegistry asr = params.portal.anchorStateRegistry();
+        IDisputeGameFactory dgf = params.portal.disputeGameFactory();
+        (gameType, created, gameProxy) = dgf.gameAtIndex(gameIndex);
         if (
             _isGameUsable(
                 gameProxy,
                 gameType,
                 created,
                 params,
-                params.portal.respectedGameType()
+                asr.respectedGameType(),
+                asr
             )
         ) {
             l2BlockNumber = gameProxy.l2BlockNumber();
@@ -82,7 +84,8 @@ contract OPFaultGameFinder {
         uint256 gameType,
         uint256 created,
         OPFaultParams memory params,
-        uint256 respectedGameType
+        uint256 respectedGameType,
+        IAnchorStateRegistry asr
     ) internal view returns (bool) {
         // if allowed gameTypes is empty, accept a respected game OR a previously respected game
         if (
@@ -103,7 +106,8 @@ contract OPFaultGameFinder {
             )
         ) return false;
         // https://specs.optimism.io/fault-proof/stage-one/bridge-integration.html#blacklisting-disputegames
-        if (params.portal.disputeGameBlacklist(gameProxy)) return false;
+        // https://specs.optimism.io/fault-proof/stage-one/anchor-state-registry.html#proper-game
+        if (!asr.isGameProper(gameProxy)) return false;
         if (params.minAgeSec > 0) {
             if (created > block.timestamp - params.minAgeSec) return false;
             if (_isUnchallenged(gameProxy)) return true;
