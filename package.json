@@ -44,7 +44,7 @@
     "contracts/"
   ],
   "devDependencies": {
-    "@adraffy/blocksmith": "^0.1.55",
+    "@adraffy/blocksmith": "^0.1.56",
     "@eslint/eslintrc": "^3.3.1",
     "@eslint/js": "^9.36.0",
     "@types/bun": "latest",
