@@ -16,15 +16,18 @@ import {
 const ANCHOR_STATE_REGISTRY_ABI = new Interface([
   `function disputeGameFactory() view returns (address)`,
   `function respectedGameType() view returns (uint32)`,
-  //`function portal() view returns (address)`,
-  //`function isGameProper(address) view returns (bool)`,
-  //`function disputeGameBlacklist(address game) view returns (bool)`,
+  `function portal() view returns (address)`,
+  `function isGameProper(address) view returns (bool)`,
 ]);
 
-// const PORTAL_ABI = new Interface([
+// const OPTIMISM_PORTAL_ABI = new Interface([
 //   `function disputeGameFactory() view returns (address)`,
 //   `function respectedGameType() view returns (uint32)`,
-//   `function disputeGameBlacklist(address game) view returns (bool)`,
+// ]);
+
+// const DISPUTE_GAME_FACTORY_ABI = new Interface([
+//   `function gameCount() view returns (uint256)`,
+//   `function gameAtIndex(uint256) view returns (uint256 gameType, uint256 created, address gameProxy)`,
 // ]);
 
 const GAME_ABI = new Interface([`function rootClaim() view returns (bytes32)`]);
@@ -145,20 +148,26 @@ export class OPFaultRollup extends AbstractOPRollup<OPFaultCommit> {
     AnchorStateRegistry: '0x511fB9E172f8A180735ACF9c2beeb208cD0061Ac',
     GameFinder: FINDER_MAINNET,
   };
-  static readonly swellSepoliaConfig: RollupDeployment<OPFaultConfig> = {
-    chain1: CHAINS.SEPOLIA,
-    chain2: CHAINS.SWELL_SEPOLIA,
-    AnchorStateRegistry: '0x6d1443dd3f58889c6a8de51e74b5fca9c7116513',
-    GameFinder: FINDER_SEPOLIA,
-  };
+  // 20251115: ASR is Old
+  // - OptimismPortal: '0x595329c60c0b9e54a5246e98fb0fa7fcfd454f64'
+  // - GameFinder: '0x505e1e172667fec4a55514ccfc7fd240b409a299'
+  // static readonly swellSepoliaConfig: RollupDeployment<OPFaultConfig> = {
+  //   chain1: CHAINS.SEPOLIA,
+  //   chain2: CHAINS.SWELL_SEPOLIA,
+  //   AnchorStateRegistry: '0x6D1443dD3f58889C6A8DE51E74b5fCa9c7116513',
+  //   GameFinder: FINDER_SEPOLIA,
+  // };
 
   // https://docs.worldcoin.org/world-chain/developers/world-chain-contracts
-  static readonly worldMainnetConfig: RollupDeployment<OPFaultConfig> = {
-    chain1: CHAINS.MAINNET,
-    chain2: CHAINS.WORLD,
-    AnchorStateRegistry: '0xD4D7A57DCC563756DeD99e224E144A6Bf0327099',
-    GameFinder: FINDER_MAINNET,
-  };
+  // 20251115: ASR is Old
+  // - OptimismPortal: '0xd5ec14a83B7d95BE1E2Ac12523e2dEE12Cbeea6C'
+  // - GameFinder: '0x61F50A76bfb2Ad8620A3E8F81aa27f3bEb1Db0D7'
+  // static readonly worldMainnetConfig: RollupDeployment<OPFaultConfig> = {
+  //   chain1: CHAINS.MAINNET,
+  //   chain2: CHAINS.WORLD,
+  //   AnchorStateRegistry: '0xD4D7A57DCC563756DeD99e224E144A6Bf0327099',
+  //   GameFinder: FINDER_MAINNET,
+  // };
 
   // https://storage.googleapis.com/cel2-rollup-files/celo/deployment-l1.json
   static readonly celoMainnetConfig: RollupDeployment<OPFaultConfig> = {
