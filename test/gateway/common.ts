@@ -151,14 +151,15 @@ export function testOPFault(
       const ccip = await serve(gateway, { protocol: 'raw', log: !!opts.log });
       afterAll(ccip.shutdown);
       const commit = await gateway.getLatestCommit();
-      const gameFinder = opts.realFinder
-        ? await foundry.deploy({
-            file: 'OPFaultGameFinder',
-          })
-        : await foundry.deploy({
-            file: 'FixedOPFaultGameFinder',
-            args: [commit.index],
-          });
+      const gameFinder =
+        (opts.realFinder ?? !!process.env.REAL_FINDER)
+          ? await foundry.deploy({
+              file: 'OPFaultGameFinder',
+            })
+          : await foundry.deploy({
+              file: 'FixedOPFaultGameFinder',
+              args: [commit.index],
+            });
       const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
       const hooks = await foundry.deploy({ file: 'EthVerifierHooks' });
       const verifier = await foundry.deploy({
