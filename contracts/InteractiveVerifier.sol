@@ -27,7 +27,7 @@ contract InteractiveVerifier is AbstractVerifier {
 
     function setStateRoot(uint256 index, bytes32 stateRoot) external onlyOwner {
         require(index > latestIndex, 'out of order');
-        commits[index] = Commit(stateRoot, latestIndex);
+        commits[index] = Commit({stateRoot: stateRoot, prevIndex: latestIndex});
         emit NewStateRoot(latestIndex, index, stateRoot);
         latestIndex = index;
     }
@@ -50,13 +50,13 @@ contract InteractiveVerifier is AbstractVerifier {
         return
             GatewayVM.evalRequest(
                 req,
-                ProofSequence(
-                    0,
-                    commits[index].stateRoot,
-                    proofs,
-                    order,
-                    _hooks
-                )
+                ProofSequence({
+                    index: 0,
+                    stateRoot: commits[index].stateRoot,
+                    proofs: proofs,
+                    order: order,
+                    hooks: _hooks
+                })
             );
     }
 }

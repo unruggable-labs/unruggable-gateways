@@ -48,7 +48,13 @@ contract SelfVerifier is AbstractVerifier {
         return
             GatewayVM.evalRequest(
                 req,
-                ProofSequence(0, stateRoot, proofs, order, _hooks)
+                ProofSequence({
+                    index: 0,
+                    stateRoot: stateRoot,
+                    proofs: proofs,
+                    order: order,
+                    hooks: _hooks
+                })
             );
     }
 }

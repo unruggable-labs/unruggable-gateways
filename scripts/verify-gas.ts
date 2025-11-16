@@ -59,19 +59,7 @@ const setups: Setup[] = [
     const hooks = await foundry.deploy({ file: 'EthVerifierHooks' });
     const verifier = await foundry.deploy({
       file: 'OPFaultVerifier',
-      args: [
-        [],
-        rollup.defaultWindow,
-        hooks,
-        gameFinder,
-        // This is the OPFaultParams struct
-        [
-          rollup.OptimismPortal,
-          rollup.minAgeSec,
-          await rollup.gameTypes(),
-          rollup.allowedProposers(),
-        ],
-      ],
+      args: [[], rollup.defaultWindow, hooks, gameFinder, rollup.paramTuple],
       libs: { GatewayVM },
     });
 

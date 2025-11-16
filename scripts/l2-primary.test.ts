@@ -173,12 +173,8 @@ async function determineGateway(foundry: Foundry, setup: Setup) {
             [],
             rollup.defaultWindow,
             EthVerifierHooks,
-            [
-              rollup.OptimismPortal,
-              rollup.GameFinder,
-              rollup.gameTypeBitMask,
-              rollup.minAgeSec,
-            ],
+            rollup.GameFinder,
+            rollup.paramTuple,
           ],
           libs: { GatewayVM },
         });

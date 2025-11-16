@@ -47,7 +47,15 @@ abstract contract GatewayFetchTarget {
             urls,
             abi.encodeCall(IGatewayProtocol.proveRequest, (context, req)),
             this.fetchCallback.selector,
-            abi.encode(Session(verifier, context, req, callback, carry))
+            abi.encode(
+                Session({
+                    verifier: verifier,
+                    context: context,
+                    req: req,
+                    callback: callback,
+                    carry: carry
+                })
+            )
         );
     }
 

@@ -38,7 +38,13 @@ contract DoubleArbitrumVerifier is ArbitrumVerifier {
         bytes32 stateRoot = _verifyRollup(ps[0], context);
         (bytes[] memory outputs, ) = GatewayVM.evalRequest(
             request,
-            ProofSequence(0, stateRoot, ps[0].proofs, ps[0].order, _hooks)
+            ProofSequence({
+                index: 0,
+                stateRoot: stateRoot,
+                proofs: ps[0].proofs,
+                order: ps[0].order,
+                hooks: _hooks
+            })
         );
         // outputs[0] = node
         // outputs[1] = confirmData
@@ -51,7 +57,13 @@ contract DoubleArbitrumVerifier is ArbitrumVerifier {
         return
             GatewayVM.evalRequest(
                 req,
-                ProofSequence(0, stateRoot, ps[1].proofs, ps[1].order, _hooks)
+                ProofSequence({
+                    index: 0,
+                    stateRoot: stateRoot,
+                    proofs: ps[1].proofs,
+                    order: ps[1].order,
+                    hooks: _hooks
+                })
             );
     }
 }

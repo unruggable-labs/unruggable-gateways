@@ -63,7 +63,13 @@ contract TaikoVerifier is AbstractVerifier {
         return
             GatewayVM.evalRequest(
                 req,
-                ProofSequence(0, ts.stateRoot, p.proofs, p.order, _hooks)
+                ProofSequence({
+                    index: 0,
+                    stateRoot: ts.stateRoot,
+                    proofs: p.proofs,
+                    order: p.order,
+                    hooks: _hooks
+                })
             );
     }
 }
