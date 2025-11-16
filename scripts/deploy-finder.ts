@@ -1,6 +1,7 @@
 import { FoundryDeployer } from '@adraffy/blocksmith';
-import { createProvider } from '../test/providers.js';
+import { createProvider, providerURL } from '../test/providers.js';
 import { chainFromName, chainName } from '../src/chains.js';
+import { isAddress } from 'ethers';
 
 async function prompt(q: string) {
   process.stdout.write(q);
@@ -10,24 +11,43 @@ async function prompt(q: string) {
   return '';
 }
 
-const chain = chainFromName(await prompt(`Chain (name or id): `));
-console.log(`Chain: ${chainName(chain)} (${chain})`);
+const retry = 50; // why is the indexer so slow?
+
+const chain = chainFromName(
+  (await prompt(`Chain (name or id, default: 1): `)) || '1'
+);
+console.log(`Chain: ${chainName(chain)} (${chain}) ${providerURL(chain)}`);
+
+const input = await prompt(
+  'Private Key (deploy) or Address (verify) or empty (simulate): '
+);
 
 const deployer = await FoundryDeployer.load({
   provider: createProvider(chain),
-  privateKey: await prompt('Private Key (empty to simulate): '),
+  privateKey: isAddress(input) ? undefined : input,
 });
 
 const deployable = await deployer.prepare({
   file: 'OPFaultGameFinder',
 });
 
-if (deployer.privateKey) {
-  await prompt('Ready? (abort to stop) ');
+if (isAddress(input)) {
+  await promptEtherscan();
+  await deployable.verifyEtherscan({ address: input, retry });
+} else if (deployer.privateKey) {
+  await prompt('Deploy? (abort to stop) ');
   await deployable.deploy();
-  const apiKey =
-    deployer.etherscanApiKey || (await prompt('Etherscan API Key: '));
-  if (apiKey) {
-    await deployable.verifyEtherscan({ apiKey });
+  await promptEtherscan();
+  if (deployer.etherscanApiKey) {
+    await deployable.verifyEtherscan({ retry });
+  }
+} else {
+  console.log(deployable);
+  console.log(deployable.deployArgs().join(' '));
+}
+
+async function promptEtherscan() {
+  if (!deployer.etherscanApiKey) {
+    deployer.etherscanApiKey = await prompt('Etherscan API Key: ');
   }
 }

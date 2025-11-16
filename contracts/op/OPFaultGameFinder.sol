@@ -135,13 +135,16 @@ contract OPFaultGameFinder {
         try
             IFaultDisputeGame(address(gameProxy)).l2BlockNumberChallenged()
         returns (bool challenged) {
-            return !challenged;
+            // this challenge is independent of the game resolution
+            if (challenged) return false;
         } catch {}
+        // if supportsInterface(IFaultDisputeGame)
         try IFaultDisputeGame(address(gameProxy)).claimDataLen() returns (
             uint256 claims
         ) {
             return claims == 1;
         } catch {}
+        // if supportsInterface(IOPSuccinctFaultDisputeGame)
         try
             IOPSuccinctFaultDisputeGame(address(gameProxy)).claimData()
         returns (IOPSuccinctFaultDisputeGame.ClaimData memory data) {
@@ -149,6 +152,8 @@ contract OPFaultGameFinder {
                 data.status ==
                 IOPSuccinctFaultDisputeGame.ProposalStatus.Unchallenged;
         } catch {}
+        // unknown type
+        // assume challenged and require resolution
         return false;
     }
 }
