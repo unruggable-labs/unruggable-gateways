@@ -13,7 +13,7 @@ const foundry = await Foundry.launch({
 try {
   const OPFaultGameFinder = await foundry.deploy({ file: 'OPFaultGameFinder' });
   const paramTuple = [
-    OPFaultRollup.sepoliaConfig.AnchorStateRegistry,
+    OPFaultRollup.celoSepoliaConfig.AnchorStateRegistry,
     21600, // minAgeSec
     [],
     [],

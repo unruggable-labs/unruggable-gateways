@@ -103,7 +103,7 @@ contract OPFaultGameFinder {
         if (!params.asr.isGameProper(gameProxy)) return false;
         if (params.minAgeSec > 0) {
             if (created > block.timestamp - params.minAgeSec) return false;
-            if (_isUnchallenged(gameProxy)) return true;
+            if (_isUnchallenged(params, gameProxy)) return true;
         }
         return gameProxy.status() == DEFENDER_WINS; // require resolved
     }
@@ -130,6 +130,7 @@ contract OPFaultGameFinder {
 
     /// @dev Attempt to determine if the game is challenged in any sense.
     function _isUnchallenged(
+        OPFaultParams memory params,
         IDisputeGame gameProxy
     ) internal view returns (bool) {
         try
@@ -142,18 +143,63 @@ contract OPFaultGameFinder {
         try IFaultDisputeGame(address(gameProxy)).claimDataLen() returns (
             uint256 claims
         ) {
-            return claims == 1;
-        } catch {}
-        // if supportsInterface(IOPSuccinctFaultDisputeGame)
-        try
-            IOPSuccinctFaultDisputeGame(address(gameProxy)).claimData()
-        returns (IOPSuccinctFaultDisputeGame.ClaimData memory data) {
-            return
-                data.status ==
-                IOPSuccinctFaultDisputeGame.ProposalStatus.Unchallenged;
-        } catch {}
+            if (claims == 1) return true;
+        } catch {
+            // else if supportsInterface(IOPSuccinctFaultDisputeGame)
+            try
+                IOPSuccinctFaultDisputeGame(address(gameProxy)).claimData()
+            returns (IOPSuccinctFaultDisputeGame.ClaimData memory data) {
+                if (_isUnchallengedStatus(data.status)) {
+                    IDisputeGameFactory dgf = params.asr.disputeGameFactory();
+                    uint256 gameIndex = data.parentIndex;
+                    uint256 gameType0 = gameProxy.gameType();
+                    while (true) {
+                        if (gameIndex == type(uint32).max) return true; // anchor state is resolved
+                        (
+                            uint256 gameType,
+                            uint256 created,
+                            IDisputeGame parentGame
+                        ) = dgf.gameAtIndex(gameIndex);
+                        if (gameType != gameType0) {
+                            // this is a different game type
+                            return
+                                _isGameUsable(
+                                    parentGame,
+                                    gameType,
+                                    created,
+                                    params,
+                                    params.asr.respectedGameType()
+                                );
+                        }
+                        data = IOPSuccinctFaultDisputeGame(address(parentGame))
+                            .claimData();
+                        if (_isUnchallengedStatus(data.status)) {
+                            gameIndex = data.parentIndex; // keep checking ancestry
+                        } else if (
+                            data.status ==
+                            IOPSuccinctFaultDisputeGame.ProposalStatus.Resolved
+                        ) {
+                            return parentGame.status() == DEFENDER_WINS;
+                        } else {
+                            return false;
+                        }
+                    }
+                }
+            } catch {}
+        }
         // unknown type
-        // assume challenged and require resolution
+        // assume challenged and require resolved
         return false;
+    }
+
+    function _isUnchallengedStatus(
+        IOPSuccinctFaultDisputeGame.ProposalStatus status
+    ) internal pure returns (bool) {
+        return
+            status == IOPSuccinctFaultDisputeGame.ProposalStatus.Unchallenged ||
+            status ==
+            IOPSuccinctFaultDisputeGame
+                .ProposalStatus
+                .UnchallengedAndValidProofProvided;
     }
 }

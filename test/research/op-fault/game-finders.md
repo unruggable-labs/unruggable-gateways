@@ -2,6 +2,8 @@
 
 ## Mainnet
 
+* `2025-11-16` &mdash; [`0xD3E53fE8AF05F6a9be11F311B104783ad862D145`](https://etherscan.io/address/0xD3E53fE8AF05F6a9be11F311B104783ad862D145#code)
+	* `UnchallengedAndValidProofProvided` + resolved ancestry
 * `2025-11-15` &mdash; [`0x10EEa1d73DF3D8C0DE7d0C85b3Aad1062bF252e8`](https://etherscan.io/address/0x10EEa1d73DF3D8C0DE7d0C85b3Aad1062bF252e8#code)
 	* `l2BlockNumberChallenged()` fallthru
 * `2025-11-15` &mdash; [`0xe7D342866b739950784a2ECBfad58e8C7f03D5F1`](https://etherscan.io/address/0xe7d342866b739950784a2ecbfad58e8c7f03d5f1#code)
