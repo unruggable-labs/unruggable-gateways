@@ -25,7 +25,7 @@ library GatewayFetcher {
         assembly {
             mstore(v, 0) // length = 0
         }
-        return GatewayRequest(v);
+        return GatewayRequest({ops: v});
     }
 
     function encode(

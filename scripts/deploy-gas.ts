@@ -36,17 +36,17 @@ await foundry.deploy({
 });
 await foundry.deploy({
   file: 'DoubleArbitrumVerifier',
-  args: [U, 1, A, A, 0, true, ['0x']],
+  args: [U, 1, A, A, 1, true, ['0x']],
   libs: { GatewayVM, NitroVerifierLib, BoLDVerifierLib },
 });
 await foundry.deploy({
   file: 'OPVerifier',
-  args: [U, 1, A, A, A, 0],
+  args: [U, 1, A, A, A, 1],
   libs: { GatewayVM },
 });
 await foundry.deploy({
   file: 'OPFaultVerifier',
-  args: [U, 1, A, [A, A, 0, 0]],
+  args: [U, 1, A, [A, 1, [], []]],
   libs: { GatewayVM },
 });
 await foundry.deploy({

@@ -18,25 +18,16 @@ const ownerWallet = await foundry.ensureWallet('owner');
 const GatewayVM = await foundry.deploy({ file: 'GatewayVM' });
 const impl = await foundry.deploy({
   file: 'OPFaultVerifier',
-  args: [
-    [],
-    0,
-    ZeroAddress,
-    [
-      ZeroAddress,
-      ZeroAddress,
-      0,
-      1,
-    ],
-  ],
+  args: [[], 0, ZeroAddress, [ZeroAddress, 0, [], []]],
   libs: { GatewayVM },
-  from: ownerWallet
+  from: ownerWallet,
 });
 
 const proxy = await foundry.deploy({
-  import: '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol',
+  import:
+    '@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol',
   args: [impl, ownerWallet.address, '0x'],
-  from: ownerWallet
+  from: ownerWallet,
 });
 
 console.log(await impl.owner());

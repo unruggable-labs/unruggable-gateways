@@ -72,7 +72,13 @@ contract ArbitrumVerifier is AbstractVerifier {
         return
             GatewayVM.evalRequest(
                 req,
-                ProofSequence(0, stateRoot, p.proofs, p.order, _hooks)
+                ProofSequence({
+                    index: 0,
+                    stateRoot: stateRoot,
+                    proofs: p.proofs,
+                    order: p.order,
+                    hooks: _hooks
+                })
             );
     }
 }

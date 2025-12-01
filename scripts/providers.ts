@@ -7,20 +7,25 @@ const leftover = new Set<Chain>(Object.values(CHAINS));
 
 for (const info of RPC_INFO.values()) {
   leftover.delete(info.chain);
-  const url = providerURL(info.chain);
-  console.log(
-    formatChain(info.chain).padStart(10),
-    chainName(info.chain).padEnd(16),
-    `[${info.alchemy ? 'A' : ' '}${info.infura ? 'I' : ' '}${info.ankr ? 'K' : ' '}]`,
-    url === info.publicHTTP ? '!' : ' ',
-    url
-  );
-  if (url === info.publicHTTP) {
+  if (providerURL(info.chain) === info.publicHTTP) {
     usingPublic.push(info.chain);
   }
 }
 
-console.log('\nOrder:', providerOrder());
+console.table(
+  Array.from(RPC_INFO.values(), (info) => ({
+    Chain: formatChain(info.chain),
+    Name: chainName(info.chain),
+    Order: providerOrder(info.chain)
+      .map((x) => (x in info ? abbr(x) : ' '))
+      .join(''),
+    ProviderURL: providerURL(info.chain),
+  }))
+);
+
+console.log(
+  `\nDefault Order: ${providerOrder()} [${providerOrder().map(abbr).join('')}]`
+);
 
 if (usingPublic.length) {
   console.error(`\n${usingPublic.length} using Public RPC!`);
@@ -41,4 +46,9 @@ function formatChain(chain: Chain): string {
     // ignore
   }
   return chain.toString();
+}
+
+function abbr(key: string) {
+  if (key === 'ankr') return 'K';
+  return key[0].toUpperCase();
 }

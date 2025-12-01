@@ -72,7 +72,13 @@ contract ZKSyncVerifier is AbstractVerifier {
         return
             GatewayVM.evalRequest(
                 req,
-                ProofSequence(0, batchInfo.batchHash, p.proofs, p.order, _hooks)
+                ProofSequence({
+                    index: 0,
+                    stateRoot: batchInfo.batchHash,
+                    proofs: p.proofs,
+                    order: p.order,
+                    hooks: _hooks
+                })
             );
     }
 }
