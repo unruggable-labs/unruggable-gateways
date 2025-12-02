@@ -4,10 +4,10 @@ pragma solidity ^0.8.23;
 import {
     IDisputeGameFactory,
     IDisputeGame,
+    OPFaultParams,
     IFaultDisputeGame,
     IOPSuccinctFaultDisputeGame
 } from './OPInterfaces.sol';
-import {OPFaultParams} from './OPStructs.sol';
 
 // https://github.com/ethereum-optimism/optimism/issues/11269
 
@@ -17,26 +17,26 @@ uint256 constant DEFENDER_WINS = 2;
 
 error GameNotFound();
 
+struct FinderState {
+    uint256 respectedGameType; // get once and save
+    uint256 succinctGameIndex; // avoids O(n^2) _isUnchallenged() for IOPSuccinctFaultDisputeGame 
+}
+
 contract OPFaultGameFinder {
     function findGameIndex(
         OPFaultParams memory params,
         uint256 gameBound
     ) external view virtual returns (uint256) {
-        uint256 respectedGameType = params.asr.respectedGameType();
         IDisputeGameFactory dgf = params.asr.disputeGameFactory();
         if (gameBound == 0) gameBound = dgf.gameCount();
+        FinderState memory state = FinderState({
+            respectedGameType: params.asr.respectedGameType(),
+            succinctGameIndex: gameBound
+        });
         while (gameBound > 0) {
             (uint256 gameType, uint256 created, IDisputeGame gameProxy) = dgf
                 .gameAtIndex(--gameBound);
-            if (
-                _isGameUsable(
-                    gameProxy,
-                    gameType,
-                    created,
-                    params,
-                    respectedGameType
-                )
-            ) {
+            if (_isGameUsable(gameProxy, gameType, created, params, state)) {
                 return gameBound;
             }
         }
@@ -65,7 +65,10 @@ contract OPFaultGameFinder {
                 gameType,
                 created,
                 params,
-                params.asr.respectedGameType()
+                FinderState({
+                    respectedGameType: params.asr.respectedGameType(),
+                    succinctGameIndex: 0 // ignored
+                })
             )
         ) {
             l2BlockNumber = gameProxy.l2BlockNumber();
@@ -78,13 +81,13 @@ contract OPFaultGameFinder {
         uint256 gameType,
         uint256 created,
         OPFaultParams memory params,
-        uint256 respectedGameType
+        FinderState memory state
     ) internal view returns (bool) {
         // if allowed gameTypes is empty, accept a respected game OR a previously respected game
         if (
             !(
                 params.allowedGameTypes.length == 0
-                    ? (gameType == respectedGameType ||
+                    ? (gameType == state.respectedGameType ||
                         gameProxy.wasRespectedGameTypeWhenCreated())
                     : _isAllowedGameType(gameType, params.allowedGameTypes)
             )
@@ -103,7 +106,7 @@ contract OPFaultGameFinder {
         if (!params.asr.isGameProper(gameProxy)) return false;
         if (params.minAgeSec > 0) {
             if (created > block.timestamp - params.minAgeSec) return false;
-            if (_isUnchallenged(params, gameProxy)) return true;
+            if (_isUnchallenged(gameProxy, params, state)) return true;
         }
         return gameProxy.status() == DEFENDER_WINS; // require resolved
     }
@@ -130,8 +133,9 @@ contract OPFaultGameFinder {
 
     /// @dev Attempt to determine if the game is challenged in any sense.
     function _isUnchallenged(
+        IDisputeGame gameProxy,
         OPFaultParams memory params,
-        IDisputeGame gameProxy
+        FinderState memory state
     ) internal view returns (bool) {
         try
             IFaultDisputeGame(address(gameProxy)).l2BlockNumberChallenged()
@@ -155,6 +159,7 @@ contract OPFaultGameFinder {
                     uint256 gameType0 = gameProxy.gameType();
                     while (true) {
                         if (gameIndex == type(uint32).max) return true; // anchor state is resolved
+                        if (gameIndex >= state.succinctGameIndex) return false; // already checked
                         (
                             uint256 gameType,
                             uint256 created,
@@ -168,20 +173,21 @@ contract OPFaultGameFinder {
                                     gameType,
                                     created,
                                     params,
-                                    params.asr.respectedGameType()
+                                    state
                                 );
                         }
                         data = IOPSuccinctFaultDisputeGame(address(parentGame))
                             .claimData();
                         if (_isUnchallengedStatus(data.status)) {
                             gameIndex = data.parentIndex; // keep checking ancestry
-                        } else if (
-                            data.status ==
-                            IOPSuccinctFaultDisputeGame.ProposalStatus.Resolved
-                        ) {
-                            return parentGame.status() == DEFENDER_WINS;
                         } else {
-                            return false;
+                            state.succinctGameIndex = gameIndex; // remember
+                            return
+                                data.status ==
+                                IOPSuccinctFaultDisputeGame
+                                    .ProposalStatus
+                                    .Resolved &&
+                                parentGame.status() == DEFENDER_WINS;
                         }
                     }
                 }
