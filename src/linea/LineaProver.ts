@@ -1,4 +1,4 @@
-import type { HexString, HexString32, ProofRef } from '../types.js';
+import type { HexAddress, HexString32, ProofRef } from '../types.js';
 import { BlockProver, makeStorageKey, type TargetNeed } from '../vm.js';
 import { ZeroAddress, ZeroHash } from 'ethers/constants';
 import {
@@ -6,6 +6,8 @@ import {
   toPaddedHex,
   isRPCError,
   fetchStorage,
+  NULL_CODE_HASH,
+  ABI_CODER,
 } from '../utils.js';
 import {
   type LineaProof,
@@ -42,21 +44,16 @@ export class LineaProver extends BlockProver {
       throw new Error(`isShomeiReady()`, { cause });
     }
   }
-  override async isContract(target: HexString): Promise<boolean> {
-    if (this.fast) {
-      return this.cache.get(target, async () => {
-        const code = await this.provider.getCode(target, this.block);
-        return code.length > 2;
-      });
-    }
+  override async isContract(target: HexAddress): Promise<boolean> {
+    if (this.fast) return this.hasCode(target);
     const { accountProof } = await this.getProofs(target);
     return isContract(accountProof);
   }
   override async getStorage(
-    target: HexString,
+    target: HexAddress,
     slot: bigint,
     fast: boolean = this.fast
-  ): Promise<HexString> {
+  ): Promise<HexString32> {
     target = target.toLowerCase();
     // check to see if we know this target isn't a contract
     const accountProof: LineaProof | undefined =
@@ -107,7 +104,7 @@ export class LineaProver extends BlockProver {
     }
   }
   async getProofs(
-    target: HexString,
+    target: HexAddress,
     slots: bigint[] = []
   ): Promise<RPCLineaGetProof> {
     target = target.toLowerCase();
@@ -172,7 +169,7 @@ export class LineaProver extends BlockProver {
       storageProofs: v as LineaProof[],
     };
   }
-  async fetchProofs(target: HexString, slots: bigint[] = []) {
+  async fetchProofs(target: HexAddress, slots: bigint[] = []) {
     const ps: Promise<RPCLineaGetProof>[] = [];
     for (let i = 0; ; ) {
       ps.push(
@@ -190,10 +187,26 @@ export class LineaProver extends BlockProver {
       );
       if (i >= slots.length) break;
     }
-    const vs = await Promise.all(ps);
-    for (let i = 1; i < vs.length; i++) {
-      vs[0].storageProofs.push(...vs[i].storageProofs);
+    const [x0, ...xs] = await Promise.all(ps);
+    for (const x of xs) {
+      x0.storageProofs.push(...x.storageProofs);
     }
-    return vs[0];
+    return x0;
+  }
+
+  override async getCodeHash(target: HexAddress): Promise<HexString32> {
+    const proofs = await this.getProofs(target);
+    if (!isInclusionProof(proofs.accountProof)) return NULL_CODE_HASH;
+    return ABI_CODER.decode(
+      [
+        'uint64', // nonce
+        'uint256', // balance
+        'bytes32', // storageRoot
+        'bytes32', // mimcCodeHash
+        'bytes32', // keccakCodeHash
+        'uint64', // codeSize;
+      ],
+      proofs.accountProof.proof.value
+    )[4];
   }
 }
