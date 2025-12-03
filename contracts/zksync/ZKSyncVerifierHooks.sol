@@ -4,8 +4,7 @@ pragma solidity ^0.8.0;
 import {
     IVerifierHooks,
     InvalidProof,
-    NOT_A_CONTRACT,
-    NULL_CODE_HASH
+    NOT_A_CONTRACT
 } from '../IVerifierHooks.sol';
 import {IZKSyncSMT, TreeEntry, ACCOUNT_CODE_HASH} from './IZKSyncSMT.sol';
 
@@ -66,7 +65,7 @@ contract ZKSyncVerifierHooks is IVerifierHooks {
         );
         bytes32 computed = _smt.getRootHash(
             path,
-            TreeEntry(slot, value, leafIndex),
+            TreeEntry({key: slot, value: value, leafIndex: leafIndex}),
             target
         );
         if (root != computed) revert InvalidProof();

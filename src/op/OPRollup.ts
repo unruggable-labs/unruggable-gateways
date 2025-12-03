@@ -133,13 +133,15 @@ export class OPRollup extends AbstractOPRollup<OPCommit> {
     OutputFinder: FINDER_MAINNET,
   };
 
+  // shutdown March 26, 2025, 3:00 AM UTC at block 31_056_500
+  // https://forum.celo.org/t/alfajores-goes-l2/9052
   // https://storage.googleapis.com/cel2-rollup-files/alfajores/deployment-l1.json
-  static readonly celoAlfajoresConfig: RollupDeployment<OPConfig> = {
-    chain1: CHAINS.HOLESKY,
-    chain2: CHAINS.CELO_ALFAJORES,
-    OptimismPortal: '0x82527353927d8D069b3B452904c942dA149BA381',
-    OutputFinder: FINDER_HOLESKY,
-  };
+  // static readonly celoAlfajoresConfig: RollupDeployment<OPConfig> = {
+  //   chain1: CHAINS.HOLESKY,
+  //   chain2: CHAINS.CELO_ALFAJORES,
+  //   OptimismPortal: '0x82527353927d8D069b3B452904c942dA149BA381',
+  //   OutputFinder: FINDER_HOLESKY,
+  // };
 
   // https://docs.worldcoin.org/world-chain/developers/world-chain-contracts
   static readonly worldMainnetConfig: RollupDeployment<OPConfig> = {

@@ -3,6 +3,10 @@ import type { Chain, ChainPair, Provider, ProviderPair } from '../src/types.js';
 import { CHAINS, chainName } from '../src/chains.js';
 import { FetchRequest } from 'ethers/utils';
 import { GatewayProvider } from '../src/GatewayProvider.js';
+import { EventEmitter } from 'node:events';
+
+// 20240830: so far, alchemy has the best support
+const DEFAULT_ORDER = ['alchemy', 'infura', 'ankr', 'drpc', 'public'];
 
 export type RPCInfo = {
   readonly chain: Chain;
@@ -17,6 +21,7 @@ export type RPCInfo = {
   readonly alchemyPremium?: boolean;
   readonly drpc?: string;
   readonly drpcBeacon?: string;
+  readonly order?: string[];
 };
 
 // TODO: this list is incomplete!
@@ -88,10 +93,11 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         // https://docs.base.org/docs/network-information#base-mainnet
         chain: CHAINS.BASE,
         publicHTTP: 'https://mainnet.base.org',
-        //ankr: 'base', // 202405XX: eth_getProof depth is 10000
-        //infura: 'base-mainnet', // 20250214: eth_getProof depth is still insufficient
-        //alchemy: 'base-mainnet', // 20251008 eth_getProof depth insufficient.. again
+        ankr: 'base',
+        infura: 'base-mainnet',
+        alchemy: 'base-mainnet',
         drpc: 'base',
+        order: ['drpc', 'alchemy'],
       },
       {
         // https://docs.base.org/docs/network-information#base-testnet-sepolia
@@ -100,7 +106,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         ankr: 'base_sepolia',
         infura: 'base-sepolia',
         alchemy: 'base-sepolia', // 20250107 eth_getProof depth now seems OK
-        drpc: 'base-sepolia', // 20250115: no eth_getProof
+        drpc: 'base-sepolia',
       },
       {
         // https://docs.arbitrum.io/build-decentralized-apps/reference/node-providers#arbitrum-public-rpc-endpoints
@@ -270,11 +276,11 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         publicHTTP: 'https://rpc.redstonechain.com',
         publicWS: 'wss://rpc.redstonechain.com',
       },
-      // {
-      //   // https://docs.gnosischain.com/about/networks/mainnet
-      //   chain: CHAINS.GNOSIS,
-      //   rpc: 'https://rpc.gnosischain.com',
-      // },
+      {
+        // https://docs.gnosischain.com/about/networks/mainnet
+        chain: CHAINS.GNOSIS,
+        publicHTTP: 'https://rpc.gnosischain.com',
+      },
       {
         // https://docs.shape.network/documentation/technical-details/network-information
         chain: CHAINS.SHAPE,
@@ -300,7 +306,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         //drpc: 'opbnb', // 20250115: no depth
       },
       {
-        // https://docs.celo.org/network#celo-mainnet
+        // https://docs.celo.org/tooling/overview/network-overview#celo-mainnet
         chain: CHAINS.CELO,
         publicHTTP: 'https://forno.celo.org',
         publicWS: 'wss://forno.celo.org/ws',
@@ -310,14 +316,10 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
         drpc: 'celo',
       },
       {
-        // https://docs.celo.org/network#celo-alfajores
-        chain: CHAINS.CELO_ALFAJORES,
-        publicHTTP: 'https://alfajores-forno.celo-testnet.org',
-        alchemy: 'celo-alfajores',
-        infura: 'celo-alfajores', // 20241002: eth_getProof doesn't work
-        ankr: 'celo-alfajores',
-        ankrPremium: true,
-        drpc: 'celo-alfajores',
+        // https://docs.celo.org/tooling/overview/network-overview#celo-sepolia-testnet
+        chain: CHAINS.CELO_SEPOLIA,
+        publicHTTP: 'https://forno.celo-sepolia.celo-testnet.org',
+        drpc: 'celo-sepolia',
       },
       {
         // https://docs.worldcoin.org/world-chain/quick-start/info
@@ -496,19 +498,26 @@ function envForChain(prefix: string, chain: Chain) {
 }
 
 export function providerOrder(chain?: Chain): string[] {
-
-  // 20240830: so far, alchemy has the best support
-  const defaultOrder = ['alchemy', 'infura', 'ankr', 'drpc', 'public']; // global default
-
   const key = 'PROVIDER_ORDER';
-  let order: string[] = [];
+  const orderings = [DEFAULT_ORDER]; // global default
   let env;
-  if (chain) env = envForChain(key, chain);
-  if (!env) env = process.env[key]; // global
-  if (env) order = env.split(/[,\s+]/).flatMap((x) => x.trim() || []);
-
-  return [...order, ...defaultOrder.filter(x => !order.includes(x))];
+  if (chain) {
+    const info = RPC_INFO.get(chain);
+    if (info?.order) {
+      orderings.push(info.order); // chain-specific default
+    }
+    env = envForChain(key, chain); // chain override?
+  }
+  if (!env) env = process.env[key]; // global override?
+  if (env) {
+    orderings.push(env.split(/[,\s+]/).flatMap((x) => x.trim() || []));
+  }
+  return [...new Set(orderings.reverse().flat())];
 }
+
+export const PROVIDER_EVENTS = new EventEmitter<{
+  create: [chain: Chain, fr: FetchRequest];
+}>();
 
 type ProviderInfo = {
   info: RPCInfo;
@@ -609,6 +618,7 @@ export function createProvider(chain: Chain): Provider {
   //   console.log(req.url);
   //   return req;
   // };
+  PROVIDER_EVENTS.emit('create', chain, fr);
   return new GatewayProvider(fr, chain);
 }
 

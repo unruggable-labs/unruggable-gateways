@@ -29,7 +29,13 @@ contract UncheckedVerifier is AbstractVerifier {
         return
             GatewayVM.evalRequest(
                 req,
-                ProofSequence(0, bytes32(0), proofs, order, _hooks)
+                ProofSequence({
+                    index: 0,
+                    stateRoot: bytes32(0),
+                    proofs: proofs,
+                    order: order,
+                    hooks: _hooks
+                })
             );
     }
 }

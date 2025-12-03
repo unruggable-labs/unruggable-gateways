@@ -10,7 +10,6 @@ import {LazyOwnable} from './LazyOwnable.sol';
 event TrustedVerifierChanged();
 
 contract LazyTrustedVerifier is LazyOwnable, IGatewayVerifier {
-
     IVerifierHooks _hooks;
     mapping(address => bool) _signers;
     uint256 _expSec;
@@ -113,7 +112,13 @@ contract LazyTrustedVerifier is LazyOwnable, IGatewayVerifier {
         return
             GatewayVM.evalRequest(
                 req,
-                ProofSequence(0, p.stateRoot, p.proofs, p.order, _hooks)
+                ProofSequence({
+                    index: 0,
+                    stateRoot: p.stateRoot,
+                    proofs: p.proofs,
+                    order: p.order,
+                    hooks: _hooks
+                })
             );
     }
 }
