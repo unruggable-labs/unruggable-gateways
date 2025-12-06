@@ -38,9 +38,19 @@ jobs:
         run: bun install
 
       - name: 'Create env file'
+        env:
+          PROVIDER_ORDER_ARB1: ${{ vars.PROVIDER_ORDER_ARB1 }}
+          PROVIDER_ORDER_BASE: ${{ vars.PROVIDER_ORDER_BASE }}
+          PROVIDER_ORDER_OP: ${{ vars.PROVIDER_ORDER_OP }}
+          PROVIDER_ORDER_LINEA: ${{ vars.PROVIDER_ORDER_LINEA }}
+          PROVIDER_ORDER_SCROLL: ${{ vars.PROVIDER_ORDER_SCROLL }}
         run: |
           touch .env
-          echo PROVIDER_ORDER_HOODI=drpc >> .env
+          echo PROVIDER_ORDER_ARB1=$PROVIDER_ORDER_ARB1 >> .env
+          echo PROVIDER_ORDER_BASE=$PROVIDER_ORDER_BASE >> .env
+          echo PROVIDER_ORDER_OP=$PROVIDER_ORDER_OP >> .env
+          echo PROVIDER_ORDER_LINEA=$PROVIDER_ORDER_LINEA >> .env
+          echo PROVIDER_ORDER_SCROLL=$PROVIDER_ORDER_SCROLL >> .env
           echo ALCHEMY_KEY=${{ secrets.ALCHEMY_KEY }} >> .env
           echo INFURA_KEY=${{ secrets.INFURA_KEY }} >> .env
           echo DRPC_KEY=${{ secrets.DRPC_KEY }} >> .env
