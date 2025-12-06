@@ -7,5 +7,3 @@
         * Game [`1156`](https://sepolia.etherscan.io/address/0xD6aCF2FDB062E81Bcdc2B6f9682aaFceA55C63AE#readContract) &rarr; `ChallengedAndValidProofProvided`
         * Game Count: `1422`
         * Finder runs out of gas with some providers &rarr; reason: `_isChallenged()` is O(n^2)
-
-

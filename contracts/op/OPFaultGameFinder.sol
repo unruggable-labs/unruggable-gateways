@@ -67,7 +67,7 @@ contract OPFaultGameFinder {
                 params,
                 FinderState({
                     respectedGameType: params.asr.respectedGameType(),
-                    succinctGameIndex: 0 // ignored
+                    succinctGameIndex: gameIndex
                 })
             )
         ) {

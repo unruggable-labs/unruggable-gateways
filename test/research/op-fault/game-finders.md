@@ -2,6 +2,8 @@
 
 ## Mainnet
 
+* `2025-12-05` &mdash; [`0x981829755e38b16E6dc23762c1289CA3F4065682`](https://etherscan.io/address/0x981829755e38b16E6dc23762c1289CA3F4065682#code)
+	* fix `gameAtIndex()` initial `succinctGameIndex`
 * `2025-12-02` &mdash; [`0xDa9883a512b8E1F48bF414f702338F4fAe87D8E8`](https://etherscan.io/address/0xDa9883a512b8E1F48bF414f702338F4fAe87D8E8#code)
 	* fix O(n^2) `_isUnchallenged()` for `IOPSuccinctFaultDisputeGame`
 * `2025-11-16` &mdash; [`0xD3E53fE8AF05F6a9be11F311B104783ad862D145`](https://etherscan.io/address/0xD3E53fE8AF05F6a9be11F311B104783ad862D145#code)
