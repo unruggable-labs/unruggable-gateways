@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {OPFaultParams} from './OPStructs.sol';
-
 // https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts-bedrock/interfaces/dispute/IAnchorStateRegistry.sol
 interface IAnchorStateRegistry {
     function isGameProper(IDisputeGame) external view returns (bool);
@@ -44,6 +42,13 @@ interface IDisputeGame {
     function gameCreator() external view returns (address);
     function createdAt() external view returns (uint64);
     function gameType() external view returns (uint256);
+}
+
+struct OPFaultParams {
+    IAnchorStateRegistry asr;
+    uint256 minAgeSec;
+    uint256[] allowedGameTypes;
+    address[] allowedProposers;
 }
 
 interface IOPFaultGameFinder {
