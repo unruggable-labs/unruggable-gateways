@@ -211,10 +211,12 @@ function makeBlobCanonical(blob: HexString): Uint8Array {
 function lastBlockFromBlob(blob: HexString) {
   // https://github.com/scroll-tech/da-codec/blob/344f2d5e33e1930c63cd6a082ef77e27dbe50cea/encoding/codecv7.go#L176
   // https://github.com/scroll-tech/da-codec/blob/2cfec8c99547b68dc64e2b020fa2b83cfb9c0e99/encoding/codecv8.go
+  // https://github.com/scroll-tech/da-codec/blob/54929786434f00efd00431517a332f1ec8ca58d4/encoding/codecv9.go
   let v = makeBlobCanonical(blob);
   switch (v[0]) {
     case 7:
     case 8:
+    case 9:
       break;
     default:
       throw new Error(`unexpected version: ${v[0]}`);
