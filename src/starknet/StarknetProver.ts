@@ -212,14 +212,20 @@ export class StarknetProver extends AbstractProver {
       );
       if (i >= slots.length) break;
     }
-    const vs = await Promise.all(ps);
-    if (isContract(vs[0])) {
-      for (let i = 1; i < vs.length; i++) {
-        vs[0].contract_data.storage_proofs.push(
-          ...vs[i].contract_data!.storage_proofs
+    const [x0, ...xs] = await Promise.all(ps);
+    if (isContract(x0)) {
+      for (const x of xs) {
+        x0.contract_data.storage_proofs.push(
+          ...x.contract_data!.storage_proofs
         );
       }
     }
-    return vs[0];
+    return x0;
+  }
+  override async getCodeHash(target: HexString32): Promise<HexString32> {
+    const proofs = await this.fetchProofs(target);
+    // TODO: null hash? hash function?
+    if (!isContract(proofs)) throw new Error(`not yet implemented`);
+    return proofs.contract_data.class_hash;
   }
 }

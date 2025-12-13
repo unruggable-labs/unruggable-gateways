@@ -29,6 +29,21 @@ contract ZKSyncVerifierHooks is IVerifierHooks {
                 : root;
     }
 
+    function verifyCode(
+        bytes32 root,
+        address target,
+        bytes memory proof,
+        bytes memory code
+    ) external view returns (bool) {
+        if (proof.length > 0) {
+            return
+                _verifyProof(root, ACCOUNT_CODE_HASH, uint160(target), proof) ==
+                keccak256(code);
+        } else {
+            return code.length == 0;
+        }
+    }
+
     function verifyStorageValue(
         bytes32 root,
         address target,

@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IVerifierHooks, InvalidProof, NOT_A_CONTRACT, NULL_CODE_HASH} from '../IVerifierHooks.sol';
+import {StandardVerifierHooks} from '../StandardVerifierHooks.sol';
+import {
+    InvalidProof,
+    NOT_A_CONTRACT,
+    NULL_CODE_HASH
+} from '../IVerifierHooks.sol';
 
 interface IPoseidon {
     function poseidon(
@@ -10,7 +15,7 @@ interface IPoseidon {
     ) external view returns (bytes32);
 }
 
-contract ScrollVerifierHooks is IVerifierHooks {
+contract ScrollVerifierHooks is StandardVerifierHooks {
     IPoseidon immutable _poseidon;
 
     constructor(IPoseidon poseidon) {
@@ -40,21 +45,20 @@ contract ScrollVerifierHooks is IVerifierHooks {
     // https://docs.scroll.io/en/technology/sequencer/zktrie/
     uint256 constant MAX_TRIE_DEPTH = 248;
 
-    function verifyAccountState(
+    function verifyAccount(
         bytes32 stateRoot,
         address account,
         bytes memory encodedProof
-    ) external view returns (bytes32 storageRoot) {
+    ) public view override returns (bytes32 storageRoot, bytes32 codeHash) {
         (
             bytes32 keyHash,
             bytes32 leafHash,
             bytes memory leaf,
             bool exists
         ) = walkTree(bytes20(account), encodedProof, stateRoot, 230); // flags = 0x05080000
-        if (leafHash == 0) return NOT_A_CONTRACT;
+        if (leafHash == 0) return (NOT_A_CONTRACT, NULL_CODE_HASH);
         bytes32 temp;
         bytes32 amount;
-        bytes32 codeHash;
         assembly {
             temp := mload(add(leaf, 69)) // nonce||codesize||0
             amount := mload(add(leaf, 101))
@@ -69,7 +73,10 @@ contract ScrollVerifierHooks is IVerifierHooks {
         h = poseidonHash2(h, temp, 1280);
         h = poseidonHash2(keyHash, h, 4);
         if (leafHash != h) revert InvalidProof(); // InvalidAccountLeafNodeHash
-        if (codeHash == NULL_CODE_HASH || !exists) storageRoot = NOT_A_CONTRACT;
+        if (codeHash == NULL_CODE_HASH || !exists) {
+            codeHash = NULL_CODE_HASH;
+            storageRoot = NOT_A_CONTRACT;
+        }
     }
 
     function verifyStorageValue(
@@ -120,8 +127,11 @@ contract ScrollVerifierHooks is IVerifierHooks {
                 // NOTE: leafSize is >= 33
                 if (uint8(v[leafSize - 33]) != 32) revert InvalidProof(); // InvalidKeyPreimageLength
 
-                // Proof is invalid if there are un-used proof elements after this leaf node and magic bytes              
-                if (keccak256(proof[i + 1]) != keccak256("THIS IS SOME MAGIC BYTES FOR SMT m1rRXgP2xpDI")) revert InvalidProof();
+                // Proof is invalid if there are un-used proof elements after this leaf node and magic bytes
+                if (
+                    keccak256(proof[i + 1]) !=
+                    keccak256('THIS IS SOME MAGIC BYTES FOR SMT m1rRXgP2xpDI')
+                ) revert InvalidProof();
                 if (proof.length - 1 != i + 1) revert InvalidProof();
 
                 bytes32 temp;

@@ -15,13 +15,7 @@ export class ZKEVMProver extends BlockProver {
   static readonly encodeProof = encodeProof;
   static readonly latest = this._createLatest();
   override async isContract(target: HexAddress): Promise<boolean> {
-    target = target.toLowerCase();
-    if (this.fast) {
-      return this.cache.get(target, async () => {
-        const code = await this.provider.getCode(target, this.block);
-        return code.length > 2;
-      });
-    }
+    if (this.fast) return this.hasCode(target);
     return isContract(await this.getProofs(target));
   }
   override async getStorage(
@@ -97,10 +91,14 @@ export class ZKEVMProver extends BlockProver {
       );
       if (i >= slots.length) break;
     }
-    const vs = await Promise.all(ps);
-    for (let i = 1; i < vs.length; i++) {
-      vs[0].storageProof.push(...vs[i].storageProof);
+    const [x0, ...xs] = await Promise.all(ps);
+    for (const x of xs) {
+      x0.storageProof.push(...x.storageProof);
     }
-    return vs[0];
+    return x0;
+  }
+  async getCodeHash(target: HexAddress) {
+    const proofs = await this.getProofs(target);
+    return proofs.codeHash;
   }
 }

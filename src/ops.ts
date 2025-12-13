@@ -56,6 +56,7 @@ export const GATEWAY_OP = {
   READ_ARRAY: 62,
   READ_HASHED_BYTES: 63,
   READ_SLOTS: 64,
+  READ_CODE: 65,
 
   SET_SLOT: 70,
   ADD_SLOT: 71,

@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import {IVerifierHooks, InvalidProof, NOT_A_CONTRACT, NULL_CODE_HASH} from '../IVerifierHooks.sol';
+import {StandardVerifierHooks} from '../StandardVerifierHooks.sol';
+import {InvalidProof, NOT_A_CONTRACT, NULL_CODE_HASH} from '../IVerifierHooks.sol';
 import {SparseMerkleProof} from './SparseMerkleProof.sol';
 
 bytes32 constant EMPTY_STORAGE_HASH = 0x07977874126658098c066972282d4c85f230520af3847e297fe7524f976873e5; // see: src/linea/types.ts
 
-contract LineaVerifierHooks is IVerifierHooks {
+contract LineaVerifierHooks is StandardVerifierHooks {
     uint256 constant LAST_LEAF_INDEX = 41;
 
     struct Proof {
@@ -15,11 +16,11 @@ contract LineaVerifierHooks is IVerifierHooks {
         bytes[] nodes;
     }
 
-    function verifyAccountState(
+    function verifyAccount(
         bytes32 stateRoot,
         address target,
         bytes memory encodedProof
-    ) external pure returns (bytes32) {
+    ) public override pure returns (bytes32, bytes32) {
         // NOTE: dynamic Proof[] abi.decode() codegen is awful
         // instead, right nodes are empty when existence proof
         (Proof memory proof, Proof memory right) = abi.decode(
@@ -36,14 +37,13 @@ contract LineaVerifierHooks is IVerifierHooks {
             );
             SparseMerkleProof.Account memory account = SparseMerkleProof
                 .getAccount(proof.value);
-            return
-                account.keccakCodeHash == NULL_CODE_HASH
-                    ? NOT_A_CONTRACT
-                    : account.storageRoot;
+            if (account.keccakCodeHash != NULL_CODE_HASH) {
+                return (account.storageRoot, account.keccakCodeHash);
+            }  
         } else {
             _requireExclusion(stateRoot, hKey, proof, right);
-            return NOT_A_CONTRACT;
         }
+        return (NOT_A_CONTRACT, NULL_CODE_HASH);
     }
 
     function verifyStorageValue(
