@@ -65,6 +65,7 @@
     "semantic-release": "^25.0.2"
   },
   "dependencies": {
+    "@ensdomains/merkle-builder": "^0.0.4",
     "@namestone/ezccip": "^0.1.1",
     "ethers": "^6.15.0",
     "fzstd": "^0.1.1"

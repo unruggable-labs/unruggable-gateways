@@ -2,6 +2,7 @@ import {
   type RollupCommit,
   type RollupWitnessV1,
   AbstractRollup,
+  RollupWitnessEncoder,
 } from '../rollup.js';
 import type {
   HexAddress,
@@ -58,6 +59,12 @@ export type ScrollCommit = RollupCommit<EthProver> & {
   readonly l1BlockNumber: number;
 };
 
+const witnessEncoder: RollupWitnessEncoder<ScrollCommit> = (commit, proofSeq) =>
+  ABI_CODER.encode(
+    ['(uint256, bytes[], bytes)'],
+    [[commit.index, proofSeq.proofs, proofSeq.order]]
+  );
+
 // 20240815: commits are approximately every minute
 // to make caching useful, we align to a step
 // note: use 1 to disable the alignment
@@ -67,6 +74,8 @@ export class ScrollRollup
   extends AbstractRollup<ScrollCommit>
   implements RollupWitnessV1<ScrollCommit>
 {
+  static readonly witnessEncoder = witnessEncoder;
+
   // 20250417: https://x.com/Scroll_ZKP/status/1912944671686533541
   // https://docs.scroll.io/en/developers/scroll-contracts/
   // https://etherscan.io/address/0xC4362457a91B2E55934bDCb7DaaF6b1aB3dDf203
@@ -135,10 +144,7 @@ export class ScrollRollup
     commit: ScrollCommit,
     proofSeq: ProofSequence
   ): HexString {
-    return ABI_CODER.encode(
-      ['(uint256, bytes[], bytes)'],
-      [[commit.index, proofSeq.proofs, proofSeq.order]]
-    );
+    return witnessEncoder(commit, proofSeq);
   }
   encodeWitnessV1(commit: ScrollCommit, proofSeq: ProofSequenceV1): HexString {
     const compressed = proofSeq.storageProofs.map((storageProof) =>

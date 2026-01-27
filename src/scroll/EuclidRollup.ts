@@ -2,6 +2,7 @@ import {
   type RollupCommit,
   type RollupDeployment,
   AbstractRollup,
+  RollupWitnessEncoder,
 } from '../rollup.js';
 import type {
   HexAddress,
@@ -63,7 +64,15 @@ export type EuclidCommit = RollupCommit<EthProver> & {
   readonly l1BlockNumber: number;
 };
 
+const witnessEncoder: RollupWitnessEncoder<EuclidCommit> = (commit, proofSeq) =>
+  ABI_CODER.encode(
+    ['(uint256, bytes[], bytes)'],
+    [[commit.index, proofSeq.proofs, proofSeq.order]]
+  );
+
 export class EuclidRollup extends AbstractRollup<EuclidCommit> {
+  static readonly witnessEncoder = witnessEncoder;
+
   // https://etherscan.io/address/0xa13BAF47339d63B743e7Da8741db5456DAc1E556
   static readonly mainnetConfig: RollupDeployment<EuclidConfig> = {
     chain1: CHAINS.MAINNET,
@@ -183,10 +192,7 @@ export class EuclidRollup extends AbstractRollup<EuclidCommit> {
     commit: EuclidCommit,
     proofSeq: ProofSequence
   ): HexString {
-    return ABI_CODER.encode(
-      ['(uint256, bytes[], bytes)'],
-      [[commit.index, proofSeq.proofs, proofSeq.order]]
-    );
+    return witnessEncoder(commit, proofSeq);
   }
   override windowFromSec(sec: number): number {
     // finalization time is not on-chain

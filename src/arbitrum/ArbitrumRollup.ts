@@ -1,5 +1,9 @@
 import { EthProver } from '../eth/EthProver.js';
-import { type RollupCommit, AbstractRollup } from '../rollup.js';
+import {
+  type RollupCommit,
+  AbstractRollup,
+  type RollupWitnessEncoder,
+} from '../rollup.js';
 import type {
   HexAddress,
   HexString,
@@ -19,9 +23,19 @@ export type ArbitrumCommit = RollupCommit<EthProver> & {
   readonly encodedRollupProof: HexString;
 };
 
+const witnessEncoder: RollupWitnessEncoder<ArbitrumCommit> = (
+  commit,
+  proofSeq
+) =>
+  ABI_CODER.encode(
+    ['(bytes, bytes[], bytes)'],
+    [[commit.encodedRollupProof, proofSeq.proofs, proofSeq.order]]
+  );
+
 export abstract class AbstractArbitrumRollup<
   C extends ArbitrumCommit,
 > extends AbstractRollup<C> {
+  static witnessEncoder = witnessEncoder;
   readonly Rollup: Contract;
   protected constructor(
     providers: ProviderPair,
@@ -43,10 +57,7 @@ export abstract class AbstractArbitrumRollup<
     commit: ArbitrumCommit,
     proofSeq: ProofSequence
   ): HexString {
-    return ABI_CODER.encode(
-      ['(bytes, bytes[], bytes)'],
-      [[commit.encodedRollupProof, proofSeq.proofs, proofSeq.order]]
-    );
+    return witnessEncoder(commit, proofSeq);
   }
 
   override windowFromSec(sec: number): number {

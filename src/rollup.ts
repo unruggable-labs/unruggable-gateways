@@ -26,6 +26,11 @@ export type RollupCommitType<R extends Rollup> = Parameters<
   R['fetchParentCommitIndex']
 >[0];
 
+export type RollupWitnessEncoder<C = any> = (
+  commit: C,
+  proofSeq: ProofSequence
+) => HexString;
+
 export abstract class AbstractRollup<C extends RollupCommit<AbstractProver>> {
   // allows configuration of commit and prover
   // "expand LRU cache" => prover.proofLRU.maxCached = 1_000_000
