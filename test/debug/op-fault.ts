@@ -5,23 +5,22 @@ import { providerURL } from '../providers.js';
 
 const foundry = await Foundry.launch({
   infoLog: true,
-  fork: providerURL(CHAINS.SEPOLIA),
+  fork: providerURL(CHAINS.MAINNET),
 });
 
 const OPFaultGameFinder = await foundry.deploy({ file: 'OPFaultGameFinder' });
 
-const index = await OPFaultGameFinder.findGameIndex(
-  [OPFaultRollup.sepoliaConfig.AnchorStateRegistry, 21600, [], []],
-  0
-);
+const paramTuple = [
+  OPFaultRollup.mainnetConfig.AnchorStateRegistry,
+  21600,
+  [],
+  [],
+];
+
+const index = await OPFaultGameFinder.findGameIndex(paramTuple, 0);
 
 console.log({ index });
 
-console.log(
-  await OPFaultGameFinder.gameAtIndex(
-    [OPFaultRollup.sepoliaConfig.AnchorStateRegistry, 21600, [], []],
-    index
-  )
-);
+console.log(await OPFaultGameFinder.gameAtIndex(paramTuple, index));
 
 await foundry.shutdown();
