@@ -6,7 +6,8 @@ import {
     IDisputeGame,
     OPFaultParams,
     IFaultDisputeGame,
-    IOPSuccinctFaultDisputeGame
+    IOPSuccinctFaultDisputeGame,
+    IAggregateVerifier
 } from './OPInterfaces.sol';
 
 // https://github.com/ethereum-optimism/optimism/issues/11269
@@ -23,7 +24,7 @@ error GameNotFound();
 
 struct FinderState {
     uint256 respectedGameType; // get once and save
-    uint256 succinctGameIndex; // avoids O(n^2) _isUnchallenged() for IOPSuccinctFaultDisputeGame 
+    uint256 succinctGameIndex; // avoids O(n^2) _isUnchallenged() for IOPSuccinctFaultDisputeGame
 }
 
 contract OPFaultGameFinder {
@@ -75,7 +76,11 @@ contract OPFaultGameFinder {
                 })
             )
         ) {
-            l2BlockNumber = gameProxy.l2BlockNumber();
+            try gameProxy.l2SequenceNumber() returns (uint256 blockNumber) {
+                l2BlockNumber = blockNumber;
+            } catch {
+                l2BlockNumber = gameProxy.l2BlockNumber();
+            }
             rootClaim = gameProxy.rootClaim();
         }
     }
@@ -110,7 +115,8 @@ contract OPFaultGameFinder {
         if (!params.asr.isGameProper(gameProxy)) return false;
         if (params.minAgeSec > 0) {
             if (created > block.timestamp - params.minAgeSec) return false;
-            if (_isUnchallenged(gameProxy, gameType, params, state)) return true;
+            if (_isUnchallenged(gameProxy, gameType, params, state))
+                return true;
         }
         return gameProxy.status() == GAME_STATUS_DEFENDER_WINS; // require resolved
     }
@@ -143,7 +149,22 @@ contract OPFaultGameFinder {
         FinderState memory state
     ) internal view returns (bool) {
         if (gameType == GAME_TYPE_AGGREGATE_VERIFIER) {
-            return gameProxy.status() != GAME_STATUS_CHALLENGER_WINS;
+            for (;;) {
+                uint256 status = gameProxy.status();
+                if (status == GAME_STATUS_DEFENDER_WINS) {
+                    return true;
+                } else if (status == GAME_STATUS_CHALLENGER_WINS) {
+                    return false;
+                }
+                address parent = IAggregateVerifier(address(gameProxy))
+                    .parentAddress();
+                if (parent == address(0)) {
+                    return false;
+                } else if (parent == address(params.asr)) {
+                    return true;
+                }
+                gameProxy = IDisputeGame(parent);
+            }
         } else if (gameType == GAME_TYPE_SUCCINCT) {
             try
                 IOPSuccinctFaultDisputeGame(address(gameProxy)).claimData()
@@ -182,7 +203,8 @@ contract OPFaultGameFinder {
                                 IOPSuccinctFaultDisputeGame
                                     .ProposalStatus
                                     .Resolved &&
-                                parentGame.status() == GAME_STATUS_DEFENDER_WINS;
+                                parentGame.status() ==
+                                GAME_STATUS_DEFENDER_WINS;
                         }
                     }
                 }

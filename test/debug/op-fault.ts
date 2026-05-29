@@ -11,7 +11,7 @@ const foundry = await Foundry.launch({
 const OPFaultGameFinder = await foundry.deploy({ file: 'OPFaultGameFinder' });
 
 const paramTuple = [
-  OPFaultRollup.mainnetConfig.AnchorStateRegistry,
+  OPFaultRollup.baseMainnetConfig.AnchorStateRegistry,
   21600,
   [],
   [],
