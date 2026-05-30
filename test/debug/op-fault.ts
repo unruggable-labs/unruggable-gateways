@@ -1,6 +1,6 @@
 import { Foundry } from '@adraffy/blocksmith';
 import { CHAINS } from '../../src/chains.js';
-import { OPFaultRollup } from '../../src/op/OPFaultRollup.js';
+import { type OPFaultParamTuple, OPFaultRollup } from '../../src/op/OPFaultRollup.js';
 import { providerURL } from '../providers.js';
 
 const foundry = await Foundry.launch({
@@ -10,9 +10,9 @@ const foundry = await Foundry.launch({
 
 const OPFaultGameFinder = await foundry.deploy({ file: 'OPFaultGameFinder' });
 
-const paramTuple = [
+const paramTuple: OPFaultParamTuple = [
   OPFaultRollup.baseMainnetConfig.AnchorStateRegistry,
-  21600,
+  21600n,
   [],
   [],
 ];

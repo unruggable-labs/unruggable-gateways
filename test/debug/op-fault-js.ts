@@ -1,16 +1,13 @@
+import { Contract } from 'ethers';
 import { CHAINS } from '../../src/chains.js';
 import { OPFaultRollup } from '../../src/op/OPFaultRollup.js';
 import { createProviderPair } from '../providers.js';
-import { Contract } from 'ethers';
 
 const rollup = new OPFaultRollup(createProviderPair(CHAINS.BASE), OPFaultRollup.baseMainnetConfig);
 
 const DisputeGameFactory = new Contract(
   await rollup.AnchorStateRegistry.disputeGameFactory(),
-  [
-    `function gameCount() view returns (uint256)`,
-    `function gameAtIndex(uint256) view returns (uint256 gameType, uint256 created, address gameProxy)`,
-  ],
+  OPFaultRollup.DISPUTE_GAME_FACTORY_ABI,
   rollup.provider1,
 );
 
