@@ -34,7 +34,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
     [
       {
         chain: CHAINS.MAINNET,
-        publicHTTP: 'https://rpc.ankr.com/eth', // https://cloudflare-eth.com is too rate limited
+        publicHTTP: 'https://eth.drpc.org/eth', // https://cloudflare-eth.com is too rate limited
         publicBeacon: 'https://ethereum-beacon-api.publicnode.com',
         ankr: 'eth',
         ankrBeaconPremium: true,
@@ -45,7 +45,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       },
       {
         chain: CHAINS.SEPOLIA,
-        publicHTTP: 'https://rpc.ankr.com/eth_sepolia',
+        publicHTTP: 'https://sepolia.drpc.org',
         publicBeacon: 'https://ethereum-sepolia-beacon-api.publicnode.com',
         ankr: 'eth_sepolia',
         //infura: 'sepolia', // 20251003: no eth_getProof depth
@@ -55,7 +55,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       },
       {
         chain: CHAINS.HOLESKY,
-        publicHTTP: 'https://rpc.ankr.com/eth_holesky', //'https://rpc.holesky.ethpandaops.io',
+        publicHTTP: 'https://holesky.drpc.org', //'https://rpc.holesky.ethpandaops.io',
         publicBeacon: 'https://ethereum-holesky-beacon-api.publicnode.com',
         ankr: 'eth_holesky',
         infura: 'holesky',
@@ -65,7 +65,7 @@ export const RPC_INFO = new Map<Chain, RPCInfo>(
       },
       {
         chain: CHAINS.HOODI,
-        publicHTTP: 'https://ethereum-hoodi-rpc.publicnode.com',
+        publicHTTP: 'https://hoodi.drpc.org',
         publicBeacon: 'https://ethereum-hoodi-beacon-api.publicnode.com',
         infura: 'hoodi',
         drpc: 'hoodi',
@@ -612,14 +612,15 @@ export function providerName(chain: Chain): string {
 }
 
 export function createProvider(chain: Chain): Provider {
-  const fr = new FetchRequest(providerURL(chain));
+  const info = decideProvider(chain);
+  const fr = new FetchRequest(info.url);
   fr.timeout = 10000; // 5 minutes is too long
   // fr.preflightFunc = async (req) => {
   //   console.log(req.url);
   //   return req;
   // };
   PROVIDER_EVENTS.emit('create', chain, fr);
-  return new GatewayProvider(fr, chain);
+  return new GatewayProvider(fr, chain, info.type === 'drpc' ? 3 : 10);
 }
 
 export function createProviderPair(
